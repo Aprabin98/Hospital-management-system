@@ -1,0 +1,32 @@
+# Hospital Management System - Simplified Requirements
+# SQLite (default) - No PostgreSQL needed
+# Windows compatible - Pre-built wheels only
+
+# Core Django
+Django>=4.2,<5.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
+django-filter>=23.1
+djangorestframework-simplejwt>=5.2.0
+
+# File & PDF
+reportlab>=4.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# AI & Machine Learning  
+scikit-learn>=1.0.0
+pandas>=1.0.0
+numpy>=1.20.0
+
+# Payment
+requests>=2.25.0
+
+# Utilities
+gunicorn>=20.0.0
+whitenoise>=6.0.0
+
+# Development/Testing
+pytest>=6.0.0
+pytest-django>=4.0.0

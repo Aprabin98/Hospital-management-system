@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}My Leaves - HMS{% endblock %}
+{% block content %}
+<h4>🏖️ My Leave Days - Dr. {{ doctor.user.username }}</h4>
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead class="table-primary">
+                        <tr><th>Date</th><th>Reason</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in leaves %}
+                        <tr>
+                            <td>{{ leave.date }}</td>
+                            <td>{{ leave.reason|default:"No reason given" }}</td>
+                            <td>
+                                <form method="POST" action="{% url 'clinical:doctor_leave_delete' leave.pk %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Cancel Leave</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted">No leaves added.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white"><h6 class="mb-0">➕ Add Leave Day</h6></div>
+            <div class="card-body">
+                <form method="POST">{% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-2"><label class="form-label fw-bold">{{ field.label }}</label>{{ field }}
+                    {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100">Add Leave</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Edit Prescription{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">✏️ Edit Prescription #{{ prescription.id }}</h5>
+                <small>Patient: {{ prescription.patient.full_name }}</small>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">📋 Diagnosis / Notes</label>
+                            {{ form.notes }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">💡 Doctor's Advice</label>
+                            {{ form.advice }}
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">📅 Follow Up Date</label>
+                            {{ form.follow_up_date }}
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="text-primary mb-3">💊 Medicines</h5>
+                    {{ formset.management_form }}
+
+                    <div id="medicineContainer">
+                        {% for item_form in formset %}
+                        <div class="medicine-row card p-3 mb-3 border-primary">
+                            <div class="row g-2">
+                                {% for field in item_form.visible_fields %}
+                                {% if field.name != 'DELETE' %}
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold">{{ field.label }}</label>
+                                    {{ field }}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="col-md-1 d-flex align-items-end">
+                                    {% if formset.can_delete %}
+                                    <div class="form-check">
+                                        {{ item_form.DELETE }}
+                                        <label class="form-check-label text-danger small">Remove</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {{ item_form.id }}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary mb-3" id="addMedicine">
+                        ➕ Add Another Medicine
+                    </button>
+                    <hr>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning">✅ Update Prescription</button>
+                        <a href="{% url 'prescriptions:prescription_detail' prescription.pk %}"
+                           class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('addMedicine').addEventListener('click', function() {
+        const container = document.getElementById('medicineContainer');
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        const formCount = parseInt(totalForms.value);
+        const firstRow = container.querySelector('.medicine-row');
+        const newRow = firstRow.cloneNode(true);
+        newRow.innerHTML = newRow.innerHTML.replace(/items-\d+/g, `items-${formCount}`);
+        newRow.querySelectorAll('input[type="text"], textarea').forEach(i => i.value = '');
+        newRow.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        newRow.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+        container.appendChild(newRow);
+        totalForms.value = formCount + 1;
+    });
+</script>
+{% endblock %}

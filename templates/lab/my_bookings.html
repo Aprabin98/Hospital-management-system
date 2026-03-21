@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}My Lab Bookings{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>🧪 My Lab Test Bookings</h4>
+    <a href="{% url 'lab:test_list' %}" class="btn btn-primary">➕ Book New Test</a>
+</div>
+<div class="card shadow">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead class="table-primary">
+                <tr><th>#ID</th><th>Test</th><th>Date</th><th>Status</th><th>Payment</th><th>Report</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr>
+                    <td>#{{ booking.id }}</td>
+                    <td>{{ booking.template.name }}</td>
+                    <td>{{ booking.date }}</td>
+                    <td>
+                        {% if booking.status == 'PENDING' %}<span class="badge bg-warning text-dark">Pending</span>
+                        {% elif booking.status == 'SAMPLE_COLLECTED' %}<span class="badge bg-info">Sample Collected</span>
+                        {% elif booking.status == 'PROCESSING' %}<span class="badge bg-primary">Processing</span>
+                        {% elif booking.status == 'COMPLETED' %}<span class="badge bg-success">Completed</span>
+                        {% elif booking.status == 'CANCELLED' %}<span class="badge bg-danger">Cancelled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if booking.payment_status == 'PAID' %}<span class="badge bg-success">Paid</span>
+                        {% else %}<span class="badge bg-warning text-dark">Unpaid</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if booking.status == 'COMPLETED' %}
+                            {% if booking.result.is_released %}
+                            <a href="{% url 'lab:download_report' booking.result.pk %}"
+                               class="btn btn-sm btn-success">📄 Download</a>
+                            {% else %}
+                            <span class="text-muted small">Being processed</span>
+                            {% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'lab:booking_detail' booking.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                        {% if booking.status == 'PENDING' %}
+                        <a href="{% url 'lab:cancel_booking' booking.pk %}" class="btn btn-sm btn-outline-danger">Cancel</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No bookings yet. <a href="{% url 'lab:test_list' %}">Book a test!</a></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

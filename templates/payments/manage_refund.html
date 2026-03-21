@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Manage Refund{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+<div class="card shadow">
+    <div class="card-header bg-warning text-dark"><h5>↩ Manage Refund Request</h5></div>
+    <div class="card-body p-4">
+        <div class="alert alert-info">
+            <strong>Patient:</strong> {{ refund.payment.patient.full_name }}<br>
+            <strong>Amount:</strong> Rs. {{ refund.payment.amount }}<br>
+            <strong>Reason:</strong> {{ refund.reason }}
+        </div>
+        <form method="POST">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary w-100">Save Decision</button>
+            <a href="{% url 'payments:admin_payments' %}" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

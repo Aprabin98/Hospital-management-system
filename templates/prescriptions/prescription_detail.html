@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Prescription #{{ prescription.id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">💊 Prescription #{{ prescription.id }}</h5>
+                    <small>{{ prescription.created_at|date:"d M Y" }}</small>
+                </div>
+                <a href="{% url 'prescriptions:download_pdf' prescription.pk %}"
+                   class="btn btn-light btn-sm">
+                    📄 Download PDF
+                </a>
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Doctor & Patient Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light p-3">
+                            <h6 class="text-primary fw-bold">👨‍⚕️ Doctor</h6>
+                            <p class="mb-1"><strong>Dr. {{ prescription.doctor.user.username }}</strong></p>
+                            <p class="mb-1 text-muted">{{ prescription.doctor.specialization }}</p>
+                            <p class="mb-0 text-muted">{{ prescription.doctor.experience_years }} years experience</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light p-3">
+                            <h6 class="text-success fw-bold">👤 Patient</h6>
+                            <p class="mb-1"><strong>{{ prescription.patient.full_name }}</strong></p>
+                            <p class="mb-1 text-muted">{{ prescription.patient.user.email }}</p>
+                            <p class="mb-0 text-muted">
+                                Blood Group: {{ prescription.patient.blood_group|default:"N/A" }} |
+                                Age: {{ prescription.patient.get_age|default:"N/A" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagnosis -->
+                {% if prescription.notes %}
+                <div class="mb-3">
+                    <h6 class="fw-bold text-primary">📋 Diagnosis / Notes</h6>
+                    <p class="border rounded p-2 bg-light">{{ prescription.notes }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Medicines Table -->
+                <h6 class="fw-bold text-primary">💊 Prescribed Medicines</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>#</th>
+                                <th>Medicine</th>
+                                <th>Dosage</th>
+                                <th>Frequency</th>
+                                <th>Duration</th>
+                                <th>Timing</th>
+                                <th>Instructions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td><strong>{{ item.medicine_name }}</strong></td>
+                                <td>{{ item.dosage }}</td>
+                                <td>{{ item.get_frequency_display }}</td>
+                                <td>{{ item.duration }}</td>
+                                <td>{{ item.get_timing_display }}</td>
+                                <td>{{ item.instructions|default:"—" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">No medicines prescribed.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Advice & Follow Up -->
+                <div class="row">
+                    {% if prescription.advice %}
+                    <div class="col-md-8">
+                        <h6 class="fw-bold text-primary">💡 Doctor's Advice</h6>
+                        <p class="border rounded p-2 bg-light">{{ prescription.advice }}</p>
+                    </div>
+                    {% endif %}
+                    {% if prescription.follow_up_date %}
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-warning">📅 Follow Up Date</h6>
+                        <p class="border rounded p-2 bg-light text-center fs-5">
+                            {{ prescription.follow_up_date }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Actions -->
+                <hr>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{% url 'prescriptions:download_pdf' prescription.pk %}"
+                       class="btn btn-primary">📄 Download PDF</a>
+                    {% if request.user.role == 'DOCTOR' %}
+                    <a href="{% url 'prescriptions:edit_prescription' prescription.pk %}"
+                       class="btn btn-warning">✏️ Edit Prescription</a>
+                    <a href="{% url 'prescriptions:doctor_prescriptions' %}"
+                       class="btn btn-outline-secondary">← Back</a>
+                    {% else %}
+                    <a href="{% url 'prescriptions:patient_prescriptions' %}"
+                       class="btn btn-outline-secondary">← Back</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

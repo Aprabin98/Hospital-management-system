@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Revenue Summary{% endblock %}
+{% block content %}
+<h4>📊 Revenue Summary</h4>
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-success text-white text-center p-3">
+            <h3>Rs. {{ total_revenue }}</h3><p>Total Revenue</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-primary text-white text-center p-3">
+            <h3>{{ total_transactions }}</h3><p>Total Transactions</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white text-center p-3">
+            <h3>{{ total_patients }}</h3><p>Unique Patients</p>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0">Revenue by Doctor</h5></div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead class="table-primary">
+                <tr><th>Doctor</th><th>Specialization</th><th>Transactions</th><th>Total Revenue</th></tr>
+            </thead>
+            <tbody>
+                {% for item in by_doctor %}
+                <tr>
+                    <td>Dr. {{ item.doctor__user__username }}</td>
+                    <td>{{ item.doctor__specialization__name }}</td>
+                    <td>{{ item.count }}</td>
+                    <td class="fw-bold text-success">Rs. {{ item.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted">No revenue data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

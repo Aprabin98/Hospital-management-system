@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Dr. {{ doctor.user.username }} - HMS{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow text-center p-3">
+            {% if doctor.photo %}
+                <img src="{{ doctor.photo.url }}" class="rounded-circle mx-auto mb-3" width="120" height="120" style="object-fit:cover;">
+            {% else %}
+                <div class="bg-primary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center text-white" style="width:120px;height:120px;font-size:3rem;">👨‍⚕️</div>
+            {% endif %}
+            <h4>Dr. {{ doctor.user.username }}</h4>
+            <p class="text-primary fw-bold">{{ doctor.specialization }}</p>
+            <p class="text-muted">{{ doctor.experience_years }} years experience</p>
+            <p class="fs-5 text-success fw-bold">Rs. {{ doctor.consultation_fee }}</p>
+            {% with rating=doctor.get_average_rating %}
+            <p>⭐ {{ rating }}/5 ({{ doctor.get_total_reviews }} reviews)</p>
+            {% endwith %}
+            {% if request.user.role == 'PATIENT' %}
+            <a href="#" class="btn btn-primary w-100">📅 Book Appointment</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-8">
+        {% if doctor.bio %}
+        <div class="card shadow mb-3 p-3">
+            <h5>About</h5>
+            <p>{{ doctor.bio }}</p>
+        </div>
+        {% endif %}
+
+        <div class="card shadow mb-3 p-3">
+            <h5>📅 Weekly Schedule</h5>
+            {% if schedules %}
+            <table class="table table-sm">
+                <thead><tr><th>Day</th><th>Shift</th><th>Time</th></tr></thead>
+                <tbody>
+                    {% for schedule in schedules %}
+                    <tr>
+                        <td>{{ schedule.get_day_display }}</td>
+                        <td>{{ schedule.shift.name }}</td>
+                        <td>{{ schedule.shift.start_time }} - {{ schedule.shift.end_time }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No schedule available.</p>
+            {% endif %}
+        </div>
+
+        <div class="card shadow p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">⭐ Patient Reviews</h5>
+                <a href="{% url 'reviews:doctor_reviews' doctor.id %}" class="btn btn-sm btn-outline-primary">View all</a>
+            </div>
+            {% if recent_reviews %}
+                {% for review in recent_reviews %}
+                    <div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">{{ review.patient.full_name }} - {{ review.rating }}/5</div>
+                        <div class="text-muted small">{{ review.created_at|date:"d M Y" }}</div>
+                        {% if review.comment %}<div>{{ review.comment }}</div>{% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">No reviews yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

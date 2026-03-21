@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}My Reviews{% endblock %}
+{% block content %}
+<h3>My Reviews</h3>
+<table class="table table-bordered">
+  <thead><tr><th>Doctor</th><th>Rating</th><th>Comment</th><th>Date</th></tr></thead>
+  <tbody>
+  {% for review in reviews %}
+    <tr>
+      <td>Dr. {{ review.doctor.user.username }}</td>
+      <td>{{ review.rating }}/5</td>
+      <td>{{ review.comment|default:'-' }}</td>
+      <td>{{ review.created_at }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4">No reviews yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

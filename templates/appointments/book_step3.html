@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Book Appointment - Step 3{% endblock %}
+{% block content %}
+
+<!-- Progress Bar -->
+<div class="mb-4">
+    <h4>📅 Book Appointment</h4>
+    <div class="d-flex gap-2 mb-3">
+        <span class="badge bg-success p-2">✅ Step 1: Specialization</span>
+        <span class="badge bg-success p-2">✅ Step 2: Doctor</span>
+        <span class="badge bg-primary p-2">Step 3: Date</span>
+        <span class="badge bg-secondary p-2">Step 4: Time Slot</span>
+    </div>
+    <div class="progress" style="height:8px;">
+        <div class="progress-bar" style="width:75%"></div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">📆 Select Date</h5>
+                <small>Dr. {{ doctor.user.username }} - {{ doctor.specialization }}</small>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Choose appointment date</label>
+                        {{ form.appointment_date }}
+                        {% if form.appointment_date.errors %}
+                            <div class="text-danger small">{{ form.appointment_date.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Doctor Schedule Info -->
+                    <div class="alert alert-info small">
+                        <strong>📅 Doctor's Working Days:</strong><br>
+                        {% for schedule in doctor.schedules.all %}
+                            {{ schedule.get_day_display }}: {{ schedule.shift.start_time }} - {{ schedule.shift.end_time }}<br>
+                        {% empty %}
+                            No schedule available.
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'appointments:book_step2' %}" class="btn btn-outline-secondary w-50">← Back</a>
+                        <button type="submit" class="btn btn-primary w-50">Next → Select Slot</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}My Payments - HMS{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-success text-white text-center p-3">
+            <h3>Rs. {{ total_paid }}</h3>
+            <p class="mb-0">Total Paid</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white text-center p-3">
+            <h3>{{ payments.count }}</h3>
+            <p class="mb-0">Total Transactions</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white text-center p-3">
+            <h3>{{ payments|length }}</h3>
+            <p class="mb-0">All Payments</p>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">💳 My Payment History</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th>#ID</th>
+                    <th>Type</th>
+                    <th>Details</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Method</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>#{{ payment.id }}</td>
+                        <td>
+                            {% if payment.payment_type == 'APPOINTMENT' %}
+                                <span class="badge bg-primary">🏥 Appointment</span>
+                            {% elif payment.payment_type == 'LAB_TEST' %}
+                                <span class="badge bg-info">🧪 Lab Test</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if payment.payment_type == 'APPOINTMENT' %}
+                                Dr. {{ payment.doctor.user.username }}
+                            {% elif payment.payment_type == 'LAB_TEST' %}
+                                {{ payment.lab_booking.template.name }}
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">Rs. {{ payment.amount }}</td>
+                    <td>
+                        {% if payment.status == 'PAID' %}
+                            <span class="badge bg-success">Paid</span>
+                        {% elif payment.status == 'UNPAID' %}
+                            <span class="badge bg-warning text-dark">Unpaid</span>
+                        {% elif payment.status == 'REFUNDED' %}
+                            <span class="badge bg-info">Refunded</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ payment.get_payment_method_display|default:"—" }}</td>
+                    <td>{{ payment.paid_at|date:"d M Y"|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'payments:payment_detail' payment.pk %}"
+                           class="btn btn-sm btn-outline-primary">View</a>
+                        {% if payment.status == 'PAID' %}
+                        <a href="{% url 'payments:download_receipt' payment.pk %}"
+                           class="btn btn-sm btn-outline-success">🧾 Receipt</a>
+                        {% endif %}
+                        {% if payment.status == 'PAID' and not payment.refund %}
+                        <a href="{% url 'payments:request_refund' payment.pk %}"
+                           class="btn btn-sm btn-outline-danger">↩ Refund</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        No payments yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

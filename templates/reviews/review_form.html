@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Create Review{% endblock %}
+{% block content %}
+<h3>Review Dr. {{ appointment.doctor.user.username }}</h3>
+<p>Appointment: {{ appointment.date }} {{ appointment.start_time }}</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn btn-primary" type="submit">Submit Review</button>
+</form>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Update Results{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-9">
+<div class="card shadow">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">✏️ Update Results — {{ booking.template.name }}</h5>
+        <small>Patient: {{ booking.patient.full_name }}</small>
+    </div>
+    <div class="card-body p-4">
+        <form method="POST">{% csrf_token %}
+            <table class="table table-bordered">
+                <thead class="table-primary">
+                    <tr><th>Parameter</th><th>Normal Range</th><th>Unit</th><th>Current Value</th><th>New Value</th></tr>
+                </thead>
+                <tbody>
+                    {% for field in fields %}
+                    <tr>
+                        <td><strong>{{ field.field_name }}</strong></td>
+                        <td>
+                            {% if field.normal_min and field.normal_max %}{{ field.normal_min }} - {{ field.normal_max }}
+                            {% elif field.normal_text %}{{ field.normal_text }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>{{ field.unit|default:"—" }}</td>
+                        <td>
+                            {% if existing_items|dictsort:"pk" %}
+                                {% for fid, item in existing_items.items %}
+                                    {% if fid == field.id %}
+                                        <strong>{{ item.value|default:"—" }}</strong>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            <input type="text"
+                                name="field_{{ field.id }}"
+                                class="form-control form-control-sm"
+                                value="{% for fid, item in existing_items.items %}{% if fid == field.id %}{{ item.value|default:'' }}{% endif %}{% endfor %}"
+                                placeholder="Leave blank if not done">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Lab Notes</label>
+                {{ result_form.notes }}
+            </div>
+            <button type="submit" class="btn btn-warning">💾 Update Results</button>
+            <a href="{% url 'lab:lab_dashboard' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

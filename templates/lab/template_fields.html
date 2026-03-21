@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Fields - {{ template.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>🧪 {{ template.name }} — Fields</h4>
+    <a href="{% url 'lab:template_list' %}" class="btn btn-outline-secondary">← Back</a>
+</div>
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead class="table-primary">
+                        <tr><th>Order</th><th>Field Name</th><th>Unit</th><th>Normal Range</th><th>Required</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for field in fields %}
+                        <tr>
+                            <td>{{ field.order }}</td>
+                            <td>{{ field.field_name }}</td>
+                            <td>{{ field.unit|default:"—" }}</td>
+                            <td>
+                                {% if field.normal_min and field.normal_max %}
+                                    {{ field.normal_min }} - {{ field.normal_max }}
+                                {% elif field.normal_text %}
+                                    {{ field.normal_text }}
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>{% if field.is_required %}<span class="badge bg-danger">Required</span>{% else %}<span class="badge bg-secondary">Optional</span>{% endif %}</td>
+                            <td>
+                                <form method="POST" action="{% url 'lab:field_delete' field.pk %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Delete this field?')">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted">No fields yet. Add fields on the right.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <a href="{% url 'lab:template_schedule' template.pk %}" class="btn btn-outline-primary mt-2">
+                    Next → Set Schedule
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white"><h6 class="mb-0">➕ Add Field</h6></div>
+            <div class="card-body">
+                <form method="POST">{% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100 mt-2">Add Field</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Lab Technician Dashboard{% endblock %}
+{% block content %}
+<h4>🔬 Lab Technician Dashboard</h4>
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-warning text-white text-center p-3">
+            <h3>{{ todays_bookings.count }}</h3><p>Today's Bookings</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-primary text-white text-center p-3">
+            <h3>{{ pending_bookings.count }}</h3><p>Total Pending</p>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0">📋 Pending Test Bookings</h5></div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead class="table-primary">
+                <tr><th>#ID</th><th>Patient</th><th>Test</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for booking in pending_bookings %}
+                <tr {% if booking.date == today %}class="table-warning"{% endif %}>
+                    <td>#{{ booking.id }}</td>
+                    <td>{{ booking.patient.full_name }}</td>
+                    <td>{{ booking.template.name }}</td>
+                    <td>{{ booking.date }} {% if booking.date == today %}<span class="badge bg-warning text-dark">Today</span>{% endif %}</td>
+                    <td><span class="badge bg-info">{{ booking.get_status_display }}</span></td>
+                    <td>
+                        <a href="{% url 'lab:fill_result' booking.pk %}"
+                           class="btn btn-sm btn-success">🔬 Fill Results</a>
+
+                        <form method="POST"
+                              action="{% url 'lab:update_booking_status' booking.pk %}"
+                              style="display:inline;">
+                            {% csrf_token %}
+                            <select name="status"
+                                    class="form-select form-select-sm d-inline w-auto mt-1">
+                                <option value="SAMPLE_COLLECTED">Sample Collected</option>
+                                <option value="PROCESSING">Processing</option>
+                            </select>
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-primary mt-1">
+                                Update
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No pending bookings.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

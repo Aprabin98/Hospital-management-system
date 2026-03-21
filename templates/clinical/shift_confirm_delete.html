@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Delete Shift{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+<div class="card shadow border-danger">
+    <div class="card-header bg-danger text-white"><h5>⚠️ Delete Shift</h5></div>
+    <div class="card-body text-center">
+        <p>Are you sure you want to delete <strong>{{ shift.name }}</strong> shift?</p>
+        <form method="POST">{% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Delete</button>
+            <a href="{% url 'clinical:shift_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

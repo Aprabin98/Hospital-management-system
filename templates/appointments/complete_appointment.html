@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Complete Appointment{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+<div class="card shadow border-success">
+    <div class="card-header bg-success text-white"><h5>✅ Mark Appointment Complete</h5></div>
+    <div class="card-body text-center">
+        <p>Mark appointment <strong>#{{ appointment.id }}</strong> with <strong>{{ appointment.patient.full_name }}</strong> as completed?</p>
+        <form method="POST">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Yes, Mark Complete</button>
+            <a href="{% url 'appointments:appointment_detail' appointment.pk %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

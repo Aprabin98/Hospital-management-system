@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Schedules - HMS{% endblock %}
+{% block content %}
+<h4>📅 Doctor Schedules</h4>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead class="table-primary">
+                        <tr><th>Doctor</th><th>Day</th><th>Shift</th><th>Status</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for schedule in schedules %}
+                        <tr>
+                            <td>Dr. {{ schedule.doctor.user.username }}</td>
+                            <td>{{ schedule.get_day_display }}</td>
+                            <td>{{ schedule.shift.name }} ({{ schedule.shift.start_time }} - {{ schedule.shift.end_time }})</td>
+                            <td>{% if schedule.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</td>
+                            <td>
+                                <a href="{% url 'clinical:schedule_edit' schedule.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <a href="{% url 'clinical:schedule_delete' schedule.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">No schedules yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white"><h6 class="mb-0">➕ Add Schedule</h6></div>
+            <div class="card-body">
+                <form method="POST">{% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-2"><label class="form-label fw-bold">{{ field.label }}</label>{{ field }}
+                    {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100">Add Schedule</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

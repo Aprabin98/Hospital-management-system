@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Cancel Appointment{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+<div class="card shadow border-danger">
+    <div class="card-header bg-danger text-white"><h5>❌ Cancel Appointment #{{ appointment.id }}</h5></div>
+    <div class="card-body">
+        <p>Are you sure you want to cancel your appointment with <strong>Dr. {{ appointment.doctor.user.username }}</strong> on <strong>{{ appointment.date }}</strong> at <strong>{{ appointment.start_time }}</strong>?</p>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Reason (optional)</label>
+                {{ form.reason }}
+            </div>
+            <button type="submit" class="btn btn-danger">Yes, Cancel Appointment</button>
+            <a href="{% url 'appointments:appointment_detail' appointment.pk %}" class="btn btn-outline-secondary ms-2">Go Back</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Discharge Patient{% endblock %}
+{% block content %}
+<h3>Discharge {{ assignment.patient.full_name }}</h3>
+<p>Room {{ assignment.bed.room.room_number }} / Bed {{ assignment.bed.bed_number }}</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn btn-danger" type="submit">Confirm Discharge</button>
+</form>
+{% endblock %}

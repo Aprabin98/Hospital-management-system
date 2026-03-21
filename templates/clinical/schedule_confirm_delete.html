@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Delete Schedule{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+<div class="card shadow border-danger">
+    <div class="card-header bg-danger text-white"><h5>⚠️ Delete Schedule</h5></div>
+    <div class="card-body text-center">
+        <p>Delete schedule for <strong>Dr. {{ schedule.doctor.user.username }}</strong> on <strong>{{ schedule.get_day_display }}</strong>?</p>
+        <form method="POST">{% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Delete</button>
+            <a href="{% url 'clinical:schedule_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

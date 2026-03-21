@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Test Templates - Admin{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>🧪 Lab Test Templates</h4>
+    <a href="{% url 'lab:template_create' %}" class="btn btn-primary">➕ Add New Test</a>
+</div>
+<div class="card shadow">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead class="table-primary">
+                <tr><th>Test Name</th><th>Price</th><th>Duration</th><th>Fields</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for template in templates %}
+                <tr>
+                    <td><strong>{{ template.name }}</strong></td>
+                    <td>Rs. {{ template.price }}</td>
+                    <td>{{ template.duration_minutes }} min</td>
+                    <td>{{ template.fields.count }} fields</td>
+                    <td>{% if template.is_available %}<span class="badge bg-success">Available</span>{% else %}<span class="badge bg-danger">Unavailable</span>{% endif %}</td>
+                    <td>
+                        <a href="{% url 'lab:template_fields' template.pk %}" class="btn btn-sm btn-outline-info">Fields</a>
+                        <a href="{% url 'lab:template_schedule' template.pk %}" class="btn btn-sm btn-outline-secondary">Schedule</a>
+                        <a href="{% url 'lab:template_edit' template.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a href="{% url 'lab:template_delete' template.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No test templates yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

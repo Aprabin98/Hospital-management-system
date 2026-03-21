@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}Book Appointment - Step 4{% endblock %}
+{% block content %}
+
+<!-- Progress Bar -->
+<div class="mb-4">
+    <h4>📅 Book Appointment</h4>
+    <div class="d-flex gap-2 mb-3">
+        <span class="badge bg-success p-2">✅ Step 1: Specialization</span>
+        <span class="badge bg-success p-2">✅ Step 2: Doctor</span>
+        <span class="badge bg-success p-2">✅ Step 3: Date</span>
+        <span class="badge bg-primary p-2">Step 4: Time Slot</span>
+    </div>
+    <div class="progress" style="height:8px;">
+        <div class="progress-bar" style="width:100%"></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">⏰ Select Time Slot</h5>
+                <small>Dr. {{ doctor.user.username }} — {{ booking_date }}</small>
+            </div>
+            <div class="card-body p-4">
+
+                {% if available_slots %}
+                <p class="text-muted mb-3">Click a slot to select it:</p>
+                <div class="row g-2 mb-4" id="slotContainer">
+                    {% for slot in available_slots %}
+                    <div class="col-md-3 col-4">
+                        <button type="button"
+                            class="btn btn-outline-primary w-100 slot-btn"
+                            data-slot='{"start": "{{ slot.start }}", "end": "{{ slot.end }}"}'>
+                            {{ slot.start }}
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <form method="POST" id="bookingForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="slot" id="selectedSlot">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Selected Slot:</label>
+                        <div id="selectedSlotDisplay" class="alert alert-warning">
+                            No slot selected yet. Please click a slot above.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Notes for Doctor (optional):</label>
+                        {{ form.notes }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'appointments:book_step3' %}" class="btn btn-outline-secondary w-50">← Back</a>
+                        <button type="submit" class="btn btn-success w-50" id="confirmBtn" disabled>
+                            ✅ Confirm Appointment
+                        </button>
+                    </div>
+                </form>
+
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="fs-5 text-danger">😔 No slots available for this date.</p>
+                    <p class="text-muted">The doctor may be on leave or fully booked.</p>
+                    <a href="{% url 'appointments:book_step3' %}" class="btn btn-outline-primary me-2">← Choose Another Date</a>
+                    <a href="{% url 'appointments:join_waiting_list' doctor.id booking_date|date:'Y-m-d' %}"
+                       class="btn btn-warning">
+                        📋 Join Waiting List
+                    </a>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white"><h6 class="mb-0">📋 Booking Summary</h6></div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr><td><strong>Doctor</strong></td><td>Dr. {{ doctor.user.username }}</td></tr>
+                    <tr><td><strong>Specialization</strong></td><td>{{ doctor.specialization }}</td></tr>
+                    <tr><td><strong>Date</strong></td><td>{{ booking_date }}</td></tr>
+                    <tr><td><strong>Fee</strong></td><td>Rs. {{ doctor.consultation_fee }}</td></tr>
+                    <tr><td><strong>Slot</strong></td><td id="summarySlot">Not selected</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    const slotBtns = document.querySelectorAll('.slot-btn');
+    const selectedSlotInput = document.getElementById('selectedSlot');
+    const selectedSlotDisplay = document.getElementById('selectedSlotDisplay');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const summarySlot = document.getElementById('summarySlot');
+
+    slotBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active from all
+            slotBtns.forEach(b => b.classList.remove('btn-primary', 'active'));
+            slotBtns.forEach(b => b.classList.add('btn-outline-primary'));
+
+            // Mark this as active
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-primary', 'active');
+
+            // Set slot data
+            const slotData = this.getAttribute('data-slot');
+            const slot = JSON.parse(slotData);
+            selectedSlotInput.value = slotData;
+
+            // Update display
+            selectedSlotDisplay.innerHTML = `<strong>⏰ ${slot.start} — ${slot.end}</strong>`;
+            selectedSlotDisplay.className = 'alert alert-success';
+            summarySlot.textContent = `${slot.start} - ${slot.end}`;
+
+            // Enable confirm button
+            confirmBtn.disabled = false;
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

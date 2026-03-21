@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Find Doctors - HMS{% endblock %}
+{% block content %}
+<h4>🔍 Find a Doctor</h4>
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-5">{{ form.specialization }}</div>
+            <div class="col-md-5">{{ form.name }}</div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for doctor in doctors %}
+    <div class="col-md-4">
+        <div class="card shadow h-100">
+            <div class="card-body text-center">
+                {% if doctor.photo %}
+                    <img src="{{ doctor.photo.url }}" class="rounded-circle mb-3" width="80" height="80" style="object-fit:cover;">
+                {% else %}
+                    <div class="bg-primary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center text-white" style="width:80px;height:80px;font-size:2rem;">👨‍⚕️</div>
+                {% endif %}
+                <h5>Dr. {{ doctor.user.username }}</h5>
+                <p class="text-primary mb-1">{{ doctor.specialization }}</p>
+                <p class="text-muted small mb-1">{{ doctor.experience_years }} years experience</p>
+                <p class="fw-bold text-success">Rs. {{ doctor.consultation_fee }}</p>
+                <div class="mb-2">
+                    {% with rating=doctor.get_average_rating %}
+                    {% if rating > 0 %}
+                        ⭐ {{ rating }} ({{ doctor.get_total_reviews }} reviews)
+                    {% else %}
+                        <span class="text-muted small">No reviews yet</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                <a href="{% url 'clinical:doctor_detail' doctor.pk %}" class="btn btn-outline-primary btn-sm w-100">View Profile</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted">
+        <p>No doctors found. Try a different search.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

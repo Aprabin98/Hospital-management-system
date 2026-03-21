@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Available Lab Tests{% endblock %}
+{% block content %}
+<h4>🧪 Available Lab Tests</h4>
+<div class="row g-3">
+    {% for template in templates %}
+    <div class="col-md-4">
+        <div class="card shadow h-100">
+            <div class="card-body">
+                <h5 class="text-primary">{{ template.name }}</h5>
+                <p class="text-muted small">{{ template.description|truncatewords:20 }}</p>
+                {% if template.preparation %}
+                <p class="text-warning small"><strong>Preparation:</strong> {{ template.preparation|truncatewords:10 }}</p>
+                {% endif %}
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fs-5 fw-bold text-success">Rs. {{ template.price }}</span>
+                    <span class="text-muted small">{{ template.duration_minutes }} min</span>
+                </div>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="{% url 'lab:test_detail' template.pk %}" class="btn btn-outline-primary btn-sm w-50">View Details</a>
+                <a href="{% url 'lab:book_test' template.pk %}" class="btn btn-primary btn-sm w-50">Book Test</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-4">
+        <p>No lab tests available yet.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

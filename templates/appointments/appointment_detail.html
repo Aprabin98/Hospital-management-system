@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Appointment #{{ appointment.id }} - HMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                <h5 class="mb-0">📋 Appointment #{{ appointment.id }}</h5>
+                {% if appointment.status == 'CONFIRMED' %}<span class="badge bg-success">Confirmed</span>
+                {% elif appointment.status == 'PENDING' %}<span class="badge bg-warning text-dark">Pending</span>
+                {% elif appointment.status == 'CANCELLED' %}<span class="badge bg-danger">Cancelled</span>
+                {% elif appointment.status == 'COMPLETED' %}<span class="badge bg-info">Completed</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-6">{% if appointment.status == 'CONFIRMED' or appointment.status == 'PENDING' %}
+                        <h6 class="text-primary fw-bold">👤 Patient Details</h6>
+                        <table class="table table-sm">
+                            <tr><td>Name</td><td>{{ appointment.patient.full_name }}</td></tr>
+                            <tr><td>Phone</td><td>{{ appointment.patient.phone|default:"N/A" }}</td></tr>
+                            <tr><td>Blood Group</td><td>{{ appointment.patient.blood_group|default:"N/A" }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success fw-bold">👨‍⚕️ Doctor Details</h6>
+                        <table class="table table-sm">
+                            <tr><td>Name</td><td>Dr. {{ appointment.doctor.user.username }}</td></tr>
+                            <tr><td>Specialization</td><td>{{ appointment.doctor.specialization }}</td></tr>
+                            <tr><td>Fee</td><td>Rs. {{ appointment.doctor.consultation_fee }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <h6 class="text-warning fw-bold">📅 Appointment Details</h6>
+                <table class="table table-sm">
+                    <tr><td>Date</td><td>{{ appointment.date }}</td></tr>
+                    <tr><td>Time</td><td>{{ appointment.start_time }} - {{ appointment.end_time }}</td></tr>
+                    <tr><td>Status</td><td>{{ appointment.status }}</td></tr>
+                    <tr><td>Booked On</td><td>{{ appointment.created_at|date:"d M Y H:i" }}</td></tr>
+                    {% if appointment.notes %}
+                    <tr><td>Notes</td><td>{{ appointment.notes }}</td></tr>
+                    {% endif %}
+                </table>
+
+                <!-- QR Code -->
+                {% if appointment.qr_code %}
+                <div class="text-center mt-3">
+                    <img src="{{ appointment.qr_code.url }}" width="150" height="150" alt="QR Code">
+                    <p class="text-muted small">Show this QR code at reception</p>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 mt-3 flex-wrap">
+                    {% if request.user.role == 'DOCTOR' and appointment.status == 'COMPLETED' %}
+    {% if not appointment.prescription %}
+    <a href="{% url 'prescriptions:write_prescription' appointment.pk %}"
+       class="btn btn-success">
+        💊 Write Prescription
+    </a>
+    {% else %}
+    <a href="{% url 'prescriptions:prescription_detail' appointment.prescription.pk %}"
+       class="btn btn-primary">
+        💊 View Prescription
+    </a>
+    {% endif %}
+{% endif %}
+
+{% if request.user.role == 'PATIENT' %}
+    {% if appointment.prescription %}
+    <a href="{% url 'prescriptions:prescription_detail' appointment.prescription.pk %}"
+       class="btn btn-success">
+        💊 View Prescription
+    </a>
+    {% endif %}
+{% endif %}
+                    {% if appointment.pdf_file %}
+                    <a href="{% url 'appointments:download_pdf' appointment.pk %}" class="btn btn-primary">
+                        📄 Download PDF
+                    </a>
+                    {% endif %}
+
+                    
+                        {% if request.user.role in 'DOCTOR,ADMIN,RECEPTIONIST' %}
+                        <a href="{% url 'appointments:complete_appointment' appointment.pk %}" class="btn btn-success">
+                            ✅ Mark Complete
+                        </a>
+                        {% endif %}
+                        {% if appointment.can_cancel %}
+                        <a href="{% url 'appointments:cancel_appointment' appointment.pk %}" class="btn btn-danger">
+                            ❌ Cancel
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                                {% if request.user.role == 'PATIENT' %}
+                                     {% if appointment.payment %}
+                                         {% if appointment.payment.status == 'PAID' %}
+                                            <a href="{% url 'payments:payment_detail' appointment.payment.pk %}"
+                                            class="btn btn-success">
+                                                ✅ Payment Done
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'payments:payment_detail' appointment.payment.pk %}"
+                                            class="btn btn-warning">
+                                                ⏳ View Payment
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                    <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-secondary">
+                        ← Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Cancel Leave{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+<div class="card shadow border-danger">
+    <div class="card-header bg-danger text-white"><h5>⚠️ Cancel Leave</h5></div>
+    <div class="card-body text-center">
+        <p>Cancel leave on <strong>{{ leave.date }}</strong>?</p>
+        <form method="POST">{% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Cancel Leave</button>
+            <a href="{% url 'clinical:doctor_leave' %}" class="btn btn-outline-secondary ms-2">Go Back</a>
+        </form>
+    </div>
+</div>
+</div></div>
+{% endblock %}

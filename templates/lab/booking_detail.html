@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Booking #{{ booking.id }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-8">
+<div class="card shadow">
+    <div class="card-header bg-primary text-white"><h5>🧪 Booking #{{ booking.id }} — {{ booking.template.name }}</h5></div>
+    <div class="card-body p-4">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <p><strong>Patient:</strong> {{ booking.patient.full_name }}</p>
+                <p><strong>Test:</strong> {{ booking.template.name }}</p>
+                <p><strong>Date:</strong> {{ booking.date }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Amount:</strong> Rs. {{ booking.amount }}</p>
+                <p><strong>Status:</strong> {{ booking.get_status_display }}</p>
+                <p><strong>Payment:</strong> {{ booking.get_payment_status_display }}</p>
+            </div>
+        </div>
+        {% if result %}
+        <hr>
+        <h6 class="text-primary fw-bold">Test Results</h6>
+        <table class="table table-bordered table-sm">
+            <thead class="table-primary">
+                <tr><th>Parameter</th><th>Result</th><th>Unit</th><th>Normal Range</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for item in result.items.all %}
+                <tr>
+                    <td>{{ item.field.field_name }}</td>
+                    <td><strong>{{ item.value|default:"—" }}</strong></td>
+                    <td>{{ item.field.unit|default:"—" }}</td>
+                    <td>
+                        {% if item.field.normal_min and item.field.normal_max %}
+                            {{ item.field.normal_min }} - {{ item.field.normal_max }}
+                        {% elif item.field.normal_text %}{{ item.field.normal_text }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if item.status == 'NORMAL' %}<span class="badge bg-success">✓ Normal</span>
+                        {% elif item.status == 'HIGH' %}<span class="badge bg-danger">↑ High</span>
+                        {% elif item.status == 'LOW' %}<span class="badge bg-warning text-dark">↓ Low</span>
+                        {% elif item.status == 'ABNORMAL' %}<span class="badge bg-danger">✗ Abnormal</span>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{% url 'lab:download_report' result.pk %}" class="btn btn-primary">📄 Download Report</a>
+        {% endif %}
+        <div class="mt-3">
+            <a href="{% url 'lab:my_bookings' %}" class="btn btn-outline-secondary">← Back</a>
+        </div>
+    </div>
+</div>
+</div></div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Write Prescription{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">💊 Write Prescription</h5>
+                <small>
+                    Patient: {{ appointment.patient.full_name }} |
+                    Appointment #{{ appointment.id }} |
+                    Date: {{ appointment.date }}
+                </small>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" id="prescriptionForm">
+                    {% csrf_token %}
+
+                    <!-- Prescription Notes -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">📋 Diagnosis / Notes</label>
+                            {{ form.notes }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">💡 Doctor's Advice</label>
+                            {{ form.advice }}
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">📅 Follow Up Date</label>
+                            {{ form.follow_up_date }}
+                        </div>
+                    </div>
+                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                        <span>🧪 Want to check this patient's lab reports before prescribing?</span>
+                        <a href="{% url 'lab:patient_reports' appointment.patient.pk %}"
+                            target="_blank"
+                            class="btn btn-outline-info btn-sm">
+                            View Lab Reports
+                        </a>
+                    </div>
+
+                    <hr>
+                    <h5 class="text-primary mb-3">💊 Medicines</h5>
+                    <hr>
+                    <h5 class="text-primary mb-3">💊 Medicines</h5>
+
+                    <!-- Formset Management -->
+                    {{ formset.management_form }}
+
+                    <div id="medicineContainer">
+                        {% for item_form in formset %}
+                        <div class="medicine-row card p-3 mb-3 border-primary">
+                            <div class="row g-2">
+                                {% for field in item_form.visible_fields %}
+                                {% if field.name != 'DELETE' %}
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                    <div class="text-danger small">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="col-md-1 d-flex align-items-end">
+                                    {% if formset.can_delete %}
+                                    <div class="form-check">
+                                        {{ item_form.DELETE }}
+                                        <label class="form-check-label text-danger small">Remove</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {{ item_form.id }}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add More Medicine Button -->
+                    <button type="button" class="btn btn-outline-primary mb-3" id="addMedicine">
+                        ➕ Add Another Medicine
+                    </button>
+
+                    <hr>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            ✅ Save Prescription & Generate PDF
+                        </button>
+                        <a href="{% url 'appointments:appointment_detail' appointment.pk %}"
+                           class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add more medicine rows dynamically
+    document.getElementById('addMedicine').addEventListener('click', function() {
+        const container = document.getElementById('medicineContainer');
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        const formCount = parseInt(totalForms.value);
+
+        // Clone first row
+        const firstRow = container.querySelector('.medicine-row');
+        const newRow = firstRow.cloneNode(true);
+
+        // Update indices
+        newRow.innerHTML = newRow.innerHTML.replace(/items-\d+/g, `items-${formCount}`);
+
+        // Clear values
+        newRow.querySelectorAll('input[type="text"], textarea').forEach(input => {
+            input.value = '';
+        });
+        newRow.querySelectorAll('select').forEach(select => {
+            select.selectedIndex = 0;
+        });
+        newRow.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+
+        container.appendChild(newRow);
+        totalForms.value = formCount + 1;
+    });
+</script>
+{% endblock %}

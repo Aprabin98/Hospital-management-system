@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Room Detail{% endblock %}
+{% block content %}
+<h3>Room {{ room.room_number }}</h3>
+<p>Type: {{ room.get_room_type_display }} | Floor: {{ room.floor|default:'-' }} | Capacity: {{ room.capacity }}</p>
+<h5>Beds</h5>
+<table class="table table-sm table-bordered">
+  <thead><tr><th>Bed</th><th>Status</th><th>Action</th></tr></thead>
+  <tbody>
+  {% for bed in room.beds.all %}
+    <tr>
+      <td>{{ bed.bed_number }}</td>
+      <td>{{ bed.get_status_display }}</td>
+      <td><a class="btn btn-sm btn-outline-warning" href="{% url 'rooms:room_bed_edit' room.id bed.id %}">Edit</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<h5>Active Assignments</h5>
+<ul>
+{% for assignment in active_assignments %}
+  <li>{{ assignment.patient.full_name }} - Bed {{ assignment.bed.bed_number }}</li>
+{% empty %}
+  <li>No active assignments.</li>
+{% endfor %}
+</ul>
+{% endblock %}
