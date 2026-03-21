@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Room Management Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2">
+                <i class="fas fa-hospital-user"></i> Room Management System
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <p class="text-muted">
+                <i class="fas fa-user-circle"></i> Role: <strong>{{ user.get_role_display }}</strong>
+            </p>
+        </div>
+    </div>
+
+    <!-- Role-Based Quick Actions -->
+    <div class="row g-3 mb-5">
+        <!-- PATIENT Actions -->
+        {% if user.is_patient %}
+        <div class="col-md-6">
+            <div class="card h-100 border-primary shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-bed"></i> Room Booking
+                </div>
+                <div class="card-body">
+                    <p class="card-text">View available rooms and request a room booking</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:patient_available_rooms' %}" class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-search"></i> View Available Rooms
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- DOCTOR Actions -->
+        {% if user.is_doctor %}
+        <div class="col-md-6">
+            <div class="card h-100 border-success shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-exchange-alt"></i> Transfer Patient
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Shift or transfer your patients to different rooms</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:doctor_patient_transfers' %}" class="btn btn-success btn-sm w-100">
+                        <i class="fas fa-users"></i> My Patients
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- RECEPTIONIST Actions -->
+        {% if user.is_receptionist %}
+        <div class="col-md-6">
+            <div class="card h-100 border-info shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-clipboard-list"></i> Room Assignment
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Assign rooms to patients and manage admissions</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:receptionist_assign_room' %}" class="btn btn-info btn-sm w-100">
+                        <i class="fas fa-user-plus"></i> Assign Room to Patient
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 border-warning shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-chart-bar"></i> Room Occupancy
+                </div>
+                <div class="card-body">
+                    <p class="card-text">View room availability and occupancy status</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:receptionist_occupancy' %}" class="btn btn-warning btn-sm w-100">
+                        <i class="fas fa-door-open"></i> Occupancy Report
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ADMIN Actions -->
+        {% if user.is_admin or user.role == 'ADMIN' %}
+        <div class="col-md-6">
+            <div class="card h-100 border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-cogs"></i> Manage Rooms
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Create, edit, and manage all hospital rooms</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:room_list' %}" class="btn btn-danger btn-sm w-100">
+                        <i class="fas fa-list"></i> View All Rooms
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-plus-circle"></i> Create Room
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Add a new room to the hospital facility</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:room_create' %}" class="btn btn-danger btn-sm w-100">
+                        <i class="fas fa-plus"></i> New Room
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 border-secondary shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-sign-out-alt"></i> Discharge Patient
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Process patient discharge and free up beds</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:active_assignments' %}" class="btn btn-secondary btn-sm w-100">
+                        <i class="fas fa-door-open"></i> Active Admissions
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 border-secondary shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-file-chart-line"></i> Room Statistics
+                </div>
+                <div class="card-body">
+                    <p class="card-text">View room utilization and statistics</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:room_statistics' %}" class="btn btn-secondary btn-sm w-100">
+                        <i class="fas fa-chart-bar"></i> Statistics
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Activity / Status Overview -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-center">Room assignments and discharges will be displayed here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .card-header {
+        font-weight: 600;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}

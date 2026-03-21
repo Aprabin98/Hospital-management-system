@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Reviews & Ratings{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2">
+                <i class="fas fa-star"></i> My Reviews & Ratings
+            </h1>
+            <p class="text-muted">Share your feedback about your medical experiences</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'users:dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm bg-light">
+                <div class="card-body">
+                    <h3 class="text-primary mb-0">{{ total_reviews }}</h3>
+                    <p class="text-muted small">Reviews Given</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm bg-light">
+                <div class="card-body">
+                    <h3 class="text-warning mb-0">
+                        <i class="fas fa-star"></i> 
+                        {% if avg_rating %}{{ avg_rating|floatformat:1 }}{% else %}—{% endif %}
+                    </h3>
+                    <p class="text-muted small">Average Rating</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm bg-light">
+                <div class="card-body">
+                    <h3 class="text-success mb-0">{{ eligible_appointments }}</h3>
+                    <p class="text-muted small">Eligible for Review</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="my-reviews-tab" data-bs-toggle="tab" data-bs-target="#my-reviews" type="button" role="tab">
+                <i class="fas fa-heart"></i> My Reviews ({{ my_reviews.count }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pending-reviews-tab" data-bs-toggle="tab" data-bs-target="#pending-reviews" type="button" role="tab">
+                <i class="fas fa-hourglass"></i> Pending Reviews ({{ pending_reviews.count }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="doctor-reviews-tab" data-bs-toggle="tab" data-bs-target="#doctor-reviews" type="button" role="tab">
+                <i class="fas fa-stethoscope"></i> Doctors & Ratings
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- My Reviews Tab -->
+        <div class="tab-pane fade show active" id="my-reviews" role="tabpanel">
+            <div class="card shadow">
+                <div class="card-body">
+                    {% for review in my_reviews %}
+                    <div class="review-card border-bottom pb-4 mb-4" >
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="mb-1">
+                                    <i class="fas fa-stethoscope"></i> Dr. {{ review.doctor.user.get_full_name }}
+                                </h5>
+                                <small class="text-muted">{{ review.doctor.get_specialization_display }}</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="mb-1">
+                                    {% for i in "12345" %}
+                                        {% if i|add:0 <= review.rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                        <i class="fas fa-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <small class="text-muted">{{ review.rating }} / 5</small>
+                            </div>
+                        </div>
+                        <p class="mb-2">{{ review.comment }}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar"></i> Reviewed {{ review.created_at|date:"M d, Y" }}
+                        </small>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-danger" onclick="if(confirm('Delete this review?')) { document.getElementById('deleteReviewForm{{ review.id }}').submit(); }">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                            <form id="deleteReviewForm{{ review.id }}" method="POST" style="display:none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="review_id" value="{{ review.id }}">
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-inbox" style="font-size: 3rem;"></i> <br>
+                        <p>No reviews written yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Reviews Tab -->
+        <div class="tab-pane fade" id="pending-reviews" role="tabpanel">
+            <div class="card shadow">
+                <div class="card-body">
+                    {% for appointment in pending_reviews %}
+                    <div class="pending-review-card border-bottom pb-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="mb-1">
+                                    <i class="fas fa-stethoscope"></i> Dr. {{ appointment.doctor.user.get_full_name }}
+                                </h5>
+                                <p class="text-muted mb-1">
+                                    <i class="fas fa-calendar"></i> Appointment: {{ appointment.appointment_date|date:"M d, Y H:i" }}
+                                </p>
+                                <p class="text-muted small">
+                                    <i class="fas fa-note-medical"></i> 
+                                    {% if appointment.reason %}
+                                        {{ appointment.reason }} 
+                                    {% else %}
+                                        General Checkup
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <a href="{% url 'reviews:create_review' appointment.id %}" class="btn btn-primary">
+                                <i class="fas fa-edit"></i> Write Review
+                            </a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745;"></i> <br>
+                        <p>No pending reviews! All your appointments have been reviewed.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Reviews Tab -->
+        <div class="tab-pane fade" id="doctor-reviews" role="tabpanel">
+            <div class="row g-4">
+                {% for doctor in doctors_with_reviews %}
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Dr. {{ doctor.user.get_full_name }}</h6>
+                                <div>
+                                    {% for i in "12345" %}
+                                        {% if i|add:0 <= doctor.avg_rating|floatformat:0 %}
+                                        <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                        <i class="fas fa-star text-light" style="opacity: 0.3;"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row small mb-3">
+                                <dt class="col-sm-6">Specialization:</dt>
+                                <dd class="col-sm-6">{{ doctor.get_specialization_display }}</dd>
+
+                                <dt class="col-sm-6">Avg. Rating:</dt>
+                                <dd class="col-sm-6">
+                                    <strong>{{ doctor.avg_rating|floatformat:1 }} / 5</strong>
+                                </dd>
+
+                                <dt class="col-sm-6">Total Reviews:</dt>
+                                <dd class="col-sm-6">{{ doctor.review_count }} reviews</dd>
+                            </dl>
+
+                            <div class="mb-3">
+                                <p class="text-muted small">Recent feedback:</p>
+                                {% for review in doctor.recent_reviews %}
+                                <div class="border-start border-warning ps-2 mb-2">
+                                    <div class="d-flex justify-content-between align-items-start small">
+                                        <strong>{{ review.patient.user.first_name }}</strong>
+                                        <div>
+                                            {% for i in "12345" %}
+                                                {% if i|add:0 <= review.rating %}
+                                                <i class="fas fa-star text-warning" style="font-size: 0.75rem;"></i>
+                                                {% else %}
+                                                <i class="fas fa-star text-muted" style="font-size: 0.75rem;"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <p class="text-muted small mb-0">{{ review.comment|truncatewords:15 }}</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <a href="{% url 'reviews:doctor_reviews' doctor.id %}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-eye"></i> View All Reviews
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle"></i> No doctors with reviews yet
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .review-card:last-child {
+        border-bottom: none !important;
+    }
+    
+    .pending-review-card:last-child {
+        border-bottom: none !important;
+    }
+</style>
+{% endblock %}

@@ -5,6 +5,7 @@ from . import views
 app_name = 'rooms'
 
 urlpatterns = [
+    # Admin/Receptionist - Room Management
     path('', views.room_list, name='room_list'),
     path('create/', views.room_create, name='room_create'),
     path('<int:pk>/', views.room_detail, name='room_detail'),
@@ -13,4 +14,22 @@ urlpatterns = [
     path('admit/', views.admit_patient, name='admit_patient'),
     path('assignments/active/', views.active_assignments, name='active_assignments'),
     path('assignments/<int:pk>/discharge/', views.discharge_patient, name='discharge_patient'),
+    
+    # Role-Based Dashboard
+    path('dashboard/', views.room_dashboard, name='room_dashboard'),
+    
+    # Patient Routes
+    path('patient/available/', views.patient_available_rooms, name='patient_available_rooms'),
+    path('patient/book/', views.patient_book_room, name='patient_book_room'),
+    
+    # Doctor Routes
+    path('doctor/patients/', views.doctor_patient_transfers, name='doctor_patient_transfers'),
+    path('doctor/transfer/', views.doctor_transfer_patient, name='doctor_transfer_patient'),
+    
+    # Receptionist Routes
+    path('receptionist/assign/', views.receptionist_assign_room, name='receptionist_assign_room'),
+    path('receptionist/occupancy/', views.receptionist_occupancy, name='receptionist_occupancy'),
+    
+    # Admin Routes
+    path('statistics/', views.room_statistics, name='room_statistics'),
 ]

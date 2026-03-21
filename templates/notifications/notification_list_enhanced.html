@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2">
+                <i class="fas fa-bell"></i> Notifications
+            </h1>
+            <p class="text-muted">Stay updated with appointments, lab results, payments, and room assignments</p>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if unread_count > 0 %}
+            <form method="POST" action="{% url 'notifications:mark_all_read' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-check"></i> Mark All as Read
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'users:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Notification Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-primary mb-0">{{ total_notifications }}</h3>
+                    <p class="text-muted small mb-0">Total Notifications</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-danger mb-0">{{ unread_count }}</h3>
+                    <p class="text-muted small mb-0">Unread</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-success mb-0">{{ read_count }}</h3>
+                    <p class="text-muted small mb-0">Read</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-warning mb-0">{{ archived_count }}</h3>
+                    <p class="text-muted small mb-0">Archived</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                <a href="{% url 'notifications:notification_list' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-envelope"></i> All
+                </a>
+                <a href="{% url 'notifications:notification_list' %}?type=APPOINTMENT" class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-calendar"></i> Appointments
+                </a>
+                <a href="{% url 'notifications:notification_list' %}?type=LAB" class="btn btn-sm btn-outline-success">
+                    <i class="fas fa-flask"></i> Lab Results
+                </a>
+                <a href="{% url 'notifications:notification_list' %}?type=PAYMENT" class="btn btn-sm btn-outline-warning">
+                    <i class="fas fa-credit-card"></i> Payments
+                </a>
+                <a href="{% url 'notifications:notification_list' %}?type=ROOM" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-door-open"></i> Rooms
+                </a>
+                <a href="{% url 'notifications:notification_list' %}?type=PRESCRIPTION" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-prescription-bottle"></i> Prescriptions
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="card shadow">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <tbody>
+                    {% for notification in notifications %}
+                    <tr class="{% if not notification.is_read %}table-light{% endif %} notification-item">
+                        <td style="width: 50px;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="{{ notification.id }}">
+                            </div>
+                        </td>
+                        <td style="width: 40px;">
+                            {% if not notification.is_read %}
+                            <span class="badge bg-primary" title="Unread"></span>
+                            {% else %}
+                            <span class="text-muted small" title="Read">✓</span>
+                            {% endif %}
+                        </td>
+                        <td style="width: 50px;">
+                            {% if notification.notification_type == 'APPOINTMENT' %}
+                                <i class="fas fa-calendar text-info"></i>
+                            {% elif notification.notification_type == 'LAB' %}
+                                <i class="fas fa-flask text-success"></i>
+                            {% elif notification.notification_type == 'PAYMENT' %}
+                                <i class="fas fa-credit-card text-warning"></i>
+                            {% elif notification.notification_type == 'ROOM' %}
+                                <i class="fas fa-door-open text-danger"></i>
+                            {% elif notification.notification_type == 'PRESCRIPTION' %}
+                                <i class="fas fa-prescription-bottle text-secondary"></i>
+                            {% else %}
+                                <i class="fas fa-bell text-muted"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <strong>{{ notification.title }}</strong>
+                                        <span class="badge bg-light text-dark small">{{ notification.get_notification_type_display }}</span>
+                                    </h6>
+                                    <p class="mb-1 text-muted">{{ notification.message }}</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock"></i> {{ notification.created_at|timesince }} ago
+                                        {% if notification.read_at %}
+                                        | <i class="fas fa-check-circle text-success"></i> Read at {{ notification.read_at|time:"H:i" }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    {% if notification.action_url %}
+                                    <a href="{% url 'notifications:mark_notification_read' notification.id %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-arrow-right"></i> View
+                                    </a>
+                                    {% else %}
+                                    {% if not notification.is_read %}
+                                    <form method="POST" action="{% url 'notifications:mark_notification_read' notification.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-success btn-sm">
+                                            <i class="fas fa-check"></i> Read
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% endif %}
+                                    <form method="POST" action="{% url 'notifications:delete_notification' notification.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this notification?')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="fas fa-inbox"></i> <br>
+                            No notifications
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination (if needed) -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

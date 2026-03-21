@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Receptionist - Assign Room to Patient{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2">
+                <i class="fas fa-user-plus"></i> Assign Room to Patient
+            </h1>
+            <p class="text-muted">Admit and assign patients to available rooms</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'users:dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Assignment Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-form"></i> New Room Assignment</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'rooms:receptionist_assign_room' %}" id="assignmentForm">
+                        {% csrf_token %}
+
+                        <!-- Step 1: Select Patient -->
+                        <div class="mb-4 pb-4 border-bottom">
+                            <h6 class="text-primary mb-3">
+                                <span class="badge bg-primary">1</span> Select Patient
+                            </h6>
+                            <div class="mb-3">
+                                <label for="patient_search" class="form-label">
+                                    <i class="fas fa-search"></i> Search Patient by Name or ID *
+                                </label>
+                                <input type="text" id="patient_search" class="form-control" placeholder="Start typing patient name or ID...">
+                                <div id="patientsList" class="list-group mt-2" style="max-height: 300px; overflow-y: auto; display: none;">
+                                    <!-- Patient suggestions will appear here -->
+                                </div>
+                            </div>
+                            <div id="selectedPatient" class="alert alert-light d-none" role="alert">
+                                <i class="fas fa-check-circle text-success"></i> Selected: <strong id="selectedPatientName"></strong>
+                                <input type="hidden" id="patient_id" name="patient_id">
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Select Room & Bed -->
+                        <div class="mb-4 pb-4 border-bottom">
+                            <h6 class="text-primary mb-3">
+                                <span class="badge bg-primary">2</span> Select Room & Bed
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="room" class="form-label">
+                                        <i class="fas fa-door-open"></i> Room *
+                                    </label>
+                                    <select name="room_id" id="room" class="form-select" required onchange="updateAvailableBeds()">
+                                        <option value="">-- Select a Room --</option>
+                                        {% for room in available_rooms %}
+                                        <option value="{{ room.id }}" data-beds="{{ room.available_beds_count }}">
+                                            Room {{ room.room_number }} ({{ room.get_room_type_display }}) - {{ room.available_beds_count }} beds
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="bed" class="form-label">
+                                        <i class="fas fa-bed"></i> Bed *
+                                    </label>
+                                    <select name="bed_id" id="bed" class="form-select" required>
+                                        <option value="">-- Select Room First --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Doctor Assignment -->
+                        <div class="mb-4 pb-4 border-bottom">
+                            <h6 class="text-primary mb-3">
+                                <span class="badge bg-primary">3</span> Assign Doctor
+                            </h6>
+                            <div class="mb-3">
+                                <label for="doctor" class="form-label">
+                                    <i class="fas fa-stethoscope"></i> Primary Doctor *
+                                </label>
+                                <select name="doctor_id" id="doctor" class="form-select" required>
+                                    <option value="">-- Select a Doctor --</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">
+                                        {{ doctor.user.get_full_name }} - {{ doctor.specialization }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Admission Details -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <span class="badge bg-primary">4</span> Admission Notes
+                            </h6>
+                            <div class="mb-3">
+                                <label for="admission_notes" class="form-label">
+                                    <i class="fas fa-sticky-note"></i> Additional Notes (Optional)
+                                </label>
+                                <textarea name="admission_notes" id="admission_notes" class="form-control" rows="3"
+                                         placeholder="e.g., Patient arrived via ambulance, special dietary requirements..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-redo"></i> Clear Form
+                            </button>
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-check-circle"></i> Assign & Admit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Reference Sidebar -->
+        <div class="col-lg-4">
+            <!-- Room Availability Summary -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fas fa-chart-pie"></i> Room Availability</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="small">
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Available</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                <tr>
+                                    <td><span class="badge bg-light text-dark">General</span></td>
+                                    <td><strong>{{ stats.general_available }}</strong> / {{ stats.general_total }}</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark">Semi-Private</span></td>
+                                    <td><strong>{{ stats.semi_private_available }}</strong> / {{ stats.semi_private_total }}</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark">Private</span></td>
+                                    <td><strong>{{ stats.private_available }}</strong> / {{ stats.private_total }}</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark">ICU</span></td>
+                                    <td><strong>{{ stats.icu_available }}</strong> / {{ stats.icu_total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Admission Checklist -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fas fa-list-check"></i> Admission Checklist</h6>
+                </div>
+                <div class="card-body small">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check1" disabled>
+                        <label class="form-check-label" for="check1">
+                            Patient selected
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check2" disabled>
+                        <label class="form-check-label" for="check2">
+                            Room assigned
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check3" disabled>
+                        <label class="form-check-label" for="check3">
+                            Doctor assigned
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check4" disabled>
+                        <label class="form-check-label" for="check4">
+                            Ready to submit
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Admissions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Today's Admissions</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Patient</th>
+                                <th>Room</th>
+                                <th>Bed</th>
+                                <th>Doctor</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for admission in today_admissions %}
+                            <tr>
+                                <td><strong>{{ admission.patient.user.get_full_name }}</strong></td>
+                                <td>Room {{ admission.bed.room.room_number }}</td>
+                                <td>Bed {{ admission.bed.bed_number }}</td>
+                                <td>{{ admission.doctor.user.first_name }}</td>
+                                <td>{{ admission.admitted_at|time:"H:i" }}</td>
+                                <td><span class="badge bg-success">Admitted</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">No admissions today</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load available beds when room is selected
+    const room_beds = {{ room_beds_json|safe }};
+
+    function updateAvailableBeds() {
+        const roomSelect = document.getElementById('room');
+        const bedSelect = document.getElementById('bed');
+        const roomId = roomSelect.value;
+
+        bedSelect.innerHTML = '<option value="">-- Select Bed --</option>';
+
+        if (roomId && room_beds[roomId]) {
+            room_beds[roomId].forEach(bed => {
+                if (bed.status === 'AVAILABLE') {
+                    const option = document.createElement('option');
+                    option.value = bed.id;
+                    option.textContent = `Bed ${bed.bed_number}`;
+                    bedSelect.appendChild(option);
+                }
+            });
+        }
+    }
+
+    // Patient search
+    document.getElementById('patient_search').addEventListener('input', function() {
+        const query = this.value.trim();
+        if (query.length < 1) {
+            document.getElementById('patientsList').style.display = 'none';
+            return;
+        }
+
+        // This would typically be an AJAX call to search patients
+        // For now, showing UI structure
+        document.getElementById('patientsList').style.display = 'block';
+    });
+</script>
+{% endblock %}
