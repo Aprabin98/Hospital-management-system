@@ -1,10 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+import csv
 from django.db import transaction
 from django.db.models import Q, Count, F, Case, When, IntegerField, Avg
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 import json
 
@@ -644,6 +645,36 @@ def receptionist_reject_admission_request(request, pk):
 
 
 @login_required
+def receptionist_patient_search(request):
+    """Return patient search results for receptionist room assignment UI."""
+    if request.user.role != 'RECEPTIONIST':
+        return JsonResponse({'results': []}, status=403)
+
+    query = request.GET.get('q', '').strip()
+    if not query:
+        return JsonResponse({'results': []})
+
+    patients = PatientProfile.objects.select_related('user').filter(
+        Q(full_name__icontains=query)
+        | Q(user__email__icontains=query)
+        | Q(phone__icontains=query)
+    ).order_by('full_name')[:20]
+
+    data = {
+        'results': [
+            {
+                'id': patient.id,
+                'full_name': patient.full_name,
+                'email': patient.user.email,
+                'phone': patient.phone or '',
+            }
+            for patient in patients
+        ]
+    }
+    return JsonResponse(data)
+
+
+@login_required
 def receptionist_occupancy(request):
     """Receptionist views room occupancy report"""
     if request.user.role != 'RECEPTIONIST':
@@ -791,3 +822,36 @@ def room_statistics(request):
         'maintenance_percent': maintenance_percent,
     }
     return render(request, 'rooms/room_statistics.html', context)
+
+
+@login_required
+def room_statistics_export_csv(request):
+    """Export room statistics for admin/reporting workflows."""
+    if request.user.role != 'ADMIN':
+        messages.error(request, 'Access denied. Admins only.')
+        return redirect('users:dashboard')
+
+    rooms = Room.objects.prefetch_related('beds').filter(is_active=True)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="room_statistics.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Room Number', 'Type', 'Floor', 'Capacity', 'Occupied', 'Available', 'Maintenance', 'Utilization %'])
+
+    for room in rooms:
+        occupied = room.beds.filter(status='OCCUPIED').count()
+        available = room.beds.filter(status='AVAILABLE').count()
+        maintenance = room.beds.filter(status='MAINTENANCE').count()
+        utilization = int((occupied / room.capacity) * 100) if room.capacity > 0 else 0
+        writer.writerow([
+            room.room_number,
+            room.get_room_type_display(),
+            room.floor,
+            room.capacity,
+            occupied,
+            available,
+            maintenance,
+            utilization,
+        ])
+
+    return response

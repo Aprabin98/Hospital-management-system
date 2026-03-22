@@ -43,6 +43,18 @@
                     {% csrf_token %}
                     <input type="hidden" name="slot" id="selectedSlot">
 
+                    {% if request.user.role == 'RECEPTIONIST' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Patient:</label>
+                        <select name="patient_id" class="form-select" required>
+                            <option value="">-- Select Patient --</option>
+                            {% for patient in patients %}
+                            <option value="{{ patient.id }}">{{ patient.full_name }} ({{ patient.user.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     <div class="mb-3">
                         <label class="form-label fw-bold">Selected Slot:</label>
                         <div id="selectedSlotDisplay" class="alert alert-warning">

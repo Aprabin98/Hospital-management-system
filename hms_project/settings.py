@@ -69,16 +69,20 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'hms_project.wsgi.application'
 
-# Database - SQLite (Default, No Setup Needed)
+# Database - PostgreSQL (production-ready)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'hms_db'),
+        'USER': os.getenv('DB_USER', 'hms_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'StrongPassword123!'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5434'),
     }
 }
-
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
 

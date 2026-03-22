@@ -2,6 +2,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 import uuid
 
+from .tasks import send_email_task
+
 
 def generate_token():
     """Generate a unique token for email activation or password reset."""
@@ -34,17 +36,23 @@ Best regards,
     """
 
     try:
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
+        send_email_task.delay(subject, message, user.email)
         return True
     except Exception as e:
-        print(f"Email sending failed: {e}")
-        return False
+        # Fallback to sync send if broker is temporarily unavailable.
+        print(f"Email queue failed, falling back to sync send: {e}")
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            return True
+        except Exception as sync_error:
+            print(f"Email sending failed: {sync_error}")
+            return False
 
 
 def send_password_reset_email(user, request):
@@ -71,14 +79,20 @@ Best regards,
     """
 
     try:
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
+        send_email_task.delay(subject, message, user.email)
         return True
     except Exception as e:
-        print(f"Password reset email failed: {e}")
-        return False
+        # Fallback to sync send if broker is temporarily unavailable.
+        print(f"Password reset queue failed, falling back to sync send: {e}")
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            return True
+        except Exception as sync_error:
+            print(f"Password reset email failed: {sync_error}")
+            return False

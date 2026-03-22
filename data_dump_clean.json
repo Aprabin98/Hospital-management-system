@@ -1,0 +1,3073 @@
+[
+  {
+    "model": "admin.logentry",
+    "pk": 1,
+    "fields": {
+      "action_time": "2026-03-05T14:13:24.449Z",
+      "user": 3,
+      "content_type": 7,
+      "object_id": "1",
+      "object_repr": "aprabin036@gmail.com (DOCTOR)",
+      "action_flag": 2,
+      "change_message": "[{\"changed\": {\"fields\": [\"Role\", \"Is active\", \"Is staff\"]}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 2,
+    "fields": {
+      "action_time": "2026-03-05T14:17:53.604Z",
+      "user": 3,
+      "content_type": 12,
+      "object_id": "1",
+      "object_repr": "Cardiologist",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 3,
+    "fields": {
+      "action_time": "2026-03-05T14:18:17.513Z",
+      "user": 3,
+      "content_type": 12,
+      "object_id": "2",
+      "object_repr": "Dermatologist",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 4,
+    "fields": {
+      "action_time": "2026-03-05T14:18:47.312Z",
+      "user": 3,
+      "content_type": 12,
+      "object_id": "3",
+      "object_repr": "Gastroenterologist",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 5,
+    "fields": {
+      "action_time": "2026-03-05T14:19:20.975Z",
+      "user": 3,
+      "content_type": 12,
+      "object_id": "4",
+      "object_repr": "Neonatologist",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 6,
+    "fields": {
+      "action_time": "2026-03-05T14:19:41.840Z",
+      "user": 3,
+      "content_type": 12,
+      "object_id": "5",
+      "object_repr": "Ophthalmologist",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 7,
+    "fields": {
+      "action_time": "2026-03-05T14:21:01.599Z",
+      "user": 3,
+      "content_type": 8,
+      "object_id": "1",
+      "object_repr": "Dr. Prabin - Cardiologist",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 8,
+    "fields": {
+      "action_time": "2026-03-05T14:21:20.045Z",
+      "user": 3,
+      "content_type": 11,
+      "object_id": "1",
+      "object_repr": "Morning (06:00:00 - 12:00:00)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 9,
+    "fields": {
+      "action_time": "2026-03-05T14:21:36.519Z",
+      "user": 3,
+      "content_type": 11,
+      "object_id": "2",
+      "object_repr": "Evening (12:00:00 - 18:00:00)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 10,
+    "fields": {
+      "action_time": "2026-03-05T14:21:54.665Z",
+      "user": 3,
+      "content_type": 11,
+      "object_id": "3",
+      "object_repr": "Night (18:00:00 - 06:00:00)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 11,
+    "fields": {
+      "action_time": "2026-03-05T14:22:12.701Z",
+      "user": 3,
+      "content_type": 10,
+      "object_id": "1",
+      "object_repr": "Dr. Prabin - MON - Morning",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 12,
+    "fields": {
+      "action_time": "2026-03-05T14:22:21.886Z",
+      "user": 3,
+      "content_type": 10,
+      "object_id": "2",
+      "object_repr": "Dr. Prabin - TUE - Evening",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 13,
+    "fields": {
+      "action_time": "2026-03-05T14:22:33.942Z",
+      "user": 3,
+      "content_type": 10,
+      "object_id": "3",
+      "object_repr": "Dr. Prabin - WED - Night",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 14,
+    "fields": {
+      "action_time": "2026-03-05T14:22:57.607Z",
+      "user": 3,
+      "content_type": 9,
+      "object_id": "1",
+      "object_repr": "Dr. Prabin - Leave on 2026-03-05",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 15,
+    "fields": {
+      "action_time": "2026-03-05T21:35:21.242Z",
+      "user": 3,
+      "content_type": 7,
+      "object_id": "5",
+      "object_repr": "prabinacharya9845@gmail.com (LAB_TECHNICIAN)",
+      "action_flag": 2,
+      "change_message": "[{\"changed\": {\"fields\": [\"Role\", \"Is active\"]}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 16,
+    "fields": {
+      "action_time": "2026-03-21T15:07:02.151Z",
+      "user": 3,
+      "content_type": 26,
+      "object_id": "1",
+      "object_repr": "1 (General Ward)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 17,
+    "fields": {
+      "action_time": "2026-03-21T15:07:23.113Z",
+      "user": 3,
+      "content_type": 26,
+      "object_id": "1",
+      "object_repr": "1 (General Ward)",
+      "action_flag": 2,
+      "change_message": "[{\"added\": {\"name\": \"room bed\", \"object\": \"1 - Bed 1\"}}, {\"added\": {\"name\": \"room bed\", \"object\": \"1 - Bed 2\"}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 18,
+    "fields": {
+      "action_time": "2026-03-21T15:08:13.755Z",
+      "user": 3,
+      "content_type": 26,
+      "object_id": "2",
+      "object_repr": "102 (General Ward)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}, {\"added\": {\"name\": \"room bed\", \"object\": \"102 - Bed 201\"}}, {\"added\": {\"name\": \"room bed\", \"object\": \"102 - Bed 202\"}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 19,
+    "fields": {
+      "action_time": "2026-03-21T15:11:10.627Z",
+      "user": 3,
+      "content_type": 27,
+      "object_id": "1",
+      "object_repr": "Prabin - 102 - Bed 201 - TRANSFERRED",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 20,
+    "fields": {
+      "action_time": "2026-03-21T15:12:20.964Z",
+      "user": 3,
+      "content_type": 30,
+      "object_id": "1",
+      "object_repr": "Review for Dr. Sara Joshi by Prabin (5/5)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 21,
+    "fields": {
+      "action_time": "2026-03-21T15:12:49.809Z",
+      "user": 3,
+      "content_type": 14,
+      "object_id": "1",
+      "object_repr": "Prabin waiting for Dr.Sara Joshi on 2026-03-22",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "admin.logentry",
+    "pk": 22,
+    "fields": {
+      "action_time": "2026-03-22T01:29:02.185Z",
+      "user": 3,
+      "content_type": 7,
+      "object_id": "6",
+      "object_repr": "receptionist.lab@example.com (RECEPTIONIST)",
+      "action_flag": 1,
+      "change_message": "[{\"added\": {}}]"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 1,
+    "fields": {
+      "name": "Can add log entry",
+      "content_type": 1,
+      "codename": "add_logentry"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 2,
+    "fields": {
+      "name": "Can change log entry",
+      "content_type": 1,
+      "codename": "change_logentry"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 3,
+    "fields": {
+      "name": "Can delete log entry",
+      "content_type": 1,
+      "codename": "delete_logentry"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 4,
+    "fields": {
+      "name": "Can view log entry",
+      "content_type": 1,
+      "codename": "view_logentry"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 5,
+    "fields": {
+      "name": "Can add permission",
+      "content_type": 3,
+      "codename": "add_permission"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 6,
+    "fields": {
+      "name": "Can change permission",
+      "content_type": 3,
+      "codename": "change_permission"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 7,
+    "fields": {
+      "name": "Can delete permission",
+      "content_type": 3,
+      "codename": "delete_permission"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 8,
+    "fields": {
+      "name": "Can view permission",
+      "content_type": 3,
+      "codename": "view_permission"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 9,
+    "fields": {
+      "name": "Can add group",
+      "content_type": 2,
+      "codename": "add_group"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 10,
+    "fields": {
+      "name": "Can change group",
+      "content_type": 2,
+      "codename": "change_group"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 11,
+    "fields": {
+      "name": "Can delete group",
+      "content_type": 2,
+      "codename": "delete_group"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 12,
+    "fields": {
+      "name": "Can view group",
+      "content_type": 2,
+      "codename": "view_group"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 13,
+    "fields": {
+      "name": "Can add content type",
+      "content_type": 4,
+      "codename": "add_contenttype"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 14,
+    "fields": {
+      "name": "Can change content type",
+      "content_type": 4,
+      "codename": "change_contenttype"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 15,
+    "fields": {
+      "name": "Can delete content type",
+      "content_type": 4,
+      "codename": "delete_contenttype"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 16,
+    "fields": {
+      "name": "Can view content type",
+      "content_type": 4,
+      "codename": "view_contenttype"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 17,
+    "fields": {
+      "name": "Can add session",
+      "content_type": 5,
+      "codename": "add_session"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 18,
+    "fields": {
+      "name": "Can change session",
+      "content_type": 5,
+      "codename": "change_session"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 19,
+    "fields": {
+      "name": "Can delete session",
+      "content_type": 5,
+      "codename": "delete_session"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 20,
+    "fields": {
+      "name": "Can view session",
+      "content_type": 5,
+      "codename": "view_session"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 21,
+    "fields": {
+      "name": "Can add user",
+      "content_type": 7,
+      "codename": "add_user"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 22,
+    "fields": {
+      "name": "Can change user",
+      "content_type": 7,
+      "codename": "change_user"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 23,
+    "fields": {
+      "name": "Can delete user",
+      "content_type": 7,
+      "codename": "delete_user"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 24,
+    "fields": {
+      "name": "Can view user",
+      "content_type": 7,
+      "codename": "view_user"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 25,
+    "fields": {
+      "name": "Can add patient profile",
+      "content_type": 6,
+      "codename": "add_patientprofile"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 26,
+    "fields": {
+      "name": "Can change patient profile",
+      "content_type": 6,
+      "codename": "change_patientprofile"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 27,
+    "fields": {
+      "name": "Can delete patient profile",
+      "content_type": 6,
+      "codename": "delete_patientprofile"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 28,
+    "fields": {
+      "name": "Can view patient profile",
+      "content_type": 6,
+      "codename": "view_patientprofile"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 29,
+    "fields": {
+      "name": "Can add doctor leave",
+      "content_type": 9,
+      "codename": "add_doctorleave"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 30,
+    "fields": {
+      "name": "Can change doctor leave",
+      "content_type": 9,
+      "codename": "change_doctorleave"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 31,
+    "fields": {
+      "name": "Can delete doctor leave",
+      "content_type": 9,
+      "codename": "delete_doctorleave"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 32,
+    "fields": {
+      "name": "Can view doctor leave",
+      "content_type": 9,
+      "codename": "view_doctorleave"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 33,
+    "fields": {
+      "name": "Can add doctor",
+      "content_type": 8,
+      "codename": "add_doctor"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 34,
+    "fields": {
+      "name": "Can change doctor",
+      "content_type": 8,
+      "codename": "change_doctor"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 35,
+    "fields": {
+      "name": "Can delete doctor",
+      "content_type": 8,
+      "codename": "delete_doctor"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 36,
+    "fields": {
+      "name": "Can view doctor",
+      "content_type": 8,
+      "codename": "view_doctor"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 37,
+    "fields": {
+      "name": "Can add specialization",
+      "content_type": 12,
+      "codename": "add_specialization"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 38,
+    "fields": {
+      "name": "Can change specialization",
+      "content_type": 12,
+      "codename": "change_specialization"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 39,
+    "fields": {
+      "name": "Can delete specialization",
+      "content_type": 12,
+      "codename": "delete_specialization"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 40,
+    "fields": {
+      "name": "Can view specialization",
+      "content_type": 12,
+      "codename": "view_specialization"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 41,
+    "fields": {
+      "name": "Can add doctor schedule",
+      "content_type": 10,
+      "codename": "add_doctorschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 42,
+    "fields": {
+      "name": "Can change doctor schedule",
+      "content_type": 10,
+      "codename": "change_doctorschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 43,
+    "fields": {
+      "name": "Can delete doctor schedule",
+      "content_type": 10,
+      "codename": "delete_doctorschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 44,
+    "fields": {
+      "name": "Can view doctor schedule",
+      "content_type": 10,
+      "codename": "view_doctorschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 45,
+    "fields": {
+      "name": "Can add shift",
+      "content_type": 11,
+      "codename": "add_shift"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 46,
+    "fields": {
+      "name": "Can change shift",
+      "content_type": 11,
+      "codename": "change_shift"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 47,
+    "fields": {
+      "name": "Can delete shift",
+      "content_type": 11,
+      "codename": "delete_shift"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 48,
+    "fields": {
+      "name": "Can view shift",
+      "content_type": 11,
+      "codename": "view_shift"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 49,
+    "fields": {
+      "name": "Can add waiting list",
+      "content_type": 14,
+      "codename": "add_waitinglist"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 50,
+    "fields": {
+      "name": "Can change waiting list",
+      "content_type": 14,
+      "codename": "change_waitinglist"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 51,
+    "fields": {
+      "name": "Can delete waiting list",
+      "content_type": 14,
+      "codename": "delete_waitinglist"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 52,
+    "fields": {
+      "name": "Can view waiting list",
+      "content_type": 14,
+      "codename": "view_waitinglist"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 53,
+    "fields": {
+      "name": "Can add appointment",
+      "content_type": 13,
+      "codename": "add_appointment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 54,
+    "fields": {
+      "name": "Can change appointment",
+      "content_type": 13,
+      "codename": "change_appointment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 55,
+    "fields": {
+      "name": "Can delete appointment",
+      "content_type": 13,
+      "codename": "delete_appointment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 56,
+    "fields": {
+      "name": "Can view appointment",
+      "content_type": 13,
+      "codename": "view_appointment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 57,
+    "fields": {
+      "name": "Can add prescription",
+      "content_type": 15,
+      "codename": "add_prescription"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 58,
+    "fields": {
+      "name": "Can change prescription",
+      "content_type": 15,
+      "codename": "change_prescription"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 59,
+    "fields": {
+      "name": "Can delete prescription",
+      "content_type": 15,
+      "codename": "delete_prescription"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 60,
+    "fields": {
+      "name": "Can view prescription",
+      "content_type": 15,
+      "codename": "view_prescription"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 61,
+    "fields": {
+      "name": "Can add prescription item",
+      "content_type": 16,
+      "codename": "add_prescriptionitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 62,
+    "fields": {
+      "name": "Can change prescription item",
+      "content_type": 16,
+      "codename": "change_prescriptionitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 63,
+    "fields": {
+      "name": "Can delete prescription item",
+      "content_type": 16,
+      "codename": "delete_prescriptionitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 64,
+    "fields": {
+      "name": "Can view prescription item",
+      "content_type": 16,
+      "codename": "view_prescriptionitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 65,
+    "fields": {
+      "name": "Can add payment",
+      "content_type": 17,
+      "codename": "add_payment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 66,
+    "fields": {
+      "name": "Can change payment",
+      "content_type": 17,
+      "codename": "change_payment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 67,
+    "fields": {
+      "name": "Can delete payment",
+      "content_type": 17,
+      "codename": "delete_payment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 68,
+    "fields": {
+      "name": "Can view payment",
+      "content_type": 17,
+      "codename": "view_payment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 69,
+    "fields": {
+      "name": "Can add refund",
+      "content_type": 18,
+      "codename": "add_refund"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 70,
+    "fields": {
+      "name": "Can change refund",
+      "content_type": 18,
+      "codename": "change_refund"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 71,
+    "fields": {
+      "name": "Can delete refund",
+      "content_type": 18,
+      "codename": "delete_refund"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 72,
+    "fields": {
+      "name": "Can view refund",
+      "content_type": 18,
+      "codename": "view_refund"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 73,
+    "fields": {
+      "name": "Can add test field",
+      "content_type": 20,
+      "codename": "add_testfield"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 74,
+    "fields": {
+      "name": "Can change test field",
+      "content_type": 20,
+      "codename": "change_testfield"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 75,
+    "fields": {
+      "name": "Can delete test field",
+      "content_type": 20,
+      "codename": "delete_testfield"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 76,
+    "fields": {
+      "name": "Can view test field",
+      "content_type": 20,
+      "codename": "view_testfield"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 77,
+    "fields": {
+      "name": "Can add test template",
+      "content_type": 24,
+      "codename": "add_testtemplate"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 78,
+    "fields": {
+      "name": "Can change test template",
+      "content_type": 24,
+      "codename": "change_testtemplate"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 79,
+    "fields": {
+      "name": "Can delete test template",
+      "content_type": 24,
+      "codename": "delete_testtemplate"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 80,
+    "fields": {
+      "name": "Can view test template",
+      "content_type": 24,
+      "codename": "view_testtemplate"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 81,
+    "fields": {
+      "name": "Can add test booking",
+      "content_type": 19,
+      "codename": "add_testbooking"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 82,
+    "fields": {
+      "name": "Can change test booking",
+      "content_type": 19,
+      "codename": "change_testbooking"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 83,
+    "fields": {
+      "name": "Can delete test booking",
+      "content_type": 19,
+      "codename": "delete_testbooking"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 84,
+    "fields": {
+      "name": "Can view test booking",
+      "content_type": 19,
+      "codename": "view_testbooking"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 85,
+    "fields": {
+      "name": "Can add test result",
+      "content_type": 21,
+      "codename": "add_testresult"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 86,
+    "fields": {
+      "name": "Can change test result",
+      "content_type": 21,
+      "codename": "change_testresult"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 87,
+    "fields": {
+      "name": "Can delete test result",
+      "content_type": 21,
+      "codename": "delete_testresult"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 88,
+    "fields": {
+      "name": "Can view test result",
+      "content_type": 21,
+      "codename": "view_testresult"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 89,
+    "fields": {
+      "name": "Can add test result item",
+      "content_type": 22,
+      "codename": "add_testresultitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 90,
+    "fields": {
+      "name": "Can change test result item",
+      "content_type": 22,
+      "codename": "change_testresultitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 91,
+    "fields": {
+      "name": "Can delete test result item",
+      "content_type": 22,
+      "codename": "delete_testresultitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 92,
+    "fields": {
+      "name": "Can view test result item",
+      "content_type": 22,
+      "codename": "view_testresultitem"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 93,
+    "fields": {
+      "name": "Can add test schedule",
+      "content_type": 23,
+      "codename": "add_testschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 94,
+    "fields": {
+      "name": "Can change test schedule",
+      "content_type": 23,
+      "codename": "change_testschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 95,
+    "fields": {
+      "name": "Can delete test schedule",
+      "content_type": 23,
+      "codename": "delete_testschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 96,
+    "fields": {
+      "name": "Can view test schedule",
+      "content_type": 23,
+      "codename": "view_testschedule"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 97,
+    "fields": {
+      "name": "Can add login attempt",
+      "content_type": 25,
+      "codename": "add_loginattempt"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 98,
+    "fields": {
+      "name": "Can change login attempt",
+      "content_type": 25,
+      "codename": "change_loginattempt"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 99,
+    "fields": {
+      "name": "Can delete login attempt",
+      "content_type": 25,
+      "codename": "delete_loginattempt"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 100,
+    "fields": {
+      "name": "Can view login attempt",
+      "content_type": 25,
+      "codename": "view_loginattempt"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 101,
+    "fields": {
+      "name": "Can add room",
+      "content_type": 26,
+      "codename": "add_room"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 102,
+    "fields": {
+      "name": "Can change room",
+      "content_type": 26,
+      "codename": "change_room"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 103,
+    "fields": {
+      "name": "Can delete room",
+      "content_type": 26,
+      "codename": "delete_room"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 104,
+    "fields": {
+      "name": "Can view room",
+      "content_type": 26,
+      "codename": "view_room"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 105,
+    "fields": {
+      "name": "Can add room assignment",
+      "content_type": 27,
+      "codename": "add_roomassignment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 106,
+    "fields": {
+      "name": "Can change room assignment",
+      "content_type": 27,
+      "codename": "change_roomassignment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 107,
+    "fields": {
+      "name": "Can delete room assignment",
+      "content_type": 27,
+      "codename": "delete_roomassignment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 108,
+    "fields": {
+      "name": "Can view room assignment",
+      "content_type": 27,
+      "codename": "view_roomassignment"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 109,
+    "fields": {
+      "name": "Can add room bed",
+      "content_type": 28,
+      "codename": "add_roombed"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 110,
+    "fields": {
+      "name": "Can change room bed",
+      "content_type": 28,
+      "codename": "change_roombed"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 111,
+    "fields": {
+      "name": "Can delete room bed",
+      "content_type": 28,
+      "codename": "delete_roombed"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 112,
+    "fields": {
+      "name": "Can view room bed",
+      "content_type": 28,
+      "codename": "view_roombed"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 113,
+    "fields": {
+      "name": "Can add notification",
+      "content_type": 29,
+      "codename": "add_notification"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 114,
+    "fields": {
+      "name": "Can change notification",
+      "content_type": 29,
+      "codename": "change_notification"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 115,
+    "fields": {
+      "name": "Can delete notification",
+      "content_type": 29,
+      "codename": "delete_notification"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 116,
+    "fields": {
+      "name": "Can view notification",
+      "content_type": 29,
+      "codename": "view_notification"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 117,
+    "fields": {
+      "name": "Can add review",
+      "content_type": 30,
+      "codename": "add_review"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 118,
+    "fields": {
+      "name": "Can change review",
+      "content_type": 30,
+      "codename": "change_review"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 119,
+    "fields": {
+      "name": "Can delete review",
+      "content_type": 30,
+      "codename": "delete_review"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 120,
+    "fields": {
+      "name": "Can view review",
+      "content_type": 30,
+      "codename": "view_review"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 121,
+    "fields": {
+      "name": "Can add admission request",
+      "content_type": 31,
+      "codename": "add_admissionrequest"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 122,
+    "fields": {
+      "name": "Can change admission request",
+      "content_type": 31,
+      "codename": "change_admissionrequest"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 123,
+    "fields": {
+      "name": "Can delete admission request",
+      "content_type": 31,
+      "codename": "delete_admissionrequest"
+    }
+  },
+  {
+    "model": "auth.permission",
+    "pk": 124,
+    "fields": {
+      "name": "Can view admission request",
+      "content_type": 31,
+      "codename": "view_admissionrequest"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 1,
+    "fields": {
+      "app_label": "admin",
+      "model": "logentry"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 2,
+    "fields": {
+      "app_label": "auth",
+      "model": "group"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 3,
+    "fields": {
+      "app_label": "auth",
+      "model": "permission"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 4,
+    "fields": {
+      "app_label": "contenttypes",
+      "model": "contenttype"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 5,
+    "fields": {
+      "app_label": "sessions",
+      "model": "session"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 6,
+    "fields": {
+      "app_label": "users",
+      "model": "patientprofile"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 7,
+    "fields": {
+      "app_label": "users",
+      "model": "user"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 8,
+    "fields": {
+      "app_label": "clinical",
+      "model": "doctor"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 9,
+    "fields": {
+      "app_label": "clinical",
+      "model": "doctorleave"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 10,
+    "fields": {
+      "app_label": "clinical",
+      "model": "doctorschedule"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 11,
+    "fields": {
+      "app_label": "clinical",
+      "model": "shift"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 12,
+    "fields": {
+      "app_label": "clinical",
+      "model": "specialization"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 13,
+    "fields": {
+      "app_label": "appointments",
+      "model": "appointment"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 14,
+    "fields": {
+      "app_label": "appointments",
+      "model": "waitinglist"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 15,
+    "fields": {
+      "app_label": "prescriptions",
+      "model": "prescription"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 16,
+    "fields": {
+      "app_label": "prescriptions",
+      "model": "prescriptionitem"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 17,
+    "fields": {
+      "app_label": "payments",
+      "model": "payment"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 18,
+    "fields": {
+      "app_label": "payments",
+      "model": "refund"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 19,
+    "fields": {
+      "app_label": "lab",
+      "model": "testbooking"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 20,
+    "fields": {
+      "app_label": "lab",
+      "model": "testfield"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 21,
+    "fields": {
+      "app_label": "lab",
+      "model": "testresult"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 22,
+    "fields": {
+      "app_label": "lab",
+      "model": "testresultitem"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 23,
+    "fields": {
+      "app_label": "lab",
+      "model": "testschedule"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 24,
+    "fields": {
+      "app_label": "lab",
+      "model": "testtemplate"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 25,
+    "fields": {
+      "app_label": "users",
+      "model": "loginattempt"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 26,
+    "fields": {
+      "app_label": "rooms",
+      "model": "room"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 27,
+    "fields": {
+      "app_label": "rooms",
+      "model": "roomassignment"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 28,
+    "fields": {
+      "app_label": "rooms",
+      "model": "roombed"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 29,
+    "fields": {
+      "app_label": "notifications",
+      "model": "notification"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 30,
+    "fields": {
+      "app_label": "reviews",
+      "model": "review"
+    }
+  },
+  {
+    "model": "contenttypes.contenttype",
+    "pk": 31,
+    "fields": {
+      "app_label": "rooms",
+      "model": "admissionrequest"
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "6dcqvyt8nie07swdqjxan8z959gb7zpj",
+    "fields": {
+      "session_data": ".eJxVi80KwyAQBt9lzyVozKrNsdDnkM91xdCfQ01Ope9eAjm0x5lh3pSwrS1tXV9pKTSTo9Ovy5CbPvewYx8O7sP1geV-Oerf0tAbzVRV2bjgSuYKK4YBjEU1qA9njTyKVYaHiQLj4mSzl1qVYxGEOAX6fAG8qDOp:1w47Wn:-SCtJp_mGsls0w1Bim8VA08In5FGlELaxxHFMZCjqg4",
+      "expire_date": "2026-04-05T01:22:53.119Z"
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "9ykzuqxdh24hclvk01qirxd1140ioexs",
+    "fields": {
+      "session_data": ".eJxVi7sKwzAMAP9FcwkyUmwnY6HfYSRbxqGPoW6m0H8vgQzpeHfcBknWT0trt3daCsxAcDk7lXy31x527MPBfbg9ZXlcj_q3NOkNZsAsFj1WFE8xs6IaEWsunIMxOl9CteqkTj6oUy5mkQkj40gTFYPvD6kyMw8:1w35cK:1mU96M50RpOjAn4PIL8KUp_wjeOPrt6TBx__kAH03wE",
+      "expire_date": "2026-04-02T05:08:20.602Z"
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "yael83w25t6s7uxutwwuy07t3yksol3s",
+    "fields": {
+      "session_data": ".eJxVizsKwzAQBe-ydTDSRisrLgM5h9DnLTL5FFFchdzdGFw45cwwX4pp-bS4dLzjXGkiS6ejy6nc8drChn3YuQ-3Z5of173-LS31RhP5ZDAGNRBRw-yDc5fKIp4FNrMHVFFMtTIKEHyG05JLdc6Ws4ql3wqIBDLu:1w47hC:uTQcbcaSWOhRmx3PcJcdmtvMa6eHoNr4s3J9CrNkUIk",
+      "expire_date": "2026-04-05T01:33:38.718Z"
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$J07xm6BqWNWHaBMyinTL9R$fedJUkcYxhSqpytkuikbQus/OQDi8PaoJNoyRqTjT1A=",
+      "last_login": "2026-03-22T01:33:38.703Z",
+      "is_superuser": false,
+      "email": "aprabin036@gmail.com",
+      "username": "Prabin Acharya",
+      "role": "DOCTOR",
+      "is_active": true,
+      "is_staff": true,
+      "date_joined": "2026-03-05T09:11:41.406Z",
+      "activation_token": "7bcf5d5a-1399-4d95-8889-f11e09975e28",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$R0Iohi04QXOa1S5zW91EPZ$PsXC8aI7QHkh64/6zzBswl869Y6PDll7M+NzjRIPh8E=",
+      "last_login": "2026-03-21T15:37:49.021Z",
+      "is_superuser": false,
+      "email": "acharyaprabin507@gmail.com",
+      "username": "Prabin",
+      "role": "PATIENT",
+      "is_active": true,
+      "is_staff": false,
+      "date_joined": "2026-03-05T12:31:20.235Z",
+      "activation_token": null,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 3,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$JD6ZHza501G9PMC9dF69FA$jsam5brTUrsO/30ZCsv3vdkh6Cl9dZuRbISHYx/N4qA=",
+      "last_login": "2026-03-22T01:22:54.679Z",
+      "is_superuser": true,
+      "email": "gamerbot128@gmail.com",
+      "username": "Prabin",
+      "role": "ADMIN",
+      "is_active": true,
+      "is_staff": true,
+      "date_joined": "2026-03-05T14:11:31.132Z",
+      "activation_token": null,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 4,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$oEyoYygxGrCpwCAaar7fyY$zVq/EFk6zTWjLcYtP74FXy3GDxNHmxddwiukAN3n7vo=",
+      "last_login": "2026-03-06T17:43:22.943Z",
+      "is_superuser": false,
+      "email": "sarajoshi33@gmail.com",
+      "username": "Sara Joshi",
+      "role": "DOCTOR",
+      "is_active": true,
+      "is_staff": false,
+      "date_joined": "2026-03-05T14:24:41.983Z",
+      "activation_token": null,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$5tTZtLTMAg9W8wvphDF9SP$G3UZ7uTQrqj2lsCqyMzdcw/nGWDZIAixr25OpV9yNCQ=",
+      "last_login": "2026-03-22T01:32:00.807Z",
+      "is_superuser": false,
+      "email": "prabinacharya9845@gmail.com",
+      "username": "labkovai",
+      "role": "LAB_TECHNICIAN",
+      "is_active": true,
+      "is_staff": false,
+      "date_joined": "2026-03-05T21:34:47.926Z",
+      "activation_token": "1f8c4a50-a389-4c30-812c-bc32dcdd1ee7",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 6,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$SrbAHruqbfPzyayahLewfz$dW7G6iOMFfSHR4giKJ9xZsMPwpIqBD8l5zv01erMk40=",
+      "last_login": null,
+      "is_superuser": false,
+      "email": "receptionist.lab@example.com",
+      "username": "receptionist",
+      "role": "RECEPTIONIST",
+      "is_active": true,
+      "is_staff": false,
+      "date_joined": "2026-03-22T01:29:02.177Z",
+      "activation_token": null,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "users.patientprofile",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "full_name": "Prabin",
+      "phone": "",
+      "gender": "",
+      "date_of_birth": null,
+      "blood_group": "",
+      "height": null,
+      "weight": null,
+      "image": "",
+      "address": "",
+      "emergency_contact": "",
+      "created_at": "2026-03-05T09:11:41.417Z",
+      "updated_at": "2026-03-05T09:11:41.449Z"
+    }
+  },
+  {
+    "model": "users.patientprofile",
+    "pk": 2,
+    "fields": {
+      "user": 2,
+      "full_name": "Prabin",
+      "phone": "9845744596",
+      "gender": "M",
+      "date_of_birth": "2002-06-05",
+      "blood_group": "O+",
+      "height": 34.0,
+      "weight": 33.0,
+      "image": "patients/profile/ChatGPT_Image_Feb_21_2026_10_26_16_PM.png",
+      "address": "shantinagar bhairahawa",
+      "emergency_contact": "9844161220",
+      "created_at": "2026-03-05T12:31:20.254Z",
+      "updated_at": "2026-03-21T15:37:49.030Z"
+    }
+  },
+  {
+    "model": "users.patientprofile",
+    "pk": 3,
+    "fields": {
+      "user": 5,
+      "full_name": "labkovai",
+      "phone": "",
+      "gender": "",
+      "date_of_birth": null,
+      "blood_group": "",
+      "height": null,
+      "weight": null,
+      "image": "",
+      "address": "",
+      "emergency_contact": "",
+      "created_at": "2026-03-05T21:34:47.937Z",
+      "updated_at": "2026-03-05T21:34:47.967Z"
+    }
+  },
+  {
+    "model": "clinical.specialization",
+    "pk": 1,
+    "fields": {
+      "name": "Cardiologist",
+      "description": "Heart",
+      "icon": "",
+      "is_active": true,
+      "created_at": "2026-03-05T14:17:53.600Z"
+    }
+  },
+  {
+    "model": "clinical.specialization",
+    "pk": 2,
+    "fields": {
+      "name": "Dermatologist",
+      "description": "skin",
+      "icon": "",
+      "is_active": true,
+      "created_at": "2026-03-05T14:18:17.509Z"
+    }
+  },
+  {
+    "model": "clinical.specialization",
+    "pk": 3,
+    "fields": {
+      "name": "Gastroenterologist",
+      "description": "Stomach",
+      "icon": "",
+      "is_active": true,
+      "created_at": "2026-03-05T14:18:47.308Z"
+    }
+  },
+  {
+    "model": "clinical.specialization",
+    "pk": 4,
+    "fields": {
+      "name": "Neonatologist",
+      "description": "new born",
+      "icon": "",
+      "is_active": true,
+      "created_at": "2026-03-05T14:19:20.972Z"
+    }
+  },
+  {
+    "model": "clinical.specialization",
+    "pk": 5,
+    "fields": {
+      "name": "Ophthalmologist",
+      "description": "eye",
+      "icon": "",
+      "is_active": true,
+      "created_at": "2026-03-05T14:19:41.837Z"
+    }
+  },
+  {
+    "model": "clinical.doctor",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "specialization": 1,
+      "consultation_fee": "5000.00",
+      "bio": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum",
+      "experience_years": 5,
+      "is_available": true,
+      "photo": "doctors/profile/134000952262193517_-_Copy.jpg",
+      "phone": "9845744596",
+      "created_at": "2026-03-05T14:21:01.597Z",
+      "updated_at": "2026-03-06T17:46:15.623Z"
+    }
+  },
+  {
+    "model": "clinical.doctor",
+    "pk": 2,
+    "fields": {
+      "user": 4,
+      "specialization": 1,
+      "consultation_fee": "100000.00",
+      "bio": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum",
+      "experience_years": 12,
+      "is_available": true,
+      "photo": "doctors/profile/IMG_20250817_064801.jpg",
+      "phone": "9844161220",
+      "created_at": "2026-03-05T14:24:42.004Z",
+      "updated_at": "2026-03-06T17:45:21.753Z"
+    }
+  },
+  {
+    "model": "clinical.shift",
+    "pk": 1,
+    "fields": {
+      "name": "Morning",
+      "start_time": "06:00:00",
+      "end_time": "12:00:00",
+      "slot_duration": 30
+    }
+  },
+  {
+    "model": "clinical.shift",
+    "pk": 2,
+    "fields": {
+      "name": "Evening",
+      "start_time": "12:00:00",
+      "end_time": "18:00:00",
+      "slot_duration": 30
+    }
+  },
+  {
+    "model": "clinical.shift",
+    "pk": 3,
+    "fields": {
+      "name": "Night",
+      "start_time": "18:00:00",
+      "end_time": "06:00:00",
+      "slot_duration": 30
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 1,
+    "fields": {
+      "doctor": 1,
+      "day": "MON",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 2,
+    "fields": {
+      "doctor": 1,
+      "day": "TUE",
+      "shift": 2,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 3,
+    "fields": {
+      "doctor": 1,
+      "day": "WED",
+      "shift": 3,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 4,
+    "fields": {
+      "doctor": 2,
+      "day": "MON",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 5,
+    "fields": {
+      "doctor": 2,
+      "day": "TUE",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 6,
+    "fields": {
+      "doctor": 2,
+      "day": "WED",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 7,
+    "fields": {
+      "doctor": 2,
+      "day": "THU",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 8,
+    "fields": {
+      "doctor": 2,
+      "day": "FRI",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorschedule",
+    "pk": 9,
+    "fields": {
+      "doctor": 2,
+      "day": "SAT",
+      "shift": 1,
+      "is_active": true
+    }
+  },
+  {
+    "model": "clinical.doctorleave",
+    "pk": 1,
+    "fields": {
+      "doctor": 1,
+      "date": "2026-03-05",
+      "reason": "biwi naraj he beta je",
+      "created_at": "2026-03-05T14:22:57.600Z"
+    }
+  },
+  {
+    "model": "clinical.doctorleave",
+    "pk": 2,
+    "fields": {
+      "doctor": 2,
+      "date": "2026-03-09",
+      "reason": "biwi naraj he beta je",
+      "created_at": "2026-03-06T17:45:02.723Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 1,
+    "fields": {
+      "patient": 2,
+      "doctor": 1,
+      "date": "2026-03-10",
+      "start_time": "12:30:00",
+      "end_time": "13:00:00",
+      "status": "COMPLETED",
+      "notes": "dil ka mamla he doctor \u2764\ufe0f",
+      "pdf_file": "appointments/pdfs/appointment_1.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_1.png",
+      "created_at": "2026-03-05T15:26:40.773Z",
+      "updated_at": "2026-03-05T15:38:50.758Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 2,
+    "fields": {
+      "patient": 2,
+      "doctor": 1,
+      "date": "2026-03-10",
+      "start_time": "17:30:00",
+      "end_time": "18:00:00",
+      "status": "COMPLETED",
+      "notes": "",
+      "pdf_file": "appointments/pdfs/appointment_2.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_2.png",
+      "created_at": "2026-03-05T15:29:49.684Z",
+      "updated_at": "2026-03-05T17:33:21.463Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 3,
+    "fields": {
+      "patient": 2,
+      "doctor": 1,
+      "date": "2026-03-09",
+      "start_time": "06:00:00",
+      "end_time": "06:30:00",
+      "status": "COMPLETED",
+      "notes": "ggkhg",
+      "pdf_file": "appointments/pdfs/appointment_3.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_3.png",
+      "created_at": "2026-03-05T17:34:53.310Z",
+      "updated_at": "2026-03-05T17:37:59.838Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 4,
+    "fields": {
+      "patient": 2,
+      "doctor": 1,
+      "date": "2026-03-10",
+      "start_time": "13:30:00",
+      "end_time": "14:00:00",
+      "status": "CANCELLED",
+      "notes": "hello doctor its me",
+      "pdf_file": "appointments/pdfs/appointment_4.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_4.png",
+      "created_at": "2026-03-05T19:35:49.384Z",
+      "updated_at": "2026-03-05T20:00:58.373Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 5,
+    "fields": {
+      "patient": 2,
+      "doctor": 2,
+      "date": "2026-03-06",
+      "start_time": "09:00:00",
+      "end_time": "09:30:00",
+      "status": "COMPLETED",
+      "notes": "sdfsdfs",
+      "pdf_file": "appointments/pdfs/appointment_5.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_5.png",
+      "created_at": "2026-03-06T03:19:37.533Z",
+      "updated_at": "2026-03-06T17:43:44.679Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 6,
+    "fields": {
+      "patient": 2,
+      "doctor": 2,
+      "date": "2026-03-07",
+      "start_time": "06:00:00",
+      "end_time": "06:30:00",
+      "status": "CONFIRMED",
+      "notes": "docor dil ka mamala he re meroe doctor",
+      "pdf_file": "appointments/pdfs/appointment_6.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_6.png",
+      "created_at": "2026-03-06T17:38:55.563Z",
+      "updated_at": "2026-03-06T17:38:55.899Z"
+    }
+  },
+  {
+    "model": "appointments.appointment",
+    "pk": 7,
+    "fields": {
+      "patient": 2,
+      "doctor": 1,
+      "date": "2026-03-23",
+      "start_time": "06:30:00",
+      "end_time": "07:00:00",
+      "status": "COMPLETED",
+      "notes": "hello doctor",
+      "pdf_file": "appointments/pdfs/appointment_7.pdf",
+      "qr_code": "appointments/qrcodes/qr_appointment_7.png",
+      "created_at": "2026-03-21T14:57:21.140Z",
+      "updated_at": "2026-03-21T15:56:49.777Z"
+    }
+  },
+  {
+    "model": "appointments.waitinglist",
+    "pk": 1,
+    "fields": {
+      "patient": 2,
+      "doctor": 2,
+      "date": "2026-03-22",
+      "created_at": "2026-03-21T15:12:49.788Z"
+    }
+  },
+  {
+    "model": "rooms.room",
+    "pk": 1,
+    "fields": {
+      "room_number": "1",
+      "room_type": "GENERAL",
+      "floor": "1",
+      "capacity": 2,
+      "is_active": true,
+      "notes": "first bed",
+      "created_at": "2026-03-21T15:07:02.144Z"
+    }
+  },
+  {
+    "model": "rooms.room",
+    "pk": 2,
+    "fields": {
+      "room_number": "102",
+      "room_type": "GENERAL",
+      "floor": "1",
+      "capacity": 2,
+      "is_active": true,
+      "notes": "first",
+      "created_at": "2026-03-21T15:08:13.751Z"
+    }
+  },
+  {
+    "model": "rooms.room",
+    "pk": 3,
+    "fields": {
+      "room_number": "103",
+      "room_type": "GENERAL",
+      "floor": "1",
+      "capacity": 2,
+      "is_active": true,
+      "notes": "general ward",
+      "created_at": "2026-03-21T15:51:37.558Z"
+    }
+  },
+  {
+    "model": "rooms.roombed",
+    "pk": 1,
+    "fields": {
+      "room": 1,
+      "bed_number": "1",
+      "status": "AVAILABLE"
+    }
+  },
+  {
+    "model": "rooms.roombed",
+    "pk": 2,
+    "fields": {
+      "room": 1,
+      "bed_number": "2",
+      "status": "AVAILABLE"
+    }
+  },
+  {
+    "model": "rooms.roombed",
+    "pk": 3,
+    "fields": {
+      "room": 2,
+      "bed_number": "201",
+      "status": "AVAILABLE"
+    }
+  },
+  {
+    "model": "rooms.roombed",
+    "pk": 4,
+    "fields": {
+      "room": 2,
+      "bed_number": "202",
+      "status": "AVAILABLE"
+    }
+  },
+  {
+    "model": "rooms.roombed",
+    "pk": 5,
+    "fields": {
+      "room": 3,
+      "bed_number": "1",
+      "status": "AVAILABLE"
+    }
+  },
+  {
+    "model": "rooms.roombed",
+    "pk": 6,
+    "fields": {
+      "room": 3,
+      "bed_number": "2",
+      "status": "AVAILABLE"
+    }
+  },
+  {
+    "model": "rooms.roomassignment",
+    "pk": 1,
+    "fields": {
+      "patient": 2,
+      "bed": 3,
+      "admitted_by": 4,
+      "doctor": 2,
+      "reason": "biwi naraj he beta je",
+      "status": "TRANSFERRED",
+      "admitted_at": "2026-03-21T15:11:10.614Z",
+      "discharged_at": "2026-03-22T18:00:00Z",
+      "discharge_notes": "take care of yourself"
+    }
+  },
+  {
+    "model": "rooms.roomassignment",
+    "pk": 2,
+    "fields": {
+      "patient": 2,
+      "bed": 3,
+      "admitted_by": 2,
+      "doctor": 1,
+      "reason": "",
+      "status": "DISCHARGED",
+      "admitted_at": "2026-03-21T15:45:26.581Z",
+      "discharged_at": "2026-03-21T15:51:58.304Z",
+      "discharge_notes": ""
+    }
+  },
+  {
+    "model": "rooms.roomassignment",
+    "pk": 3,
+    "fields": {
+      "patient": 2,
+      "bed": 1,
+      "admitted_by": 2,
+      "doctor": 1,
+      "reason": "",
+      "status": "DISCHARGED",
+      "admitted_at": "2026-03-21T15:45:37.672Z",
+      "discharged_at": "2026-03-21T15:51:55.052Z",
+      "discharge_notes": ""
+    }
+  },
+  {
+    "model": "rooms.admissionrequest",
+    "pk": 1,
+    "fields": {
+      "patient": 2,
+      "doctor": 1,
+      "requested_by": 1,
+      "preferred_room": null,
+      "preferred_room_type": "GENERAL",
+      "reason": "biwi naraj he beta je",
+      "status": "PENDING",
+      "receptionist_notes": "",
+      "processed_by": null,
+      "processed_at": null,
+      "created_at": "2026-03-21T16:06:54.926Z"
+    }
+  },
+  {
+    "model": "notifications.notification",
+    "pk": 1,
+    "fields": {
+      "recipient": 2,
+      "title": "Appointment Confirmed",
+      "message": "Your appointment with Dr. Prabin Acharya is confirmed for 2026-03-23 at 06:30.",
+      "notification_type": "APPOINTMENT",
+      "action_url": "/appointments/7/",
+      "is_read": true,
+      "read_at": "2026-03-21T14:57:35.361Z",
+      "metadata": {},
+      "created_at": "2026-03-21T14:57:21.151Z"
+    }
+  },
+  {
+    "model": "notifications.notification",
+    "pk": 2,
+    "fields": {
+      "recipient": 1,
+      "title": "New Appointment",
+      "message": "New appointment booked by Prabin for 2026-03-23 at 06:30.",
+      "notification_type": "APPOINTMENT",
+      "action_url": "/appointments/7/",
+      "is_read": true,
+      "read_at": "2026-03-21T15:54:15.980Z",
+      "metadata": {},
+      "created_at": "2026-03-21T14:57:21.157Z"
+    }
+  },
+  {
+    "model": "notifications.notification",
+    "pk": 5,
+    "fields": {
+      "recipient": 2,
+      "title": "Discharge Completed",
+      "message": "You have been discharged successfully. Please collect your summary from reception.",
+      "notification_type": "ROOM",
+      "action_url": "",
+      "is_read": false,
+      "read_at": null,
+      "metadata": {},
+      "created_at": "2026-03-21T15:51:55.074Z"
+    }
+  },
+  {
+    "model": "notifications.notification",
+    "pk": 6,
+    "fields": {
+      "recipient": 2,
+      "title": "Discharge Completed",
+      "message": "You have been discharged successfully. Please collect your summary from reception.",
+      "notification_type": "ROOM",
+      "action_url": "",
+      "is_read": false,
+      "read_at": null,
+      "metadata": {},
+      "created_at": "2026-03-21T15:51:58.328Z"
+    }
+  },
+  {
+    "model": "notifications.notification",
+    "pk": 7,
+    "fields": {
+      "recipient": 2,
+      "title": "Appointment Status Updated",
+      "message": "Your appointment status is now Completed.",
+      "notification_type": "APPOINTMENT",
+      "action_url": "/appointments/7/",
+      "is_read": false,
+      "read_at": null,
+      "metadata": {
+        "old_status": "CONFIRMED",
+        "new_status": "COMPLETED"
+      },
+      "created_at": "2026-03-21T15:56:49.804Z"
+    }
+  },
+  {
+    "model": "notifications.notification",
+    "pk": 8,
+    "fields": {
+      "recipient": 3,
+      "title": "New Admission Request",
+      "message": "Dr. Prabin Acharya requested admission for Prabin.",
+      "notification_type": "ROOM",
+      "action_url": "",
+      "is_read": false,
+      "read_at": null,
+      "metadata": {},
+      "created_at": "2026-03-21T16:06:54.936Z"
+    }
+  },
+  {
+    "model": "reviews.review",
+    "pk": 1,
+    "fields": {
+      "patient": 2,
+      "doctor": 2,
+      "appointment": 7,
+      "rating": 5,
+      "comment": "best",
+      "created_at": "2026-03-21T15:12:20.957Z",
+      "updated_at": "2026-03-21T15:12:20.957Z"
+    }
+  },
+  {
+    "model": "prescriptions.prescription",
+    "pk": 1,
+    "fields": {
+      "appointment": 1,
+      "doctor": 1,
+      "patient": 2,
+      "notes": "Patient has high blood pressure",
+      "advice": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
+      "follow_up_date": "2026-03-30",
+      "pdf_file": "prescriptions/pdfs/prescription_1.pdf",
+      "created_at": "2026-03-05T18:00:37.746Z",
+      "updated_at": "2026-03-05T18:00:37.910Z"
+    }
+  },
+  {
+    "model": "prescriptions.prescription",
+    "pk": 2,
+    "fields": {
+      "appointment": 2,
+      "doctor": 1,
+      "patient": 2,
+      "notes": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
+      "advice": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
+      "follow_up_date": "2026-03-26",
+      "pdf_file": "prescriptions/pdfs/prescription_2.pdf",
+      "created_at": "2026-03-05T18:04:11.027Z",
+      "updated_at": "2026-03-05T18:04:11.075Z"
+    }
+  },
+  {
+    "model": "prescriptions.prescription",
+    "pk": 3,
+    "fields": {
+      "appointment": 5,
+      "doctor": 2,
+      "patient": 2,
+      "notes": "prabin lai ta dil ko bimari xa re",
+      "advice": "heloo regular checkup",
+      "follow_up_date": "2026-03-26",
+      "pdf_file": "prescriptions/pdfs/prescription_3_UlfBt7J.pdf",
+      "created_at": "2026-03-06T17:44:35.122Z",
+      "updated_at": "2026-03-06T17:44:43.879Z"
+    }
+  },
+  {
+    "model": "prescriptions.prescriptionitem",
+    "pk": 1,
+    "fields": {
+      "prescription": 1,
+      "medicine_name": "pressure ko aausadhi yo yo chemical vayeko",
+      "dosage": "500mg",
+      "frequency": "BD",
+      "duration": "20days",
+      "timing": "AFTER_MEAL",
+      "instructions": "yo aausadhi chai khana khayeko 30 minutes pachi khane"
+    }
+  },
+  {
+    "model": "prescriptions.prescriptionitem",
+    "pk": 2,
+    "fields": {
+      "prescription": 1,
+      "medicine_name": "arko pani pressure ko nai aausadhi ho",
+      "dosage": "1000mg",
+      "frequency": "TDS",
+      "duration": "20days",
+      "timing": "WITH_MEAL",
+      "instructions": "aausadhi arko yo ta"
+    }
+  },
+  {
+    "model": "prescriptions.prescriptionitem",
+    "pk": 3,
+    "fields": {
+      "prescription": 2,
+      "medicine_name": "pressure ko aausadhi yo yo chemical vayeko",
+      "dosage": "500mg",
+      "frequency": "OD",
+      "duration": "20days",
+      "timing": "AFTER_MEAL",
+      "instructions": "yo aausadhi chai khana khayeko 30 minutes pachi khane"
+    }
+  },
+  {
+    "model": "prescriptions.prescriptionitem",
+    "pk": 4,
+    "fields": {
+      "prescription": 2,
+      "medicine_name": "arko pani pressure ko nai aausadhi ho",
+      "dosage": "1000mg",
+      "frequency": "OD",
+      "duration": "20days",
+      "timing": "AFTER_MEAL",
+      "instructions": "aausadhi arko yo ta"
+    }
+  },
+  {
+    "model": "prescriptions.prescriptionitem",
+    "pk": 5,
+    "fields": {
+      "prescription": 3,
+      "medicine_name": "pressure ko aausadhi yo yo chemical vayeko",
+      "dosage": "500mg",
+      "frequency": "OD",
+      "duration": "20days",
+      "timing": "AFTER_MEAL",
+      "instructions": "yo aausadhi chai khana khayeko 30 minutes pachi khane"
+    }
+  },
+  {
+    "model": "prescriptions.prescriptionitem",
+    "pk": 6,
+    "fields": {
+      "prescription": 3,
+      "medicine_name": "arko pani pressure ko nai aausadhi ho",
+      "dosage": "1000mg",
+      "frequency": "OD",
+      "duration": "20days",
+      "timing": "AFTER_MEAL",
+      "instructions": "aausadhi arko yo ta"
+    }
+  },
+  {
+    "model": "payments.payment",
+    "pk": 1,
+    "fields": {
+      "payment_type": "APPOINTMENT",
+      "appointment": 4,
+      "lab_booking": null,
+      "patient": 2,
+      "doctor": 1,
+      "amount": "5000.00",
+      "status": "REFUNDED",
+      "payment_method": "CASH",
+      "paid_at": "2026-03-05T19:40:00.946Z",
+      "receipt_file": "payments/receipts/receipt_1.pdf",
+      "notes": "paid",
+      "created_at": "2026-03-05T19:35:49.400Z",
+      "updated_at": "2026-03-05T20:05:38.695Z"
+    }
+  },
+  {
+    "model": "payments.payment",
+    "pk": 2,
+    "fields": {
+      "payment_type": "APPOINTMENT",
+      "appointment": 5,
+      "lab_booking": null,
+      "patient": 2,
+      "doctor": 2,
+      "amount": "100000.00",
+      "status": "PAID",
+      "payment_method": "CASH",
+      "paid_at": "2026-03-06T16:07:41.046Z",
+      "receipt_file": "payments/receipts/receipt_2.pdf",
+      "notes": "tirisakayo",
+      "created_at": "2026-03-06T03:19:37.544Z",
+      "updated_at": "2026-03-06T16:07:41.100Z"
+    }
+  },
+  {
+    "model": "payments.payment",
+    "pk": 3,
+    "fields": {
+      "payment_type": "LAB_TEST",
+      "appointment": null,
+      "lab_booking": 4,
+      "patient": 2,
+      "doctor": null,
+      "amount": "500.00",
+      "status": "PAID",
+      "payment_method": "CASH",
+      "paid_at": "2026-03-06T17:48:49.282Z",
+      "receipt_file": "",
+      "notes": "diyo kanxa le",
+      "created_at": "2026-03-06T04:13:25.155Z",
+      "updated_at": "2026-03-07T02:44:56.346Z"
+    }
+  },
+  {
+    "model": "payments.payment",
+    "pk": 4,
+    "fields": {
+      "payment_type": "APPOINTMENT",
+      "appointment": 6,
+      "lab_booking": null,
+      "patient": 2,
+      "doctor": 2,
+      "amount": "100000.00",
+      "status": "UNPAID",
+      "payment_method": "CASH",
+      "paid_at": null,
+      "receipt_file": "",
+      "notes": "",
+      "created_at": "2026-03-06T17:38:55.573Z",
+      "updated_at": "2026-03-06T17:38:55.573Z"
+    }
+  },
+  {
+    "model": "payments.payment",
+    "pk": 5,
+    "fields": {
+      "payment_type": "APPOINTMENT",
+      "appointment": 7,
+      "lab_booking": null,
+      "patient": 2,
+      "doctor": 1,
+      "amount": "5000.00",
+      "status": "UNPAID",
+      "payment_method": "CASH",
+      "paid_at": null,
+      "receipt_file": "",
+      "notes": "",
+      "created_at": "2026-03-21T14:57:21.166Z",
+      "updated_at": "2026-03-21T14:57:21.166Z"
+    }
+  },
+  {
+    "model": "payments.refund",
+    "pk": 1,
+    "fields": {
+      "payment": 1,
+      "reason": "i did cancelled  my appoinment so i need refund",
+      "status": "APPROVED",
+      "refunded_at": "2026-03-05T20:05:38.692Z",
+      "notes": "please  veryfy nextime before cancelling shedule",
+      "created_at": "2026-03-05T20:01:30.309Z"
+    }
+  },
+  {
+    "model": "lab.testtemplate",
+    "pk": 1,
+    "fields": {
+      "name": "Blood Sugar test",
+      "description": "sugar ho kanxa sugar",
+      "preparation": "fast for more than 8 to 10 hours",
+      "price": "500.00",
+      "duration_minutes": 30,
+      "is_available": true,
+      "created_at": "2026-03-05T21:26:49.451Z"
+    }
+  },
+  {
+    "model": "lab.testtemplate",
+    "pk": 2,
+    "fields": {
+      "name": "ecg",
+      "description": "dafa",
+      "preparation": "sdfa",
+      "price": "45000.00",
+      "duration_minutes": 30,
+      "is_available": true,
+      "created_at": "2026-03-06T17:49:59.215Z"
+    }
+  },
+  {
+    "model": "lab.testfield",
+    "pk": 1,
+    "fields": {
+      "template": 1,
+      "field_name": "Fasting Blood Sugar",
+      "unit": "10",
+      "normal_min": "50.00",
+      "normal_max": "100.00",
+      "critical_min": null,
+      "critical_max": null,
+      "normal_text": "",
+      "field_type": "NUMBER",
+      "is_required": true,
+      "order": 1
+    }
+  },
+  {
+    "model": "lab.testfield",
+    "pk": 2,
+    "fields": {
+      "template": 1,
+      "field_name": "post meal blood suger",
+      "unit": "10",
+      "normal_min": "50.00",
+      "normal_max": "100.00",
+      "critical_min": null,
+      "critical_max": null,
+      "normal_text": "",
+      "field_type": "NUMBER",
+      "is_required": true,
+      "order": 2
+    }
+  },
+  {
+    "model": "lab.testfield",
+    "pk": 3,
+    "fields": {
+      "template": 1,
+      "field_name": "HBA1C",
+      "unit": "10",
+      "normal_min": "50.00",
+      "normal_max": "100.00",
+      "critical_min": null,
+      "critical_max": null,
+      "normal_text": "",
+      "field_type": "NUMBER",
+      "is_required": true,
+      "order": 3
+    }
+  },
+  {
+    "model": "lab.testfield",
+    "pk": 4,
+    "fields": {
+      "template": 2,
+      "field_name": "HBA1C",
+      "unit": "10",
+      "normal_min": "50.00",
+      "normal_max": "100.00",
+      "critical_min": null,
+      "critical_max": null,
+      "normal_text": "dfa",
+      "field_type": "NUMBER",
+      "is_required": true,
+      "order": 1
+    }
+  },
+  {
+    "model": "lab.testschedule",
+    "pk": 1,
+    "fields": {
+      "template": 1,
+      "day": "MON",
+      "start_time": "06:00:00",
+      "end_time": "08:00:00",
+      "max_bookings": 50,
+      "is_active": true
+    }
+  },
+  {
+    "model": "lab.testschedule",
+    "pk": 2,
+    "fields": {
+      "template": 1,
+      "day": "TUE",
+      "start_time": "06:00:00",
+      "end_time": "08:00:00",
+      "max_bookings": 50,
+      "is_active": true
+    }
+  },
+  {
+    "model": "lab.testschedule",
+    "pk": 3,
+    "fields": {
+      "template": 1,
+      "day": "WED",
+      "start_time": "06:00:00",
+      "end_time": "08:00:00",
+      "max_bookings": 20,
+      "is_active": true
+    }
+  },
+  {
+    "model": "lab.testschedule",
+    "pk": 4,
+    "fields": {
+      "template": 1,
+      "day": "THU",
+      "start_time": "06:00:00",
+      "end_time": "08:00:00",
+      "max_bookings": 20,
+      "is_active": true
+    }
+  },
+  {
+    "model": "lab.testschedule",
+    "pk": 5,
+    "fields": {
+      "template": 1,
+      "day": "FRI",
+      "start_time": "06:00:00",
+      "end_time": "08:00:00",
+      "max_bookings": 20,
+      "is_active": true
+    }
+  },
+  {
+    "model": "lab.testbooking",
+    "pk": 1,
+    "fields": {
+      "patient": 2,
+      "template": 1,
+      "date": "2026-03-09",
+      "status": "COMPLETED",
+      "payment_status": "UNPAID",
+      "amount": "500.00",
+      "notes": "hello",
+      "specimen_id": null,
+      "collected_by": null,
+      "collected_at": null,
+      "received_at": null,
+      "rejected_reason": "",
+      "expected_report_at": null,
+      "completed_at": null,
+      "created_at": "2026-03-05T21:33:12.708Z"
+    }
+  },
+  {
+    "model": "lab.testbooking",
+    "pk": 2,
+    "fields": {
+      "patient": 2,
+      "template": 1,
+      "date": "2026-03-10",
+      "status": "COMPLETED",
+      "payment_status": "UNPAID",
+      "amount": "500.00",
+      "notes": "",
+      "specimen_id": null,
+      "collected_by": null,
+      "collected_at": null,
+      "received_at": null,
+      "rejected_reason": "",
+      "expected_report_at": null,
+      "completed_at": null,
+      "created_at": "2026-03-05T21:33:26.235Z"
+    }
+  },
+  {
+    "model": "lab.testbooking",
+    "pk": 3,
+    "fields": {
+      "patient": 2,
+      "template": 1,
+      "date": "2026-03-11",
+      "status": "COMPLETED",
+      "payment_status": "UNPAID",
+      "amount": "500.00",
+      "notes": "",
+      "specimen_id": null,
+      "collected_by": null,
+      "collected_at": null,
+      "received_at": null,
+      "rejected_reason": "",
+      "expected_report_at": null,
+      "completed_at": null,
+      "created_at": "2026-03-06T03:28:38.477Z"
+    }
+  },
+  {
+    "model": "lab.testbooking",
+    "pk": 4,
+    "fields": {
+      "patient": 2,
+      "template": 1,
+      "date": "2026-03-12",
+      "status": "REJECTED_SAMPLE",
+      "payment_status": "PAID",
+      "amount": "500.00",
+      "notes": "",
+      "specimen_id": null,
+      "collected_by": null,
+      "collected_at": null,
+      "received_at": null,
+      "rejected_reason": "sample should be in fasting but the patiend didnot fast",
+      "expected_report_at": null,
+      "completed_at": null,
+      "created_at": "2026-03-06T04:13:25.141Z"
+    }
+  },
+  {
+    "model": "lab.testresult",
+    "pk": 1,
+    "fields": {
+      "booking": 1,
+      "filled_by": 5,
+      "notes": "gjhgjhgjh",
+      "pdf_file": "lab/reports/lab_report_1.pdf",
+      "is_released": true,
+      "is_verified": false,
+      "verified_by": null,
+      "verified_at": null,
+      "filled_at": "2026-03-05T21:36:37.807Z",
+      "released_at": "2026-03-06T04:16:23.354Z"
+    }
+  },
+  {
+    "model": "lab.testresult",
+    "pk": 2,
+    "fields": {
+      "booking": 2,
+      "filled_by": 5,
+      "notes": "helo",
+      "pdf_file": "lab/reports/lab_report_2.pdf",
+      "is_released": true,
+      "is_verified": false,
+      "verified_by": null,
+      "verified_at": null,
+      "filled_at": "2026-03-05T21:37:04.744Z",
+      "released_at": "2026-03-05T21:38:38.981Z"
+    }
+  },
+  {
+    "model": "lab.testresult",
+    "pk": 3,
+    "fields": {
+      "booking": 3,
+      "filled_by": 5,
+      "notes": "yo thikai xa aab aimprove garn parayo",
+      "pdf_file": "lab/reports/lab_report_3.pdf",
+      "is_released": true,
+      "is_verified": false,
+      "verified_by": null,
+      "verified_at": null,
+      "filled_at": "2026-03-06T17:52:39.525Z",
+      "released_at": "2026-03-06T17:54:18.887Z"
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 1,
+    "fields": {
+      "result": 1,
+      "field": 1,
+      "value": "50",
+      "status": "NORMAL",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 2,
+    "fields": {
+      "result": 1,
+      "field": 2,
+      "value": "12",
+      "status": "LOW",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 3,
+    "fields": {
+      "result": 1,
+      "field": 3,
+      "value": "112",
+      "status": "HIGH",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 4,
+    "fields": {
+      "result": 2,
+      "field": 1,
+      "value": "78",
+      "status": "NORMAL",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 5,
+    "fields": {
+      "result": 2,
+      "field": 2,
+      "value": "88",
+      "status": "NORMAL",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 6,
+    "fields": {
+      "result": 2,
+      "field": 3,
+      "value": "44",
+      "status": "LOW",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 7,
+    "fields": {
+      "result": 3,
+      "field": 1,
+      "value": "51",
+      "status": "NORMAL",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 8,
+    "fields": {
+      "result": 3,
+      "field": 2,
+      "value": "54",
+      "status": "NORMAL",
+      "is_critical": false
+    }
+  },
+  {
+    "model": "lab.testresultitem",
+    "pk": 9,
+    "fields": {
+      "result": 3,
+      "field": 3,
+      "value": "44",
+      "status": "LOW",
+      "is_critical": false
+    }
+  }
+]

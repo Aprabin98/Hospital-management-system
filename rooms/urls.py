@@ -29,9 +29,11 @@ urlpatterns = [
     
     # Receptionist Routes
     path('receptionist/assign/', views.receptionist_assign_room, name='receptionist_assign_room'),
+    path('receptionist/patient-search/', views.receptionist_patient_search, name='receptionist_patient_search'),
     path('receptionist/requests/<int:pk>/reject/', views.receptionist_reject_admission_request, name='receptionist_reject_admission_request'),
     path('receptionist/occupancy/', views.receptionist_occupancy, name='receptionist_occupancy'),
     
     # Admin Routes
     path('statistics/', views.room_statistics, name='room_statistics'),
+    path('statistics/export/csv/', views.room_statistics_export_csv, name='room_statistics_export_csv'),
 ]

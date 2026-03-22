@@ -3,11 +3,16 @@
 # Windows compatible - Pre-built wheels only
 
 # Core Django
-Django>=4.2,<5.0
+Django>=6.0,<6.1
 djangorestframework>=3.14.0
 django-cors-headers>=4.0.0
 django-filter>=23.1
 djangorestframework-simplejwt>=5.2.0
+
+# Database
+psycopg2-binary>=2.9.0
+celery>=5.4.0
+redis>=5.0.0
 
 # File & PDF
 reportlab>=4.0.0

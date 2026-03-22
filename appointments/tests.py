@@ -1,3 +1,64 @@
-from django.test import TestCase
+from datetime import date, time
 
-# Create your tests here.
+from django.test import TestCase
+from django.urls import reverse
+
+from appointments.models import Appointment
+from clinical.models import Doctor
+from users.models import PatientProfile, User
+
+
+class AppointmentsSmokeTests(TestCase):
+	def setUp(self):
+		self.patient_user = User.objects.create_user(
+			email='patient.appt@example.com',
+			username='patient_appt',
+			password='pass1234',
+			role='PATIENT',
+			is_active=True,
+		)
+		self.patient_profile, _ = PatientProfile.objects.get_or_create(
+			user=self.patient_user,
+			defaults={'full_name': 'Patient Appt'},
+		)
+
+		self.other_patient_user = User.objects.create_user(
+			email='other.appt@example.com',
+			username='other_appt',
+			password='pass1234',
+			role='PATIENT',
+			is_active=True,
+		)
+		self.other_patient_profile, _ = PatientProfile.objects.get_or_create(
+			user=self.other_patient_user,
+			defaults={'full_name': 'Other Appt'},
+		)
+
+		self.doctor_user = User.objects.create_user(
+			email='doctor.appt@example.com',
+			username='doctor_appt',
+			password='pass1234',
+			role='DOCTOR',
+			is_active=True,
+		)
+		self.doctor = Doctor.objects.create(user=self.doctor_user)
+
+		self.appointment = Appointment.objects.create(
+			patient=self.patient_profile,
+			doctor=self.doctor,
+			date=date.today(),
+			start_time=time(9, 0),
+			end_time=time(9, 30),
+			status='CONFIRMED',
+		)
+
+	def test_patient_can_view_own_appointment_detail(self):
+		self.client.force_login(self.patient_user)
+		response = self.client.get(reverse('appointments:appointment_detail', args=[self.appointment.id]))
+		self.assertEqual(response.status_code, 200)
+
+	def test_patient_cannot_view_other_patient_appointment_detail(self):
+		self.client.force_login(self.other_patient_user)
+		response = self.client.get(reverse('appointments:appointment_detail', args=[self.appointment.id]), follow=True)
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'Access denied')

@@ -14,6 +14,7 @@ from .forms import (
 )
 from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
 from clinical.models import Doctor, Specialization
+from users.models import PatientProfile
 
 
 # ─── STEP 1: SELECT SPECIALIZATION ──────────────────────────────────────────
@@ -139,8 +140,11 @@ def book_step4(request):
         if request.user.role == 'PATIENT':
             patient = request.user.patient_profile
         else:
-            messages.error(request, 'Receptionist booking coming soon.')
-            return redirect('users:dashboard')
+            patient_id = request.POST.get('patient_id')
+            if not patient_id:
+                messages.error(request, 'Please select a patient for receptionist booking.')
+                return redirect('appointments:book_step4')
+            patient = get_object_or_404(PatientProfile, pk=patient_id)
 
         # RULE 1: Max 2 appointments per day
         daily_count = Appointment.objects.filter(
@@ -193,6 +197,7 @@ def book_step4(request):
         'doctor': doctor,
         'booking_date': booking_date,
         'available_slots': available_slots,
+        'patients': PatientProfile.objects.select_related('user').order_by('full_name') if request.user.role == 'RECEPTIONIST' else None,
     })
 
 

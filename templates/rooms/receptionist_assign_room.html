@@ -331,16 +331,51 @@
     }
 
     // Patient search
-    document.getElementById('patient_search').addEventListener('input', function() {
+    const patientSearchInput = document.getElementById('patient_search');
+    const patientsList = document.getElementById('patientsList');
+
+    patientSearchInput.addEventListener('input', async function() {
         const query = this.value.trim();
-        if (query.length < 1) {
-            document.getElementById('patientsList').style.display = 'none';
+        if (query.length < 2) {
+            patientsList.style.display = 'none';
+            patientsList.innerHTML = '';
             return;
         }
 
-        // This would typically be an AJAX call to search patients
-        // For now, showing UI structure
-        document.getElementById('patientsList').style.display = 'block';
+        try {
+            const response = await fetch(`{% url 'rooms:receptionist_patient_search' %}?q=${encodeURIComponent(query)}`);
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            patientsList.innerHTML = '';
+
+            if (!data.results.length) {
+                patientsList.innerHTML = '<div class="list-group-item text-muted">No matching patients found.</div>';
+                patientsList.style.display = 'block';
+                return;
+            }
+
+            data.results.forEach(patient => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `<strong>${patient.full_name}</strong><br><small>${patient.email} ${patient.phone ? ' | ' + patient.phone : ''}</small>`;
+                item.addEventListener('click', () => {
+                    document.getElementById('patient_id').value = patient.id;
+                    document.getElementById('selectedPatientName').textContent = `${patient.full_name} (${patient.email})`;
+                    document.getElementById('selectedPatient').classList.remove('d-none');
+                    patientSearchInput.value = patient.full_name;
+                    patientsList.style.display = 'none';
+                });
+                patientsList.appendChild(item);
+            });
+
+            patientsList.style.display = 'block';
+        } catch (error) {
+            patientsList.style.display = 'none';
+        }
     });
 
     function useAdmissionRequest(requestId, patientId, patientName, doctorId, preferredRoomType) {
