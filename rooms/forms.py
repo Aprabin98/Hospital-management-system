@@ -1,6 +1,7 @@
 from django import forms
-from .models import Room, RoomBed, RoomAssignment
+from .models import AdmissionRequest, Room, RoomBed, RoomAssignment
 from clinical.models import Doctor
+from users.models import PatientProfile
 
 
 class RoomForm(forms.ModelForm):
@@ -52,3 +53,30 @@ class RoomDischargeForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Discharge summary or notes'})
     )
+
+
+class DoctorAdmissionRequestForm(forms.ModelForm):
+    class Meta:
+        model = AdmissionRequest
+        fields = ['patient', 'preferred_room_type', 'reason']
+        widgets = {
+            'patient': forms.Select(attrs={'class': 'form-select'}),
+            'preferred_room_type': forms.Select(attrs={'class': 'form-select'}),
+            'reason': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Reason for admission request'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        doctor = kwargs.pop('doctor', None)
+        super().__init__(*args, **kwargs)
+        self.fields['patient'].queryset = PatientProfile.objects.none()
+
+        if doctor is not None:
+            from appointments.models import Appointment
+
+            patient_ids = Appointment.objects.filter(
+                doctor=doctor
+            ).values_list('patient_id', flat=True).distinct()
+
+            self.fields['patient'].queryset = PatientProfile.objects.filter(
+                id__in=patient_ids
+            ).select_related('user').order_by('full_name')

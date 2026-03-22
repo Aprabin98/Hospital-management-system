@@ -15,8 +15,24 @@
                 <p><strong>Amount:</strong> Rs. {{ booking.amount }}</p>
                 <p><strong>Status:</strong> {{ booking.get_status_display }}</p>
                 <p><strong>Payment:</strong> {{ booking.get_payment_status_display }}</p>
+                <p><strong>Specimen ID:</strong> {{ booking.specimen_id|default:"Pending collection" }}</p>
             </div>
         </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <p><strong>Collected At:</strong> {{ booking.collected_at|default:"Not collected" }}</p>
+                <p><strong>Received At:</strong> {{ booking.received_at|default:"Not received" }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Expected Report:</strong> {{ booking.expected_report_at|default:"Not set" }}</p>
+                <p><strong>Completed At:</strong> {{ booking.completed_at|default:"Not completed" }}</p>
+            </div>
+        </div>
+        {% if booking.status == 'REJECTED_SAMPLE' and booking.rejected_reason %}
+        <div class="alert alert-danger small">
+            <strong>Sample Rejected:</strong> {{ booking.rejected_reason }}
+        </div>
+        {% endif %}
         {% if result %}
         <hr>
         <h6 class="text-primary fw-bold">Test Results</h6>

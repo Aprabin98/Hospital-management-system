@@ -71,3 +71,30 @@ class RoomAssignment(models.Model):
 
     def __str__(self):
         return f"{self.patient.full_name} - {self.bed} - {self.status}"
+
+
+class AdmissionRequest(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+
+    patient = models.ForeignKey('users.PatientProfile', on_delete=models.CASCADE, related_name='admission_requests')
+    doctor = models.ForeignKey('clinical.Doctor', on_delete=models.CASCADE, related_name='admission_requests', null=True, blank=True)
+    requested_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='requested_admissions')
+    preferred_room = models.ForeignKey('Room', on_delete=models.SET_NULL, null=True, blank=True, related_name='admission_requests')
+    preferred_room_type = models.CharField(max_length=20, choices=Room.ROOM_TYPE_CHOICES, blank=True)
+    reason = models.CharField(max_length=255)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    receptionist_notes = models.TextField(blank=True)
+    processed_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_admissions')
+    processed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        requester = f"Dr. {self.doctor.user.username}" if self.doctor_id else "Patient"
+        return f"Admission request: {self.patient.full_name} by {requester} ({self.status})"

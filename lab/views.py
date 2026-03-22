@@ -3,10 +3,71 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import FileResponse
 from django.utils import timezone
+from datetime import datetime, time, timedelta
 
 from .models import TestTemplate, TestField, TestSchedule, TestBooking, TestResult, TestResultItem
 from .forms import TestTemplateForm, TestFieldForm, TestScheduleForm, TestBookingForm, TestResultForm
 from .utils import generate_lab_report_pdf
+from notifications.utils import create_notification
+from appointments.models import Appointment
+
+
+def _doctor_can_view_patient_reports(doctor, patient):
+    return Appointment.objects.filter(
+        doctor=doctor,
+        patient=patient,
+        status__in=['CONFIRMED', 'COMPLETED']
+    ).exists()
+
+
+def _notify_critical_results(result):
+    critical_items = result.items.filter(is_critical=True).select_related('field')
+    if not critical_items.exists():
+        return
+
+    fields = ', '.join(item.field.field_name for item in critical_items[:3])
+    if critical_items.count() > 3:
+        fields += ', ...'
+
+    patient_user = result.booking.patient.user
+    message = (
+        f"Critical lab values detected for {result.booking.template.name}: {fields}. "
+        f"Please contact hospital staff immediately."
+    )
+
+    create_notification(
+        recipient=patient_user,
+        title='Critical Lab Alert',
+        message=message,
+        notification_type='LAB',
+    )
+
+    latest_appointment = Appointment.objects.filter(
+        patient=result.booking.patient,
+        status__in=['CONFIRMED', 'COMPLETED']
+    ).select_related('doctor__user').order_by('-date', '-start_time').first()
+
+    recipients = {patient_user.id}
+    if latest_appointment and latest_appointment.doctor.user_id not in recipients:
+        recipients.add(latest_appointment.doctor.user_id)
+        create_notification(
+            recipient=latest_appointment.doctor.user,
+            title='Critical Lab Alert',
+            message=f"Critical lab values detected for patient {result.booking.patient.full_name}: {fields}.",
+            notification_type='LAB',
+        )
+
+
+def _allowed_next_status(current_status):
+    transitions = {
+        'PENDING': ['SAMPLE_COLLECTED', 'CANCELLED', 'REJECTED_SAMPLE'],
+        'SAMPLE_COLLECTED': ['PROCESSING', 'REJECTED_SAMPLE'],
+        'PROCESSING': ['COMPLETED'],
+        'COMPLETED': [],
+        'REJECTED_SAMPLE': [],
+        'CANCELLED': [],
+    }
+    return transitions.get(current_status, [])
 
 
 # ─── ADMIN: TEST TEMPLATE MANAGEMENT ─────────────────────────────────────────
@@ -236,6 +297,9 @@ def book_test(request, pk):
         booking.patient = patient
         booking.template = template
         booking.amount = template.price
+        booking.expected_report_at = timezone.make_aware(
+            datetime.combine(date, time(18, 0))
+        ) + timedelta(minutes=template.duration_minutes)
         booking.save()
 
         messages.success(request, f'{template.name} booked successfully for {date}!')
@@ -330,10 +394,12 @@ def lab_dashboard(request):
     ).select_related('patient', 'template').order_by('date')
 
     todays_bookings = pending_bookings.filter(date=today)
+    overdue_bookings = pending_bookings.filter(expected_report_at__lt=timezone.now())
 
     return render(request, 'lab/lab_dashboard.html', {
         'pending_bookings': pending_bookings,
         'todays_bookings': todays_bookings,
+        'overdue_bookings': overdue_bookings,
         'today': today,
     })
 
@@ -385,6 +451,8 @@ def fill_result(request, booking_id):
             generate_lab_report_pdf(result)
             result.save()
 
+            _notify_critical_results(result)
+
             messages.success(request, 'Results saved successfully!')
             return redirect('lab:lab_dashboard')
 
@@ -434,6 +502,8 @@ def update_result(request, pk):
             generate_lab_report_pdf(result)
             result.save()
 
+            _notify_critical_results(result)
+
             messages.success(request, 'Results updated!')
             return redirect('lab:lab_dashboard')
 
@@ -475,15 +545,44 @@ def release_result(request, pk):
     result = get_object_or_404(TestResult, pk=pk)
 
     if request.method == 'POST':
+        if not result.is_verified:
+            messages.error(request, 'Please verify this report before release.')
+            return redirect('lab:admin_bookings')
+
+        if result.booking.payment_status != 'PAID':
+            messages.error(request, 'Cannot release report before lab payment is marked paid.')
+            return redirect('lab:admin_bookings')
+
         result.is_released = True
         result.released_at = timezone.now()
         result.booking.status = 'COMPLETED'
-        result.booking.save()
+        result.booking.completed_at = timezone.now()
+        result.booking.save(update_fields=['status', 'completed_at'])
         result.save()
         messages.success(request, 'Report released to patient!')
         return redirect('lab:admin_bookings')
 
     return render(request, 'lab/release_confirm.html', {'result': result})
+
+
+@login_required
+def verify_result(request, pk):
+    """Admin verifies result before releasing report."""
+    if request.user.role != 'ADMIN':
+        messages.error(request, 'Access denied.')
+        return redirect('users:dashboard')
+
+    result = get_object_or_404(TestResult, pk=pk)
+
+    if request.method == 'POST':
+        result.is_verified = True
+        result.verified_by = request.user
+        result.verified_at = timezone.now()
+        result.save(update_fields=['is_verified', 'verified_by', 'verified_at'])
+        messages.success(request, 'Report verified. You can now release it to patient.')
+        return redirect('lab:admin_bookings')
+
+    return render(request, 'lab/release_confirm.html', {'result': result, 'verify_mode': True})
 
 
 # ─── DOWNLOAD REPORT ─────────────────────────────────────────────────────────
@@ -532,10 +631,29 @@ def update_booking_status(request, pk):
 
     if request.method == 'POST':
         new_status = request.POST.get('status')
-        if new_status in ['SAMPLE_COLLECTED', 'PROCESSING']:
-            booking.status = new_status
-            booking.save()
-            messages.success(request, f'Status updated to {booking.get_status_display()}!')
+        rejected_reason = request.POST.get('rejected_reason', '').strip()
+
+        allowed = _allowed_next_status(booking.status)
+        if new_status not in allowed:
+            messages.error(request, f'Invalid status transition: {booking.get_status_display()} -> {new_status}.')
+            return redirect('lab:lab_dashboard')
+
+        if new_status == 'SAMPLE_COLLECTED':
+            booking.collected_by = request.user
+            booking.collected_at = timezone.now()
+            if not booking.specimen_id:
+                booking.specimen_id = f"SP-{booking.id}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+        elif new_status == 'PROCESSING':
+            booking.received_at = booking.received_at or timezone.now()
+        elif new_status == 'REJECTED_SAMPLE':
+            if not rejected_reason:
+                messages.error(request, 'Please provide a rejected sample reason.')
+                return redirect('lab:lab_dashboard')
+            booking.rejected_reason = rejected_reason
+
+        booking.status = new_status
+        booking.save()
+        messages.success(request, f'Status updated to {booking.get_status_display()}!')
 
     return redirect('lab:lab_dashboard')
 
@@ -551,6 +669,10 @@ def patient_reports_for_doctor(request, patient_id):
 
     from users.models import PatientProfile
     patient = get_object_or_404(PatientProfile, pk=patient_id)
+
+    if not _doctor_can_view_patient_reports(request.user.doctor_profile, patient):
+        messages.error(request, 'Access denied. You can only view reports of your own patients.')
+        return redirect('users:dashboard')
 
     bookings = TestBooking.objects.filter(
         patient=patient,

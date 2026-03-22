@@ -97,7 +97,7 @@
                     <div class="mt-3">
                         <h6>Available Beds:</h6>
                         <div class="d-flex flex-wrap gap-2">
-                            {% for bed in room.available_beds %}
+                            {% for bed in room.available_bed_list %}
                             <span class="badge bg-light text-dark border border-success">
                                 Bed {{ bed.bed_number }}
                             </span>

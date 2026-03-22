@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class TestTemplate(models.Model):
@@ -54,6 +55,16 @@ class TestField(models.Model):
         max_digits=10, decimal_places=2,
         null=True, blank=True,
         help_text="Normal range maximum"
+    )
+    critical_min = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        null=True, blank=True,
+        help_text="Critical low value threshold"
+    )
+    critical_max = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        null=True, blank=True,
+        help_text="Critical high value threshold"
     )
     normal_text = models.CharField(
         max_length=100,
@@ -122,6 +133,7 @@ class TestBooking(models.Model):
         ('SAMPLE_COLLECTED', 'Sample Collected'),
         ('PROCESSING', 'Processing'),
         ('COMPLETED', 'Completed'),
+        ('REJECTED_SAMPLE', 'Rejected Sample'),
         ('CANCELLED', 'Cancelled'),
     ]
 
@@ -156,6 +168,19 @@ class TestBooking(models.Model):
         help_text="Price at time of booking"
     )
     notes = models.TextField(blank=True)
+    specimen_id = models.CharField(max_length=40, unique=True, null=True, blank=True)
+    collected_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='collected_samples'
+    )
+    collected_at = models.DateTimeField(null=True, blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    rejected_reason = models.CharField(max_length=255, blank=True)
+    expected_report_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -192,6 +217,18 @@ class TestResult(models.Model):
         default=False,
         help_text="Admin releases report to patient"
     )
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="Authorized reviewer verified the report before release"
+    )
+    verified_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_results'
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
     filled_at = models.DateTimeField(auto_now_add=True)
     released_at = models.DateTimeField(null=True, blank=True)
 
@@ -229,6 +266,7 @@ class TestResultItem(models.Model):
         choices=STATUS_CHOICES,
         default='NOT_DONE'
     )
+    is_critical = models.BooleanField(default=False)
 
     def calculate_status(self):
         """Auto calculate Normal/High/Low based on value and normal range."""
@@ -257,8 +295,24 @@ class TestResultItem(models.Model):
 
         return 'NORMAL'
 
+    def calculate_critical(self):
+        if not self.value or self.value.strip() == '' or self.field.field_type != 'NUMBER':
+            return False
+
+        try:
+            val = float(self.value)
+        except ValueError:
+            return False
+
+        if self.field.critical_min is not None and val < float(self.field.critical_min):
+            return True
+        if self.field.critical_max is not None and val > float(self.field.critical_max):
+            return True
+        return False
+
     def save(self, *args, **kwargs):
         self.status = self.calculate_status()
+        self.is_critical = self.calculate_critical()
         super().save(*args, **kwargs)
 
     def __str__(self):

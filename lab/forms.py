@@ -19,12 +19,18 @@ class TestTemplateForm(forms.ModelForm):
 class TestFieldForm(forms.ModelForm):
     class Meta:
         model = TestField
-        fields = ['field_name', 'unit', 'normal_min', 'normal_max', 'normal_text', 'field_type', 'is_required', 'order']
+        fields = [
+            'field_name', 'unit', 'normal_min', 'normal_max',
+            'critical_min', 'critical_max', 'normal_text',
+            'field_type', 'is_required', 'order'
+        ]
         widgets = {
             'field_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Fasting Blood Sugar'}),
             'unit': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. mg/dL'}),
             'normal_min': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Min normal value'}),
             'normal_max': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Max normal value'}),
+            'critical_min': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Critical low threshold'}),
+            'critical_max': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Critical high threshold'}),
             'normal_text': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'For text fields e.g. Negative'}),
             'field_type': forms.Select(attrs={'class': 'form-control form-select'}),
             'order': forms.NumberInput(attrs={'class': 'form-control'}),

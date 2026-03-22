@@ -1,20 +1,24 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q, Count, F, Case, When, IntegerField, Avg
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 import json
 
 from notifications.utils import create_notification
 from clinical.models import Doctor
+from django.contrib.auth import get_user_model
 from users.models import PatientProfile
 
-from .forms import RoomAssignmentForm, RoomBedForm, RoomDischargeForm, RoomForm
-from .models import Room, RoomAssignment, RoomBed
+from .forms import DoctorAdmissionRequestForm, RoomAssignmentForm, RoomBedForm, RoomDischargeForm, RoomForm
+from .models import AdmissionRequest, Room, RoomAssignment, RoomBed
 
 
 ALLOWED_ROLES = ['ADMIN', 'RECEPTIONIST']
+User = get_user_model()
 
 
 def _check_role(user):
@@ -200,7 +204,7 @@ def room_dashboard(request):
 @login_required
 def patient_available_rooms(request):
     """Patient view to see and request available rooms"""
-    if not request.user.is_patient:
+    if request.user.role != 'PATIENT':
         messages.error(request, 'Access denied. Patients only.')
         return redirect('users:dashboard')
 
@@ -220,13 +224,13 @@ def patient_available_rooms(request):
     for room in rooms:
         available_beds = [bed for bed in room.beds.all() if bed.status == 'AVAILABLE']
         if available_beds:
-            room.available_beds = available_beds
+            room.available_bed_list = available_beds
             room.available_beds_count = len(available_beds)
             room.get_estimated_cost = 5000  # Standard cost per day (can vary by type)
             available_rooms.append(room)
     
     # Get patient's current bookings
-    patient = request.user.patientprofile
+    patient = request.user.patient_profile
     patient_bookings = RoomAssignment.objects.filter(patient=patient).select_related('bed__room')
     
     context = {
@@ -239,40 +243,50 @@ def patient_available_rooms(request):
 @login_required
 def patient_book_room(request):
     """Patient books a room"""
-    if not request.user.is_patient:
+    if request.user.role != 'PATIENT':
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
     
     if request.method == 'POST':
         room_id = request.POST.get('room_id')
-        room = get_object_or_404(Room, id=room_id)
-        
-        # Get first available bed
-        bed = room.beds.filter(status='AVAILABLE').first()
-        if not bed:
-            messages.error(request, 'No available beds in selected room.')
+        room = get_object_or_404(Room, id=room_id, is_active=True)
+        patient = request.user.patient_profile
+
+        has_active = RoomAssignment.objects.filter(patient=patient, status='ADMITTED').exists()
+        if has_active:
+            messages.error(request, 'You already have an active room assignment.')
             return redirect('rooms:patient_available_rooms')
-        
-        # Create a notification instead of immediate assignment
-        # (receptionist will process the booking)
-        try:
-            doctor = Doctor.objects.first()  # Default doctor, will be assigned by receptionist
-            assignment = RoomAssignment.objects.create(
-                patient=request.user.patientprofile,
-                bed=bed,
-                doctor=doctor,
-                admitted_by=request.user,
-            )
-            
-            messages.success(request, 'Room booking request submitted! Receptionist will confirm shortly.')
+
+        has_pending = AdmissionRequest.objects.filter(patient=patient, status='PENDING').exists()
+        if has_pending:
+            messages.error(request, 'You already have a pending room request.')
+            return redirect('rooms:patient_available_rooms')
+
+        reason = request.POST.get('reason', '').strip() or 'Patient requested room booking'
+        AdmissionRequest.objects.create(
+            patient=patient,
+            requested_by=request.user,
+            preferred_room=room,
+            preferred_room_type=room.room_type,
+            reason=reason,
+            status='PENDING',
+        )
+
+        for recipient in User.objects.filter(role__in=['RECEPTIONIST', 'ADMIN'], is_active=True):
             create_notification(
-                recipient=request.user,
-                title='Room Booking Confirmed',
-                message=f'Your room booking for Room {room.room_number} has been submitted.',
+                recipient=recipient,
+                title='New Room Request',
+                message=f'{patient.full_name} requested room booking preference: Room {room.room_number}.',
                 notification_type='ROOM',
             )
-        except Exception as e:
-            messages.error(request, f'Error booking room: {str(e)}')
+
+        messages.success(request, 'Room request submitted successfully. Receptionist will confirm your assignment.')
+        create_notification(
+            recipient=request.user,
+            title='Room Request Submitted',
+            message=f'Your request for Room {room.room_number} has been submitted for review.',
+            notification_type='ROOM',
+        )
         
         return redirect('rooms:patient_available_rooms')
     
@@ -287,11 +301,11 @@ def patient_book_room(request):
 @login_required
 def doctor_patient_transfers(request):
     """Doctor view to see their patients and transfer them"""
-    if not request.user.is_doctor:
+    if request.user.role != 'DOCTOR':
         messages.error(request, 'Access denied. Doctors only.')
         return redirect('users:dashboard')
     
-    doctor = request.user.doctor
+    doctor = request.user.doctor_profile
     
     # Get doctor's current patients
     doctor_patients = RoomAssignment.objects.filter(
@@ -319,7 +333,7 @@ def doctor_patient_transfers(request):
 @login_required
 def doctor_transfer_patient(request):
     """Doctor transfers patient to different room"""
-    if not request.user.is_doctor:
+    if request.user.role != 'DOCTOR':
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
     
@@ -362,6 +376,65 @@ def doctor_transfer_patient(request):
     return redirect('rooms:doctor_patient_transfers')
 
 
+@login_required
+def doctor_admission_requests(request):
+    """Doctor submits admission requests for receptionist processing."""
+    if request.user.role != 'DOCTOR':
+        messages.error(request, 'Access denied. Doctors only.')
+        return redirect('users:dashboard')
+
+    doctor = request.user.doctor_profile
+    form = DoctorAdmissionRequestForm(request.POST or None, doctor=doctor)
+
+    if request.method == 'POST' and form.is_valid():
+        patient = form.cleaned_data['patient']
+
+        has_active = RoomAssignment.objects.filter(
+            patient=patient,
+            status='ADMITTED'
+        ).exists()
+        if has_active:
+            messages.error(request, 'This patient already has an active room assignment.')
+            return redirect('rooms:doctor_admission_requests')
+
+        request_exists = AdmissionRequest.objects.filter(
+            patient=patient,
+            doctor=doctor,
+            status='PENDING'
+        ).exists()
+        if request_exists:
+            messages.error(request, 'A pending admission request already exists for this patient.')
+            return redirect('rooms:doctor_admission_requests')
+
+        admission_request = form.save(commit=False)
+        admission_request.doctor = doctor
+        admission_request.requested_by = request.user
+        admission_request.save()
+
+        for recipient in User.objects.filter(role__in=['RECEPTIONIST', 'ADMIN'], is_active=True):
+            create_notification(
+                recipient=recipient,
+                title='New Admission Request',
+                message=(
+                    f"Dr. {doctor.user.username} requested admission for "
+                    f"{patient.full_name}."
+                ),
+                notification_type='ROOM',
+            )
+
+        messages.success(request, 'Admission request submitted. Receptionist will assign room and bed.')
+        return redirect('rooms:doctor_admission_requests')
+
+    my_requests = AdmissionRequest.objects.filter(
+        doctor=doctor
+    ).select_related('patient__user', 'processed_by').order_by('-created_at')
+
+    return render(request, 'rooms/doctor_admission_requests.html', {
+        'form': form,
+        'my_requests': my_requests,
+    })
+
+
 # ===============================================
 # RECEPTIONIST VIEWS - Room Assignment & Occupancy
 # ===============================================
@@ -369,12 +442,19 @@ def doctor_transfer_patient(request):
 @login_required
 def receptionist_assign_room(request):
     """Receptionist assigns room to patient"""
-    if not request.user.is_receptionist:
+    if request.user.role != 'RECEPTIONIST':
         messages.error(request, 'Access denied. Receptionists only.')
         return redirect('users:dashboard')
     
     doctors = Doctor.objects.all().select_related('user')
     available_rooms = Room.objects.filter(is_active=True).prefetch_related('beds')
+    for room in available_rooms:
+        room.available_beds_count = room.beds.filter(status='AVAILABLE').count()
+
+    pending_requests = AdmissionRequest.objects.filter(
+        status='PENDING'
+    ).select_related('patient__user', 'doctor__user', 'preferred_room').order_by('created_at')
+
     today_admissions = RoomAssignment.objects.filter(
         admitted_at__date=timezone.now().date()
     ).select_related('patient__user', 'doctor__user', 'bed__room')
@@ -393,16 +473,14 @@ def receptionist_assign_room(request):
     
     # Room type statistics
     stats = {
-        'general_available': Room.objects.filter(room_type='GENERAL', is_active=True).aggregate(
-            total=Count('beds', filter=Q(beds__status='AVAILABLE')) * 1
-        )['total'] or 0,
-        'semi_private_available': 5,
-        'private_available': 4,
-        'icu_available': 3,
-        'general_total': 10,
-        'semi_private_total': 5,
-        'private_total': 4,
-        'icu_total': 3,
+        'general_available': RoomBed.objects.filter(room__room_type='GENERAL', room__is_active=True, status='AVAILABLE').count(),
+        'semi_private_available': RoomBed.objects.filter(room__room_type='SEMI_PRIVATE', room__is_active=True, status='AVAILABLE').count(),
+        'private_available': RoomBed.objects.filter(room__room_type='PRIVATE', room__is_active=True, status='AVAILABLE').count(),
+        'icu_available': RoomBed.objects.filter(room__room_type='ICU', room__is_active=True, status='AVAILABLE').count(),
+        'general_total': RoomBed.objects.filter(room__room_type='GENERAL', room__is_active=True).count(),
+        'semi_private_total': RoomBed.objects.filter(room__room_type='SEMI_PRIVATE', room__is_active=True).count(),
+        'private_total': RoomBed.objects.filter(room__room_type='PRIVATE', room__is_active=True).count(),
+        'icu_total': RoomBed.objects.filter(room__room_type='ICU', room__is_active=True).count(),
     }
     
     if request.method == 'POST':
@@ -411,23 +489,37 @@ def receptionist_assign_room(request):
         bed_id = request.POST.get('bed_id')
         doctor_id = request.POST.get('doctor_id')
         admission_notes = request.POST.get('admission_notes', '')
+        request_id = request.POST.get('request_id')
         
         try:
-            patient = PatientProfile.objects.get(id=patient_id)
-            bed = RoomBed.objects.get(id=bed_id)
-            doctor = Doctor.objects.get(id=doctor_id)
-            
-            # Create assignment
-            assignment = RoomAssignment.objects.create(
-                patient=patient,
-                bed=bed,
-                doctor=doctor,
-                admitted_by=request.user,
-            )
-            
-            # Mark bed as occupied
-            bed.status = 'OCCUPIED'
-            bed.save()
+            if not all([patient_id, room_id, bed_id, doctor_id]):
+                raise ValueError('Please select patient, room, bed, and doctor.')
+
+            with transaction.atomic():
+                patient = PatientProfile.objects.select_for_update().get(id=patient_id)
+                doctor = Doctor.objects.get(id=doctor_id)
+                bed = RoomBed.objects.select_for_update().select_related('room').get(id=bed_id, room_id=room_id)
+
+                if bed.status != 'AVAILABLE':
+                    raise ValueError('Selected bed is no longer available. Please choose another bed.')
+
+                has_active = RoomAssignment.objects.select_for_update().filter(
+                    patient=patient,
+                    status='ADMITTED'
+                ).exists()
+                if has_active:
+                    raise ValueError('This patient already has an active room assignment.')
+
+                assignment = RoomAssignment.objects.create(
+                    patient=patient,
+                    bed=bed,
+                    doctor=doctor,
+                    admitted_by=request.user,
+                    reason=admission_notes,
+                )
+
+                bed.status = 'OCCUPIED'
+                bed.save(update_fields=['status'])
             
             # Notify patient
             create_notification(
@@ -436,6 +528,52 @@ def receptionist_assign_room(request):
                 message=f'You have been admitted to Room {bed.room.room_number}, {bed.bed_number}.',
                 notification_type='ROOM',
             )
+
+            if request_id:
+                admission_request = AdmissionRequest.objects.filter(
+                    id=request_id,
+                    status='PENDING'
+                ).first()
+                if admission_request:
+                    if admission_request.patient_id != patient.id:
+                        raise ValueError('Request patient does not match selected patient.')
+
+                    admission_request.status = 'APPROVED'
+                    admission_request.processed_by = request.user
+                    admission_request.processed_at = timezone.now()
+                    admission_request.receptionist_notes = admission_notes
+                    admission_request.save(update_fields=[
+                        'status', 'processed_by', 'processed_at', 'receptionist_notes'
+                    ])
+
+                    approval_message = (
+                        f"Admission request for {admission_request.patient.full_name} "
+                        f"was approved and assigned to Room {bed.room.room_number}, Bed {bed.bed_number}."
+                    )
+                    recipients = {patient.user_id}
+                    create_notification(
+                        recipient=patient.user,
+                        title='Admission Request Approved',
+                        message=approval_message,
+                        notification_type='ROOM',
+                    )
+
+                    if admission_request.doctor_id and admission_request.doctor.user_id not in recipients:
+                        recipients.add(admission_request.doctor.user_id)
+                        create_notification(
+                            recipient=admission_request.doctor.user,
+                            title='Admission Request Approved',
+                            message=approval_message,
+                            notification_type='ROOM',
+                        )
+
+                    if admission_request.requested_by_id and admission_request.requested_by_id not in recipients:
+                        create_notification(
+                            recipient=admission_request.requested_by,
+                            title='Admission Request Approved',
+                            message=approval_message,
+                            notification_type='ROOM',
+                        )
             
             messages.success(request, f'Patient admitted to Room {bed.room.room_number}.')
             return redirect('rooms:receptionist_assign_room')
@@ -448,15 +586,67 @@ def receptionist_assign_room(request):
         'available_rooms': available_rooms,
         'room_beds_json': json.dumps(room_beds),
         'today_admissions': today_admissions,
+        'pending_requests': pending_requests,
         'stats': stats,
     }
     return render(request, 'rooms/receptionist_assign_room.html', context)
 
 
 @login_required
+@require_POST
+def receptionist_reject_admission_request(request, pk):
+    """Receptionist rejects a pending doctor admission request."""
+    if request.user.role != 'RECEPTIONIST':
+        messages.error(request, 'Access denied. Receptionists only.')
+        return redirect('users:dashboard')
+
+    admission_request = get_object_or_404(AdmissionRequest, pk=pk, status='PENDING')
+    notes = request.POST.get('notes', '').strip()
+
+    admission_request.status = 'REJECTED'
+    admission_request.processed_by = request.user
+    admission_request.processed_at = timezone.now()
+    admission_request.receptionist_notes = notes
+    admission_request.save(update_fields=['status', 'processed_by', 'processed_at', 'receptionist_notes'])
+
+    rejection_message = (
+        f"Admission request for {admission_request.patient.full_name} was rejected. "
+        f"{notes if notes else ''}"
+    ).strip()
+
+    recipients = {admission_request.patient.user_id}
+    create_notification(
+        recipient=admission_request.patient.user,
+        title='Admission Request Rejected',
+        message=rejection_message,
+        notification_type='ROOM',
+    )
+
+    if admission_request.doctor_id and admission_request.doctor.user_id not in recipients:
+        recipients.add(admission_request.doctor.user_id)
+        create_notification(
+            recipient=admission_request.doctor.user,
+            title='Admission Request Rejected',
+            message=rejection_message,
+            notification_type='ROOM',
+        )
+
+    if admission_request.requested_by_id and admission_request.requested_by_id not in recipients:
+        create_notification(
+            recipient=admission_request.requested_by,
+            title='Admission Request Rejected',
+            message=rejection_message,
+            notification_type='ROOM',
+        )
+
+    messages.success(request, 'Admission request rejected successfully.')
+    return redirect('rooms:receptionist_assign_room')
+
+
+@login_required
 def receptionist_occupancy(request):
     """Receptionist views room occupancy report"""
-    if not request.user.is_receptionist:
+    if request.user.role != 'RECEPTIONIST':
         messages.error(request, 'Access denied. Receptionists only.')
         return redirect('users:dashboard')
     
@@ -546,7 +736,7 @@ def receptionist_occupancy(request):
 @login_required
 def room_statistics(request):
     """Admin view for room statistics and analytics"""
-    if not (request.user.is_admin or request.user.role == 'ADMIN'):
+    if request.user.role != 'ADMIN':
         messages.error(request, 'Access denied. Admins only.')
         return redirect('users:dashboard')
     

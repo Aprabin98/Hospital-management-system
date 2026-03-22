@@ -2,13 +2,22 @@
 {% block title %}Release Report{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-5">
-<div class="card shadow border-success">
-    <div class="card-header bg-success text-white"><h5>🔓 Release Report to Patient</h5></div>
+<div class="card shadow {% if verify_mode %}border-primary{% else %}border-success{% endif %}">
+    <div class="card-header {% if verify_mode %}bg-primary{% else %}bg-success{% endif %} text-white">
+        <h5>{% if verify_mode %}🧪 Verify Report{% else %}🔓 Release Report to Patient{% endif %}</h5>
+    </div>
     <div class="card-body text-center">
+        {% if verify_mode %}
+        <p>Verify <strong>{{ result.booking.template.name }}</strong> report for <strong>{{ result.booking.patient.full_name }}</strong>?</p>
+        <p class="text-muted small">Verification is required before patient release.</p>
+        {% else %}
         <p>Release <strong>{{ result.booking.template.name }}</strong> report to <strong>{{ result.booking.patient.full_name }}</strong>?</p>
         <p class="text-muted small">Patient will be able to download the report after this.</p>
+        {% endif %}
         <form method="POST">{% csrf_token %}
-            <button type="submit" class="btn btn-success">Yes, Release Report</button>
+            <button type="submit" class="btn {% if verify_mode %}btn-primary{% else %}btn-success{% endif %}">
+                {% if verify_mode %}Yes, Verify Report{% else %}Yes, Release Report{% endif %}
+            </button>
             <a href="{% url 'lab:admin_bookings' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
         </form>
     </div>

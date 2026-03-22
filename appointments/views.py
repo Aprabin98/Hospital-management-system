@@ -229,7 +229,12 @@ def appointment_list(request):
 @login_required
 def appointment_detail(request, pk):
     """View appointment details."""
-    appointment = get_object_or_404(Appointment, pk=pk)
+    appointment = get_object_or_404(
+        Appointment.objects.select_related(
+            'patient', 'doctor__user', 'doctor__specialization'
+        ).prefetch_related('prescription__items'),
+        pk=pk,
+    )
 
     # Security - only relevant users can view
     if request.user.role == 'PATIENT':
@@ -242,8 +247,21 @@ def appointment_detail(request, pk):
             messages.error(request, 'Access denied.')
             return redirect('appointments:appointment_list')
 
+    prescription = None
+    try:
+        prescription = appointment.prescription
+    except Exception:
+        prescription = None
+
+    same_day_appointments = Appointment.objects.filter(
+        patient=appointment.patient,
+        date=appointment.date,
+    ).exclude(pk=appointment.pk).select_related('doctor__user').order_by('start_time')
+
     return render(request, 'appointments/appointment_detail.html', {
-        'appointment': appointment
+        'appointment': appointment,
+        'prescription': prescription,
+        'same_day_appointments': same_day_appointments,
     })
 
 

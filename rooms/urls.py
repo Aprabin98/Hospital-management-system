@@ -25,9 +25,11 @@ urlpatterns = [
     # Doctor Routes
     path('doctor/patients/', views.doctor_patient_transfers, name='doctor_patient_transfers'),
     path('doctor/transfer/', views.doctor_transfer_patient, name='doctor_transfer_patient'),
+    path('doctor/admission-requests/', views.doctor_admission_requests, name='doctor_admission_requests'),
     
     # Receptionist Routes
     path('receptionist/assign/', views.receptionist_assign_room, name='receptionist_assign_room'),
+    path('receptionist/requests/<int:pk>/reject/', views.receptionist_reject_admission_request, name='receptionist_reject_admission_request'),
     path('receptionist/occupancy/', views.receptionist_occupancy, name='receptionist_occupancy'),
     
     # Admin Routes

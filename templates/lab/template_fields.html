@@ -11,7 +11,7 @@
             <div class="card-body">
                 <table class="table table-hover">
                     <thead class="table-primary">
-                        <tr><th>Order</th><th>Field Name</th><th>Unit</th><th>Normal Range</th><th>Required</th><th>Action</th></tr>
+                        <tr><th>Order</th><th>Field Name</th><th>Unit</th><th>Normal Range</th><th>Critical Range</th><th>Required</th><th>Action</th></tr>
                     </thead>
                     <tbody>
                         {% for field in fields %}
@@ -26,6 +26,11 @@
                                     {{ field.normal_text }}
                                 {% else %}—{% endif %}
                             </td>
+                            <td>
+                                {% if field.critical_min and field.critical_max %}
+                                    {{ field.critical_min }} - {{ field.critical_max }}
+                                {% else %}—{% endif %}
+                            </td>
                             <td>{% if field.is_required %}<span class="badge bg-danger">Required</span>{% else %}<span class="badge bg-secondary">Optional</span>{% endif %}</td>
                             <td>
                                 <form method="POST" action="{% url 'lab:field_delete' field.pk %}" style="display:inline;">
@@ -36,7 +41,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="text-center text-muted">No fields yet. Add fields on the right.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted">No fields yet. Add fields on the right.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

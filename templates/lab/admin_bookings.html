@@ -20,6 +20,7 @@
                         {% elif booking.status == 'SAMPLE_COLLECTED' %}<span class="badge bg-info">Sample Collected</span>
                         {% elif booking.status == 'PROCESSING' %}<span class="badge bg-primary">Processing</span>
                         {% elif booking.status == 'COMPLETED' %}<span class="badge bg-success">Completed</span>
+                        {% elif booking.status == 'REJECTED_SAMPLE' %}<span class="badge bg-danger">Rejected Sample</span>
                         {% elif booking.status == 'CANCELLED' %}<span class="badge bg-danger">Cancelled</span>
                         {% endif %}
                     </td>
@@ -29,8 +30,17 @@
                             {% if booking.result.is_released %}
                                 <span class="badge bg-success">Released ✅</span>
                             {% else %}
-                                <a href="{% url 'lab:release_result' booking.result.pk %}"
-                                   class="btn btn-sm btn-success">🔓 Release</a>
+                                {% if booking.result.is_verified %}
+                                    {% if booking.payment_status == 'PAID' %}
+                                    <a href="{% url 'lab:release_result' booking.result.pk %}"
+                                       class="btn btn-sm btn-success">🔓 Release</a>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">Awaiting Payment</span>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'lab:verify_result' booking.result.pk %}"
+                                       class="btn btn-sm btn-primary">🧪 Verify</a>
+                                {% endif %}
                             {% endif %}
                         {% else %}
                             <span class="text-muted small">No result yet</span>

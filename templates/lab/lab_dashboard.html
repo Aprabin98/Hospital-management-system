@@ -13,6 +13,11 @@
             <h3>{{ pending_bookings.count }}</h3><p>Total Pending</p>
         </div>
     </div>
+    <div class="col-md-4">
+        <div class="card bg-danger text-white text-center p-3">
+            <h3>{{ overdue_bookings.count }}</h3><p>Overdue Reports</p>
+        </div>
+    </div>
 </div>
 
 <div class="card shadow">
@@ -42,7 +47,10 @@
                                     class="form-select form-select-sm d-inline w-auto mt-1">
                                 <option value="SAMPLE_COLLECTED">Sample Collected</option>
                                 <option value="PROCESSING">Processing</option>
+                                <option value="REJECTED_SAMPLE">Rejected Sample</option>
                             </select>
+                            <input type="text" name="rejected_reason" class="form-control form-control-sm d-inline w-auto mt-1"
+                                   placeholder="Rejection reason (if rejected)">
                             <button type="submit"
                                     class="btn btn-sm btn-outline-primary mt-1">
                                 Update

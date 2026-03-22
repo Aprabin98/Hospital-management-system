@@ -16,6 +16,7 @@ urlpatterns = [
 
     # Admin - Bookings
     path('admin/bookings/', views.admin_bookings, name='admin_bookings'),
+    path('results/<int:pk>/verify/', views.verify_result, name='verify_result'),
     path('results/<int:pk>/release/', views.release_result, name='release_result'),
 
     # Patient

@@ -125,6 +125,23 @@ def dashboard_view(request):
     else:
         logout(request)
         return redirect('users:login')
+
+
+@login_required
+def profile_view(request):
+    """Redirect users to the appropriate profile page by role."""
+    role = request.user.role
+    if role == 'PATIENT':
+        return redirect('users:edit_profile')
+    if role == 'DOCTOR':
+        return redirect('clinical:doctor_edit_own_profile')
+    if role == 'RECEPTIONIST':
+        return redirect('users:receptionist_dashboard')
+    if role == 'ADMIN':
+        return redirect('users:admin_dashboard')
+    if role == 'LAB_TECHNICIAN':
+        return redirect('users:lab_technician_dashboard')
+    return redirect('users:dashboard')
     
 
 # ─── PATIENT DASHBOARD ───────────────────────────────────────────────────────
@@ -152,11 +169,13 @@ def patient_dashboard(request):
     ).select_related('doctor__user').order_by('-date')
 
     from payments.models import Payment
+    from prescriptions.models import Prescription
 
     unpaid_count = Payment.objects.filter(
         patient=profile,
         status='UNPAID'
     ).count()
+    prescription_count = Prescription.objects.filter(patient=profile).count()
 
     context = {
         'profile': profile,
@@ -168,6 +187,7 @@ def patient_dashboard(request):
         ).count(),
         'recent_appointments': all_appointments[:5],
         'unpaid_count': unpaid_count,
+        'prescription_count': prescription_count,
     }
     
     return render(request, 'users/patient_dashboard.html', context)

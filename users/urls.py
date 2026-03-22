@@ -21,6 +21,7 @@ urlpatterns = [
     path('lab-dashboard/', views.lab_technician_dashboard, name='lab_technician_dashboard'),
 
     # Profile
+    path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
 
     # Password Reset

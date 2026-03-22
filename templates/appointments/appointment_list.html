@@ -54,7 +54,7 @@
                             <a href="{% url 'prescriptions:prescription_detail' appointment.prescription.pk %}" class="btn btn-sm btn-primary">💊 View Rx</a>
                             {% endif %}
                         {% endif %}
-                        {% if appointment.status in 'CONFIRMED,PENDING' %}
+                        {% if appointment.status == 'CONFIRMED' or appointment.status == 'PENDING' %}
                         {% if request.user.role == 'DOCTOR' or request.user.role == 'ADMIN' or request.user.role == 'RECEPTIONIST' %}
                         <a href="{% url 'appointments:complete_appointment' appointment.pk %}" class="btn btn-sm btn-outline-success">Complete</a>
                         {% endif %}

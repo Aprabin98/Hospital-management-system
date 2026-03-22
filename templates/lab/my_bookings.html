@@ -22,6 +22,7 @@
                         {% elif booking.status == 'SAMPLE_COLLECTED' %}<span class="badge bg-info">Sample Collected</span>
                         {% elif booking.status == 'PROCESSING' %}<span class="badge bg-primary">Processing</span>
                         {% elif booking.status == 'COMPLETED' %}<span class="badge bg-success">Completed</span>
+                        {% elif booking.status == 'REJECTED_SAMPLE' %}<span class="badge bg-danger">Rejected Sample</span>
                         {% elif booking.status == 'CANCELLED' %}<span class="badge bg-danger">Cancelled</span>
                         {% endif %}
                     </td>

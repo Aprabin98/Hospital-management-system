@@ -32,3 +32,15 @@ def auto_create_lab_payment(sender, instance, created, **kwargs):
                 'status': 'UNPAID',
             }
         )
+
+
+@receiver(post_save, sender=Payment)
+def sync_lab_booking_payment_status(sender, instance, **kwargs):
+    if not instance.lab_booking_id:
+        return
+
+    next_status = 'PAID' if instance.status == 'PAID' else 'UNPAID'
+    booking = instance.lab_booking
+    if booking.payment_status != next_status:
+        booking.payment_status = next_status
+        booking.save(update_fields=['payment_status'])

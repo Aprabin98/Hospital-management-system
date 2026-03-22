@@ -21,7 +21,7 @@
     <!-- Role-Based Quick Actions -->
     <div class="row g-3 mb-5">
         <!-- PATIENT Actions -->
-        {% if user.is_patient %}
+        {% if user.role == 'PATIENT' %}
         <div class="col-md-6">
             <div class="card h-100 border-primary shadow-sm">
                 <div class="card-header bg-primary text-white">
@@ -40,7 +40,7 @@
         {% endif %}
 
         <!-- DOCTOR Actions -->
-        {% if user.is_doctor %}
+        {% if user.role == 'DOCTOR' %}
         <div class="col-md-6">
             <div class="card h-100 border-success shadow-sm">
                 <div class="card-header bg-success text-white">
@@ -56,10 +56,25 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-6">
+            <div class="card h-100 border-success shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-hospital-user"></i> Admission Requests
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Request patient admission for receptionist confirmation</p>
+                </div>
+                <div class="card-footer bg-light">
+                    <a href="{% url 'rooms:doctor_admission_requests' %}" class="btn btn-success btn-sm w-100">
+                        <i class="fas fa-paper-plane"></i> Submit Request
+                    </a>
+                </div>
+            </div>
+        </div>
         {% endif %}
 
         <!-- RECEPTIONIST Actions -->
-        {% if user.is_receptionist %}
+        {% if user.role == 'RECEPTIONIST' %}
         <div class="col-md-6">
             <div class="card h-100 border-info shadow-sm">
                 <div class="card-header bg-info text-white">
@@ -94,7 +109,7 @@
         {% endif %}
 
         <!-- ADMIN Actions -->
-        {% if user.is_admin or user.role == 'ADMIN' %}
+        {% if user.role == 'ADMIN' %}
         <div class="col-md-6">
             <div class="card h-100 border-danger shadow-sm">
                 <div class="card-header bg-danger text-white">

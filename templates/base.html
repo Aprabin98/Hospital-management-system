@@ -21,23 +21,26 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="navbar-nav ms-auto">
                 <!-- Room Management Dropdown -->
-                {% if user.is_patient or user.is_doctor or user.is_receptionist or user.is_admin %}
+                {% if user.role == 'PATIENT' or user.role == 'DOCTOR' or user.role == 'RECEPTIONIST' or user.role == 'ADMIN' %}
                 <div class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="roomsDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-door-open"></i> Rooms
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="roomsDropdown">
-                        {% if user.is_patient %}
+                        {% if user.role == 'PATIENT' %}
                         <li><a class="dropdown-item" href="{% url 'rooms:patient_available_rooms' %}">
                             <i class="fas fa-search"></i> Available Rooms
                         </a></li>
                         {% endif %}
-                        {% if user.is_doctor %}
+                        {% if user.role == 'DOCTOR' %}
                         <li><a class="dropdown-item" href="{% url 'rooms:doctor_patient_transfers' %}">
                             <i class="fas fa-exchange-alt"></i> Transfer Patient
                         </a></li>
+                        <li><a class="dropdown-item" href="{% url 'rooms:doctor_admission_requests' %}">
+                            <i class="fas fa-hospital-user"></i> Admission Requests
+                        </a></li>
                         {% endif %}
-                        {% if user.is_receptionist %}
+                        {% if user.role == 'RECEPTIONIST' %}
                         <li><a class="dropdown-item" href="{% url 'rooms:receptionist_assign_room' %}">
                             <i class="fas fa-user-plus"></i> Assign Room
                         </a></li>
@@ -45,7 +48,7 @@
                             <i class="fas fa-chart-bar"></i> Occupancy Report
                         </a></li>
                         {% endif %}
-                        {% if user.is_admin or user.role == 'ADMIN' %}
+                        {% if user.role == 'ADMIN' %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'rooms:room_list' %}">
                             <i class="fas fa-list"></i> All Rooms
@@ -62,19 +65,19 @@
                 {% endif %}
 
                 <!-- Reviews Dropdown -->
-                {% if user.is_patient or user.is_doctor %}
+                {% if user.role == 'PATIENT' or user.role == 'DOCTOR' %}
                 <div class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="reviewsDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-star"></i> Reviews
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="reviewsDropdown">
-                        {% if user.is_patient %}
+                        {% if user.role == 'PATIENT' %}
                         <li><a class="dropdown-item" href="{% url 'reviews:my_reviews' %}">
                             <i class="fas fa-heart"></i> My Reviews
                         </a></li>
                         {% endif %}
-                        {% if user.is_doctor %}
-                        <li><a class="dropdown-item" href="{% url 'reviews:doctor_reviews' user.doctor.id %}">
+                        {% if user.role == 'DOCTOR' and user.doctor_profile %}
+                        <li><a class="dropdown-item" href="{% url 'reviews:doctor_reviews' user.doctor_profile.id %}">
                             <i class="fas fa-comments"></i> My Ratings
                         </a></li>
                         {% endif %}
