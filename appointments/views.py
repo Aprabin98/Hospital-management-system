@@ -258,6 +258,18 @@ def appointment_detail(request, pk):
     except Exception:
         prescription = None
 
+    review = None
+    try:
+        review = appointment.review
+    except Exception:
+        review = None
+
+    can_review = (
+        request.user.role == 'PATIENT'
+        and appointment.patient == request.user.patient_profile
+        and appointment.status == 'COMPLETED'
+    )
+
     same_day_appointments = Appointment.objects.filter(
         patient=appointment.patient,
         date=appointment.date,
@@ -266,6 +278,8 @@ def appointment_detail(request, pk):
     return render(request, 'appointments/appointment_detail.html', {
         'appointment': appointment,
         'prescription': prescription,
+        'review': review,
+        'can_review': can_review,
         'same_day_appointments': same_day_appointments,
     })
 

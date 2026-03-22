@@ -1,10 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.test.utils import override_settings
 from django.urls import reverse
 
 from audit.models import AuditLog
 
 
+@override_settings(TWO_FACTOR_REQUIRED_ROLES=[])
 class AuditTrailTests(TestCase):
     def setUp(self):
         self.user_model = get_user_model()

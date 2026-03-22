@@ -1,7 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}Doctor Reviews{% endblock %}
 {% block content %}
-<h3>Doctor Reviews</h3>
+<h3>Doctor Reviews - Dr. {{ doctor.user.username }}</h3>
+<div class="mb-3">
+  <span class="badge bg-primary">Average: {{ avg_rating }}/5</span>
+  <span class="badge bg-secondary">Total Reviews: {{ total_reviews }}</span>
+</div>
 <table class="table table-bordered">
   <thead><tr><th>Patient</th><th>Rating</th><th>Comment</th><th>Date</th></tr></thead>
   <tbody>

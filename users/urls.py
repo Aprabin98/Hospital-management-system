@@ -7,6 +7,8 @@ urlpatterns = [
     # Auth
     path('register/', views.register_view, name='register'),
     path('login/', views.login_view, name='login'),
+    path('2fa/verify/', views.two_factor_verify, name='two_factor_verify'),
+    path('2fa/resend/', views.two_factor_resend, name='two_factor_resend'),
     path('logout/', views.logout_view, name='logout'),
 
     # Email Activation

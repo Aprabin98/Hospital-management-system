@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, PatientProfile, LoginAttempt
+from .models import TwoFactorCode
 
 
 @admin.register(User)
@@ -35,3 +36,10 @@ class PatientProfileAdmin(admin.ModelAdmin):
 class LoginAttemptAdmin(admin.ModelAdmin):
     list_display = ['identifier', 'failed_count', 'last_ip', 'last_attempt', 'locked_until']
     search_fields = ['identifier', 'last_ip']
+
+
+@admin.register(TwoFactorCode)
+class TwoFactorCodeAdmin(admin.ModelAdmin):
+    list_display = ['user', 'code', 'expires_at', 'attempts', 'is_used', 'created_at']
+    list_filter = ['is_used', 'created_at']
+    search_fields = ['user__email']

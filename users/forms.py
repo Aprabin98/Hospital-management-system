@@ -55,6 +55,20 @@ class LoginForm(forms.Form):
     )
 
 
+class TwoFactorVerifyForm(forms.Form):
+    code = forms.CharField(
+        min_length=6,
+        max_length=6,
+        widget=forms.TextInput(attrs={'placeholder': '6-digit code'}),
+    )
+
+    def clean_code(self):
+        code = (self.cleaned_data.get('code') or '').strip()
+        if not code.isdigit():
+            raise forms.ValidationError('Enter a valid 6-digit numeric code.')
+        return code
+
+
 class PatientProfileForm(forms.ModelForm):
     class Meta:
         model = PatientProfile

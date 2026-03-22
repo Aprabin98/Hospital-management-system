@@ -2,17 +2,73 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.conf import settings
+from django.core.mail import send_mail
 from django.views.decorators.http import require_POST
+from django.utils import timezone
+from datetime import timedelta
+import secrets
 
 from .forms import (
     PatientRegistrationForm, LoginForm,
-    PatientProfileForm, PasswordResetRequestForm, SetNewPasswordForm
+    PatientProfileForm, PasswordResetRequestForm, SetNewPasswordForm,
+    TwoFactorVerifyForm
 )
 from .utils import send_activation_email, send_password_reset_email
-from .models import PatientProfile
+from .models import PatientProfile, TwoFactorCode
 from .security import clear_attempts, is_identifier_locked, register_failed_attempt
+from .tasks import send_email_task
 
 User = get_user_model()
+
+
+def _two_factor_required(user):
+    bypass_emails = set(getattr(settings, 'TWO_FACTOR_BYPASS_EMAILS', set()))
+    if (user.email or '').strip().lower() in bypass_emails:
+        return False
+
+    required_roles = set(getattr(settings, 'TWO_FACTOR_REQUIRED_ROLES', []))
+    return user.role in required_roles
+
+
+def _issue_two_factor_code(user, request):
+    TwoFactorCode.objects.filter(user=user, is_used=False).update(is_used=True)
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    expiry_minutes = getattr(settings, 'TWO_FACTOR_OTP_EXPIRY_MINUTES', 10)
+    challenge = TwoFactorCode.objects.create(
+        user=user,
+        code=code,
+        expires_at=timezone.now() + timedelta(minutes=expiry_minutes),
+    )
+
+    subject = f"{settings.SITE_NAME} Login Verification Code"
+    message = (
+        f"Hi {user.username},\n\n"
+        f"Your login verification code is: {code}\n"
+        f"This code expires in {expiry_minutes} minutes.\n\n"
+        f"If you did not try to login, please reset your password immediately."
+    )
+
+    try:
+        send_email_task.delay(subject, message, user.email)
+    except Exception:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+
+    request.session['two_factor_user_id'] = user.id
+    request.session['two_factor_challenge_id'] = challenge.id
+    request.session.set_expiry(60 * expiry_minutes)
+
+
+def _clear_two_factor_session(request):
+    request.session.pop('two_factor_user_id', None)
+    request.session.pop('two_factor_challenge_id', None)
 
 
 # ─── REGISTRATION ────────────────────────────────────────────────────────────
@@ -81,6 +137,11 @@ def login_view(request):
             if user is not None:
                 if user.is_active:
                     clear_attempts(email)
+                    if _two_factor_required(user):
+                        _issue_two_factor_code(user, request)
+                        messages.info(request, 'Verification code sent to your email.')
+                        return redirect('users:two_factor_verify')
+
                     login(request, user)
                     messages.success(request, f'Welcome back, {user.username}!')
                     return redirect('users:dashboard')
@@ -105,6 +166,69 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('users:login')
+
+
+def two_factor_verify(request):
+    if request.user.is_authenticated:
+        return redirect('users:dashboard')
+
+    user_id = request.session.get('two_factor_user_id')
+    challenge_id = request.session.get('two_factor_challenge_id')
+    if not user_id or not challenge_id:
+        messages.error(request, '2FA session expired. Please login again.')
+        return redirect('users:login')
+
+    user = get_object_or_404(User, id=user_id)
+    challenge = get_object_or_404(TwoFactorCode, id=challenge_id, user=user, is_used=False)
+
+    if challenge.is_expired():
+        challenge.is_used = True
+        challenge.save(update_fields=['is_used'])
+        _clear_two_factor_session(request)
+        messages.error(request, 'Verification code expired. Please login again.')
+        return redirect('users:login')
+
+    form = TwoFactorVerifyForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        code = form.cleaned_data['code']
+        if code != challenge.code:
+            challenge.attempts += 1
+            max_attempts = getattr(settings, 'TWO_FACTOR_MAX_ATTEMPTS', 5)
+            if challenge.attempts >= max_attempts:
+                challenge.is_used = True
+                challenge.save(update_fields=['attempts', 'is_used'])
+                _clear_two_factor_session(request)
+                messages.error(request, 'Maximum verification attempts reached. Please login again.')
+                return redirect('users:login')
+
+            challenge.save(update_fields=['attempts'])
+            messages.error(request, 'Invalid verification code.')
+        else:
+            challenge.is_used = True
+            challenge.save(update_fields=['is_used'])
+            _clear_two_factor_session(request)
+            login(request, user)
+            messages.success(request, f'Welcome back, {user.username}!')
+            return redirect('users:dashboard')
+
+    context = {
+        'form': form,
+        'masked_email': user.email[:3] + '***' + user.email[user.email.find('@'):],
+    }
+    return render(request, 'users/two_factor_verify.html', context)
+
+
+@require_POST
+def two_factor_resend(request):
+    user_id = request.session.get('two_factor_user_id')
+    if not user_id:
+        messages.error(request, '2FA session expired. Please login again.')
+        return redirect('users:login')
+
+    user = get_object_or_404(User, id=user_id)
+    _issue_two_factor_code(user, request)
+    messages.success(request, 'A new verification code has been sent.')
+    return redirect('users:two_factor_verify')
 
 
 # ─── DASHBOARD (Role-based redirect) ─────────────────────────────────────────
@@ -202,6 +326,7 @@ def doctor_dashboard(request):
         return redirect('users:dashboard')
 
     from appointments.models import Appointment
+    from reviews.models import Review
     from datetime import date
 
     try:
@@ -225,6 +350,9 @@ def doctor_dashboard(request):
                 status='COMPLETED'
             ).count(),
             'todays_appointments': todays_appointments,
+            'doctor_profile': doctor,
+            'avg_rating': doctor.get_average_rating(),
+            'total_reviews': Review.objects.filter(doctor=doctor).count(),
         }
     except Exception:
         context = {

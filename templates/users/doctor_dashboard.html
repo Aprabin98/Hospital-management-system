@@ -22,6 +22,12 @@
     </div>
 </div>
 
+<div class="card shadow p-3 mb-4">
+    <h5>⭐ Ratings Summary</h5>
+    <p class="mb-1"><strong>Average Rating:</strong> {{ avg_rating }}/5</p>
+    <p class="mb-0"><strong>Total Reviews:</strong> {{ total_reviews }}</p>
+</div>
+
 <div class="row g-3">
     <div class="col-md-6">
         <div class="card shadow p-3">
@@ -31,6 +37,9 @@
                 <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary">📋 All Appointments</a>
                 <a href="{% url 'rooms:doctor_admission_requests' %}" class="btn btn-outline-primary">🏥 Admission Requests</a>
                 <a href="{% url 'prescriptions:doctor_prescriptions' %}" class="btn btn-outline-primary">💊 My Prescriptions</a>
+                {% if doctor_profile %}
+                <a href="{% url 'reviews:doctor_reviews' doctor_profile.id %}" class="btn btn-outline-primary">⭐ My Ratings</a>
+                {% endif %}
                 <a href="{% url 'clinical:doctor_leave' %}" class="btn btn-outline-secondary">🏖️ Manage Leaves</a>
                 <a href="{% url 'clinical:doctor_edit_own_profile' %}" class="btn btn-outline-secondary">✏️ Edit My Profile</a>
             </div>

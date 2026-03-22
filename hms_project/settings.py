@@ -45,6 +45,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'users.middleware.RequestRateLimitMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'audit.middleware.AuditRequestMiddleware',
@@ -193,6 +194,41 @@ CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:63
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+# Two-factor authentication settings
+TWO_FACTOR_REQUIRED_ROLES = [
+    'ADMIN',
+    'DOCTOR',
+    'RECEPTIONIST',
+    'LAB_TECHNICIAN',
+]
+TWO_FACTOR_BYPASS_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv('TWO_FACTOR_BYPASS_EMAILS', '').split(',')
+    if email.strip()
+}
+TWO_FACTOR_OTP_EXPIRY_MINUTES = int(os.getenv('TWO_FACTOR_OTP_EXPIRY_MINUTES', '10'))
+TWO_FACTOR_MAX_ATTEMPTS = int(os.getenv('TWO_FACTOR_MAX_ATTEMPTS', '5'))
+
+# Brute-force and endpoint abuse protection
+RATE_LIMIT_ENABLED = os.getenv('RATE_LIMIT_ENABLED', 'true').lower() == 'true'
+RATE_LIMIT_RULES = {
+    '/users/login/': {
+        'method': 'POST',
+        'limit': int(os.getenv('RATE_LIMIT_LOGIN_LIMIT', '10')),
+        'window_seconds': int(os.getenv('RATE_LIMIT_LOGIN_WINDOW_SECONDS', '300')),
+    },
+    '/users/2fa/resend/': {
+        'method': 'POST',
+        'limit': int(os.getenv('RATE_LIMIT_2FA_RESEND_LIMIT', '5')),
+        'window_seconds': int(os.getenv('RATE_LIMIT_2FA_RESEND_WINDOW_SECONDS', '600')),
+    },
+    '/users/password-reset/': {
+        'method': 'POST',
+        'limit': int(os.getenv('RATE_LIMIT_PASSWORD_RESET_LIMIT', '5')),
+        'window_seconds': int(os.getenv('RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS', '900')),
+    },
+}
 
 # ML/AI Configuration
 ML_MODELS_PATH = BASE_DIR / 'ml_engine' / 'models'

@@ -102,6 +102,14 @@
 
                 <!-- Action Buttons -->
                 <div class="d-flex gap-2 mt-3 flex-wrap">
+                    {% if can_review %}
+                        {% if review %}
+                            <a href="{% url 'reviews:my_reviews' %}" class="btn btn-outline-info">⭐ View My Review</a>
+                        {% else %}
+                            <a href="{% url 'reviews:create_review' appointment.pk %}" class="btn btn-info">⭐ Write Review</a>
+                        {% endif %}
+                    {% endif %}
+
                     {% if request.user.role == 'DOCTOR' and appointment.status == 'COMPLETED' %}
                         {% if prescription %}
                         <a href="{% url 'prescriptions:prescription_detail' prescription.pk %}" class="btn btn-primary">💊 View Prescription</a>
