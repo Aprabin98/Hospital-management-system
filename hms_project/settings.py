@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     'audit',
     'notifications',
     'reviews',
+    'drug_checker',
+    'no_show_predictor',
     'prescriptions',
     'payments',
     'lab',
@@ -75,15 +77,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'hms_project.wsgi.application'
 
-# Database - PostgreSQL (production-ready)
+# Database - PostgreSQL 18 (running on default port 5432)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'hms_db'),
-        'USER': os.getenv('DB_USER', 'hms_user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'StrongPassword123!'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5434'),
+        'NAME': 'hms_db',
+        'USER': 'hms_user',
+        'PASSWORD': 'StrongPassword123!',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 # Custom User Model

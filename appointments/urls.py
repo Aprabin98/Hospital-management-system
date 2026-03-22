@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from no_show_predictor.views import predict_no_show_risk
 
 app_name = 'appointments'
 
@@ -25,4 +26,5 @@ urlpatterns = [
 
     # API
     path('api/slots/', views.get_slots_api, name='get_slots_api'),
+    path('api/no-show-risk/', predict_no_show_risk, name='predict_no_show_api'),
 ]

@@ -13,6 +13,7 @@ urlpatterns = [
     path('audit/', include('audit.urls', namespace='audit')),
     path('notifications/', include('notifications.urls', namespace='notifications')),
     path('reviews/', include('reviews.urls', namespace='reviews')),
+    path('drug-checker/', include('drug_checker.urls', namespace='drug_checker')),
     path('prescriptions/', include('prescriptions.urls', namespace='prescriptions')),
     path('payments/', include('payments.urls', namespace='payments')),
     path('lab/', include('lab.urls', namespace='lab')),

@@ -4,6 +4,9 @@ from .models import TestBooking
 
 @receiver(post_save, sender=TestBooking)
 def auto_create_lab_payment(sender, instance, created, **kwargs):
+    if kwargs.get('raw', False):
+        return
+
     if created:
         from payments.models import Payment
         # Use shared payment model with LAB_TEST type.
@@ -20,6 +23,9 @@ def auto_create_lab_payment(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=TestBooking)
 def sync_lab_booking_payment_status(sender, instance, **kwargs):
+    if kwargs.get('raw', False):
+        return
+
     from payments.models import Payment
 
     payment = Payment.objects.filter(lab_booking=instance).order_by('-created_at').first()

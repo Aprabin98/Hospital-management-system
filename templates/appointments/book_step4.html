@@ -43,7 +43,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="slot" id="selectedSlot">
 
-                    {% if request.user.role == 'RECEPTIONIST' %}
+                    {% if request.user.role == 'RECEPTIONIST' or request.user.role == 'ADMIN' %}
                     <div class="mb-3">
                         <label class="form-label fw-bold">Select Patient:</label>
                         <select name="patient_id" class="form-select" required>
@@ -52,6 +52,9 @@
                             <option value="{{ patient.id }}">{{ patient.full_name }} ({{ patient.user.email }})</option>
                             {% endfor %}
                         </select>
+                        <button type="button" id="refreshRiskBtn" class="btn btn-outline-info btn-sm mt-2">
+                            Update Patient Risk
+                        </button>
                     </div>
                     {% endif %}
 
@@ -65,6 +68,12 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Notes for Doctor (optional):</label>
                         {{ form.notes }}
+                    </div>
+
+                    <div id="noShowRiskPanel" class="alert alert-info d-none" role="alert">
+                        <div class="fw-bold mb-1">No-show Risk Prediction</div>
+                        <div id="noShowRiskSummary">Calculating risk...</div>
+                        <ul id="noShowRiskFactors" class="mb-0 mt-2"></ul>
                     </div>
 
                     <div class="d-flex gap-2">
@@ -115,6 +124,85 @@
     const selectedSlotDisplay = document.getElementById('selectedSlotDisplay');
     const confirmBtn = document.getElementById('confirmBtn');
     const summarySlot = document.getElementById('summarySlot');
+    const noShowRiskPanel = document.getElementById('noShowRiskPanel');
+    const noShowRiskSummary = document.getElementById('noShowRiskSummary');
+    const noShowRiskFactors = document.getElementById('noShowRiskFactors');
+    const patientSelect = document.querySelector('select[name="patient_id"]');
+    const refreshRiskBtn = document.getElementById('refreshRiskBtn');
+    const doctorId = '{{ doctor.id }}';
+    const bookingDate = '{{ booking_date|date:"Y-m-d" }}';
+
+    function syncRefreshRiskButtonState() {
+        if (!refreshRiskBtn) {
+            return;
+        }
+        refreshRiskBtn.disabled = !(patientSelect && patientSelect.value);
+    }
+
+    function getCurrentPatientId() {
+        {% if request.user.role == 'PATIENT' %}
+        return '{{ request.user.patient_profile.id }}';
+        {% else %}
+        return patientSelect ? patientSelect.value : '';
+        {% endif %}
+    }
+
+    function riskAlertClass(level) {
+        if (level === 'HIGH') {
+            return 'alert alert-danger';
+        }
+        if (level === 'MEDIUM') {
+            return 'alert alert-warning';
+        }
+        return 'alert alert-success';
+    }
+
+    async function loadNoShowRisk(log = false) {
+        const patientId = getCurrentPatientId();
+        if (!patientId) {
+            noShowRiskPanel.classList.add('d-none');
+            return;
+        }
+
+        const params = new URLSearchParams({
+            doctor_id: doctorId,
+            date: bookingDate,
+        });
+        if (patientId) {
+            params.append('patient_id', patientId);
+        }
+        if (log) {
+            params.append('log', '1');
+        }
+
+        try {
+            const response = await fetch(`/appointments/api/no-show-risk/?${params.toString()}`);
+            const payload = await response.json();
+
+            if (!response.ok) {
+                noShowRiskPanel.className = 'alert alert-secondary';
+                noShowRiskSummary.textContent = payload.error || 'Unable to compute no-show risk.';
+                noShowRiskFactors.innerHTML = '';
+                noShowRiskPanel.classList.remove('d-none');
+                return;
+            }
+
+            noShowRiskPanel.className = riskAlertClass(payload.risk_level);
+            noShowRiskSummary.textContent = `${payload.risk_level} risk (${payload.risk_score}%)`;
+            noShowRiskFactors.innerHTML = '';
+            (payload.factors || []).slice(0, 3).forEach((factor) => {
+                const li = document.createElement('li');
+                li.textContent = factor;
+                noShowRiskFactors.appendChild(li);
+            });
+            noShowRiskPanel.classList.remove('d-none');
+        } catch (error) {
+            noShowRiskPanel.className = 'alert alert-secondary';
+            noShowRiskSummary.textContent = 'Unable to load no-show prediction right now.';
+            noShowRiskFactors.innerHTML = '';
+            noShowRiskPanel.classList.remove('d-none');
+        }
+    }
 
     slotBtns.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -138,8 +226,27 @@
 
             // Enable confirm button
             confirmBtn.disabled = false;
+
+            // Log prediction when slot is selected for audit/analytics.
+            loadNoShowRisk(true);
         });
     });
+
+    if (patientSelect) {
+        patientSelect.addEventListener('change', function() {
+            syncRefreshRiskButtonState();
+            loadNoShowRisk(false);
+        });
+    }
+
+    if (refreshRiskBtn) {
+        refreshRiskBtn.addEventListener('click', function() {
+            loadNoShowRisk(false);
+        });
+    }
+
+    syncRefreshRiskButtonState();
+    loadNoShowRisk(false);
 </script>
 {% endblock %}
 {% endblock %}

@@ -45,8 +45,8 @@
 
                     <hr>
                     <h5 class="text-primary mb-3">💊 Medicines</h5>
-                    <hr>
-                    <h5 class="text-primary mb-3">💊 Medicines</h5>
+
+                    <div id="interactionAlerts" class="mb-3 d-none"></div>
 
                     <!-- Formset Management -->
                     {{ formset.management_form }}
@@ -104,6 +104,95 @@
 
 {% block extra_js %}
 <script>
+    const interactionApiUrl = "{% url 'drug_checker:check_interactions' %}";
+    const interactionAlerts = document.getElementById('interactionAlerts');
+
+    function getCurrentMedicines() {
+        const names = [];
+        const inputs = document.querySelectorAll('#medicineContainer input[name$="-medicine_name"]');
+
+        inputs.forEach((input) => {
+            const row = input.closest('.medicine-row');
+            if (!row) {
+                return;
+            }
+
+            const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteCheckbox && deleteCheckbox.checked) {
+                return;
+            }
+
+            const value = (input.value || '').trim().toLowerCase();
+            if (value && !names.includes(value)) {
+                names.push(value);
+            }
+        });
+
+        return names;
+    }
+
+    function getSeverityClass(severity) {
+        if (severity === 'CONTRAINDICATED' || severity === 'MAJOR') {
+            return 'danger';
+        }
+        if (severity === 'MODERATE') {
+            return 'warning';
+        }
+        return 'info';
+    }
+
+    function renderInteractionResult(payload) {
+        if (!payload || !payload.interactions_found) {
+            interactionAlerts.classList.add('d-none');
+            interactionAlerts.innerHTML = '';
+            return;
+        }
+
+        const severityClass = getSeverityClass(payload.worst_severity);
+        const itemsHtml = payload.interactions
+            .map((item) => {
+                const header = `${item.drug_a} + ${item.drug_b} (${item.severity})`;
+                const description = item.description ? `<div>${item.description}</div>` : '';
+                const management = item.management ? `<div><strong>Management:</strong> ${item.management}</div>` : '';
+                return `<li class="mb-2"><strong>${header}</strong>${description}${management}</li>`;
+            })
+            .join('');
+
+        interactionAlerts.className = `alert alert-${severityClass} mb-3`;
+        interactionAlerts.innerHTML = `
+            <h6 class="mb-2">Drug Interaction Warning (${payload.interactions_found})</h6>
+            <ul class="mb-0">${itemsHtml}</ul>
+        `;
+    }
+
+    async function checkDrugInteractions() {
+        const medicines = getCurrentMedicines();
+        if (medicines.length < 2) {
+            renderInteractionResult(null);
+            return;
+        }
+
+        const params = new URLSearchParams();
+        medicines.forEach((medicine) => params.append('medicines', medicine));
+
+        try {
+            const response = await fetch(`${interactionApiUrl}?${params.toString()}`);
+            if (!response.ok) {
+                return;
+            }
+            const payload = await response.json();
+            renderInteractionResult(payload);
+        } catch (error) {
+            // Keep form usable even if checker endpoint is unavailable.
+        }
+    }
+
+    let interactionDebounceTimer = null;
+    function scheduleDrugCheck() {
+        window.clearTimeout(interactionDebounceTimer);
+        interactionDebounceTimer = window.setTimeout(checkDrugInteractions, 350);
+    }
+
     // Add more medicine rows dynamically
     document.getElementById('addMedicine').addEventListener('click', function() {
         const container = document.getElementById('medicineContainer');
@@ -130,6 +219,22 @@
 
         container.appendChild(newRow);
         totalForms.value = formCount + 1;
+
+        scheduleDrugCheck();
     });
+
+    document.getElementById('medicineContainer').addEventListener('input', function(event) {
+        if (event.target.matches('input[name$="-medicine_name"]')) {
+            scheduleDrugCheck();
+        }
+    });
+
+    document.getElementById('medicineContainer').addEventListener('change', function(event) {
+        if (event.target.matches('input[type="checkbox"][name$="-DELETE"]')) {
+            scheduleDrugCheck();
+        }
+    });
+
+    scheduleDrugCheck();
 </script>
 {% endblock %}

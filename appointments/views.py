@@ -101,7 +101,9 @@ def book_step3(request):
 @login_required
 def book_step4(request):
     """Step 4 - Patient selects time slot and confirms."""
-    if request.user.role not in ['PATIENT', 'RECEPTIONIST']:
+    is_staff_booking = request.user.role in ['RECEPTIONIST', 'ADMIN']
+
+    if request.user.role not in ['PATIENT', 'RECEPTIONIST', 'ADMIN']:
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
 
@@ -197,7 +199,9 @@ def book_step4(request):
         'doctor': doctor,
         'booking_date': booking_date,
         'available_slots': available_slots,
-        'patients': PatientProfile.objects.select_related('user').order_by('full_name') if request.user.role == 'RECEPTIONIST' else None,
+        'patients': PatientProfile.objects.filter(
+            user__role='PATIENT'
+        ).select_related('user').order_by('full_name') if is_staff_booking else None,
     })
 
 
