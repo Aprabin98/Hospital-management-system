@@ -585,7 +585,7 @@ def receptionist_assign_room(request):
     context = {
         'doctors': doctors,
         'available_rooms': available_rooms,
-        'room_beds_json': json.dumps(room_beds),
+        'room_beds_json': room_beds,
         'today_admissions': today_admissions,
         'pending_requests': pending_requests,
         'stats': stats,
@@ -796,9 +796,17 @@ def room_statistics(request):
     # Room type distribution
     room_types = Room.ROOM_TYPE_CHOICES
     room_type_distribution = []
-    for room_type_val, room_type_label in room_types:
+    total_rooms = rooms.count()
+    color_classes = ['text-primary', 'text-success', 'text-danger', 'text-warning', 'text-info']
+    for index, (room_type_val, room_type_label) in enumerate(room_types):
         count = rooms.filter(room_type=room_type_val).count()
-        room_type_distribution.append((room_type_label, count))
+        percent = int((count / total_rooms * 100)) if total_rooms > 0 else 0
+        room_type_distribution.append({
+            'label': room_type_label,
+            'count': count,
+            'percent': percent,
+            'color_class': color_classes[index % len(color_classes)],
+        })
     
     # Enhance rooms with statistics
     for room in rooms:

@@ -81,17 +81,17 @@
                     <div class="table-responsive">
                         <table class="table table-sm table-borderless">
                             <tbody>
-                                {% for room_type, count in room_type_distribution %}
+                                {% for room_type in room_type_distribution %}
                                 <tr>
                                     <td>
-                                        <i class="fas fa-square" style="color: var(--bs-{{ forloop.counter }}-color)"></i>
-                                        {{ room_type }}
+                                        <i class="fas fa-square {{ room_type.color_class }}"></i>
+                                        {{ room_type.label }}
                                     </td>
                                     <td class="text-end">
-                                        <span class="badge bg-primary">{{ count }}</span>
+                                        <span class="badge bg-primary">{{ room_type.count }}</span>
                                     </td>
                                     <td class="text-end text-muted small">
-                                        {{ count|add:0|mul:100|div:kpis.total_rooms|floatformat:0 }}%
+                                        {{ room_type.percent }}%
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -117,19 +117,22 @@
                         </div>
                     </div>
                     <div class="progress mb-3" style="height: 25px;">
-                        <div class="progress-bar bg-danger" role="progressbar"
-                             style="width: {{ occupied_percent }}%"
+                        <div class="progress-bar bg-danger js-progress-width" role="progressbar"
+                            data-width="{{ occupied_percent }}"
+                            style="width: 0%"
                              aria-valuenow="{{ occupied_percent }}" aria-valuemin="0" aria-valuemax="100">
                             Occupied {{ occupied_percent }}%
                         </div>
-                        <div class="progress-bar bg-success" role="progressbar"
-                             style="width: {{ available_percent }}%"
+                        <div class="progress-bar bg-success js-progress-width" role="progressbar"
+                            data-width="{{ available_percent }}"
+                            style="width: 0%"
                              aria-valuenow="{{ available_percent }}" aria-valuemin="0" aria-valuemax="100">
                             Available {{ available_percent }}%
                         </div>
                         {% if maintenance_percent > 0 %}
-                        <div class="progress-bar bg-warning" role="progressbar"
-                             style="width: {{ maintenance_percent }}%"
+                        <div class="progress-bar bg-warning js-progress-width" role="progressbar"
+                            data-width="{{ maintenance_percent }}"
+                            style="width: 0%"
                              aria-valuenow="{{ maintenance_percent }}" aria-valuemin="0" aria-valuemax="100">
                             Maintenance {{ maintenance_percent }}%
                         </div>
@@ -172,7 +175,7 @@
                         <td><span class="badge bg-warning text-dark">{{ room.maintenance_beds_count }}</span></td>
                         <td>
                             <div class="progress" style="height: 15px; width: 150px;">
-                                <div class="progress-bar" style="width: {{ room.utilization_percent }}%">
+                                <div class="progress-bar js-progress-width" data-width="{{ room.utilization_percent }}" style="width: 0%">
                                     {{ room.utilization_percent }}%
                                 </div>
                             </div>
@@ -251,4 +254,11 @@
     
     .font-weight-bold { font-weight: 600; }
 </style>
+
+<script>
+    document.querySelectorAll('.js-progress-width').forEach((bar) => {
+        const width = Number(bar.dataset.width || 0);
+        bar.style.width = `${width}%`;
+    });
+</script>
 {% endblock %}

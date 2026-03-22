@@ -75,8 +75,9 @@
                                     <i class="fas fa-door-open"></i> {{ room_type.type_display }}
                                 </h6>
                                 <div class="progress mb-2" style="height: 25px;">
-                                    <div class="progress-bar bg-danger" role="progressbar"
-                                         style="width: {{ room_type.occupancy_percent }}%"
+                                    <div class="progress-bar bg-danger js-progress-width" role="progressbar"
+                                         data-width="{{ room_type.occupancy_percent }}"
+                                         style="width: 0%"
                                          aria-valuenow="{{ room_type.occupancy_percent }}" aria-valuemin="0" aria-valuemax="100">
                                         {{ room_type.occupancy_percent }}%
                                     </div>
@@ -126,7 +127,7 @@
                                 </td>
                                 <td>
                                     <div class="progress" style="height: 20px; width: 150px;">
-                                        <div class="progress-bar bg-danger" style="width: {{ floor.occupancy_percent }}%">
+                                        <div class="progress-bar bg-danger js-progress-width" data-width="{{ floor.occupancy_percent }}" style="width: 0%">
                                             {{ floor.occupancy_percent }}%
                                         </div>
                                     </div>
@@ -224,6 +225,11 @@
 </div>
 
 <script>
+    document.querySelectorAll('.js-progress-width').forEach((bar) => {
+        const width = Number(bar.dataset.width || 0);
+        bar.style.width = `${width}%`;
+    });
+
     // Floor filter functionality
     document.getElementById('floorFilter').addEventListener('change', function() {
         const selectedFloor = this.value;

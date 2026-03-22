@@ -59,7 +59,12 @@
                         <td>
                             <button type="button"
                                     class="btn btn-sm btn-success"
-                                    onclick="useAdmissionRequest('{{ req.id }}', '{{ req.patient.id }}', '{{ req.patient.full_name|escapejs }}', '{{ req.doctor_id|default:'' }}', '{{ req.preferred_room_type }}')">
+                                    data-request-id="{{ req.id }}"
+                                    data-patient-id="{{ req.patient.id }}"
+                                    data-patient-name="{{ req.patient.full_name|escapejs }}"
+                                    data-doctor-id="{{ req.doctor_id|default_if_none:'' }}"
+                                    data-room-type="{{ req.preferred_room_type|default_if_none:'' }}"
+                                    onclick="useAdmissionRequestFromButton(this)">
                                 Approve in Form
                             </button>
                             <form method="post" action="{% url 'rooms:receptionist_reject_admission_request' req.id %}" class="d-inline">
@@ -307,9 +312,12 @@
     </div>
 </div>
 
+{{ room_beds_json|json_script:"room-beds-data" }}
+
 <script>
     // Load available beds when room is selected
-    const room_beds = {{ room_beds_json|safe }};
+    const roomBedsElement = document.getElementById('room-beds-data');
+    const room_beds = roomBedsElement ? JSON.parse(roomBedsElement.textContent) : {};
 
     function updateAvailableBeds() {
         const roomSelect = document.getElementById('room');
@@ -401,6 +409,16 @@
         }
 
         window.scrollTo({ top: document.getElementById('assignmentForm').offsetTop - 80, behavior: 'smooth' });
+    }
+
+    function useAdmissionRequestFromButton(button) {
+        useAdmissionRequest(
+            button.dataset.requestId || '',
+            button.dataset.patientId || '',
+            button.dataset.patientName || '',
+            button.dataset.doctorId || '',
+            button.dataset.roomType || ''
+        );
     }
 </script>
 {% endblock %}
