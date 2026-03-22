@@ -110,6 +110,11 @@
                         <li><a class="dropdown-item" href="{% url 'users:profile' %}">
                             <i class="fas fa-user"></i> Profile
                         </a></li>
+                        {% if user.role == 'ADMIN' %}
+                        <li><a class="dropdown-item" href="{% url 'audit:audit_log_list' %}">
+                            <i class="fas fa-clipboard-list"></i> Audit Logs
+                        </a></li>
+                        {% endif %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'users:logout' %}">
                             <i class="fas fa-sign-out-alt"></i> Logout

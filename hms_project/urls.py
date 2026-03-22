@@ -10,6 +10,7 @@ urlpatterns = [
     path('clinical/', include('clinical.urls', namespace='clinical')),
     path('appointments/', include('appointments.urls', namespace='appointments')),
     path('rooms/', include('rooms.urls', namespace='rooms')),
+    path('audit/', include('audit.urls', namespace='audit')),
     path('notifications/', include('notifications.urls', namespace='notifications')),
     path('reviews/', include('reviews.urls', namespace='reviews')),
     path('prescriptions/', include('prescriptions.urls', namespace='prescriptions')),
