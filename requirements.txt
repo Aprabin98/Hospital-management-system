@@ -31,6 +31,7 @@ requests>=2.25.0
 # Utilities
 gunicorn>=20.0.0
 whitenoise>=6.0.0
+twilio>=9.0.0
 
 # Development/Testing
 pytest>=6.0.0

@@ -42,6 +42,12 @@ def _issue_two_factor_code(user, request):
         expires_at=timezone.now() + timedelta(minutes=expiry_minutes),
     )
 
+    if getattr(settings, 'PRINT_2FA_OTP_IN_TERMINAL', True):
+        print(
+            f"[HMS 2FA OTP] user={user.email} code={code} "
+            f"expires_in={expiry_minutes}m challenge_id={challenge.id}"
+        )
+
     subject = f"{settings.SITE_NAME} Login Verification Code"
     message = (
         f"Hi {user.username},\n\n"

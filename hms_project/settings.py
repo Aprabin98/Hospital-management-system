@@ -243,6 +243,16 @@ KHALTI_PUBLIC_KEY = os.getenv('KHALTI_PUBLIC_KEY', '')
 KHALTI_SECRET_KEY = os.getenv('KHALTI_SECRET_KEY', '')
 KHALTI_API_URL = 'https://khalti.com/api/v2/'
 
+# Twilio WhatsApp
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
+TWILIO_WHATSAPP_FROM = os.getenv('TWILIO_WHATSAPP_FROM', '')
+WHATSAPP_NOTIFICATIONS_ENABLED = os.getenv('WHATSAPP_NOTIFICATIONS_ENABLED', 'false').lower() == 'true'
+WHATSAPP_DEFAULT_COUNTRY_CODE = os.getenv('WHATSAPP_DEFAULT_COUNTRY_CODE', '+977')
+
+# OTP terminal fallback for development/support
+PRINT_2FA_OTP_IN_TERMINAL = os.getenv('PRINT_2FA_OTP_IN_TERMINAL', 'true').lower() == 'true'
+
 # Security Settings for Production
 if not DEBUG:
     SECURE_SSL_REDIRECT = True

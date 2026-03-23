@@ -5,7 +5,7 @@ from appointments.models import Appointment
 from lab.models import TestResult
 from payments.models import Payment
 
-from .utils import create_notification
+from .utils import create_notification, notify_patient_whatsapp
 
 
 @receiver(pre_save, sender=Appointment)
@@ -28,6 +28,13 @@ def on_appointment_saved(sender, instance, created, **kwargs):
             message=f'Your appointment with Dr. {instance.doctor.user.username} is confirmed for {instance.date} at {instance.start_time}.',
             notification_type='APPOINTMENT',
             action_url=f'/appointments/{instance.id}/',
+        )
+        notify_patient_whatsapp(
+            instance.patient,
+            (
+                f"HMS: Your appointment with Dr. {instance.doctor.user.username} is confirmed "
+                f"for {instance.date} at {instance.start_time}."
+            ),
         )
         create_notification(
             recipient=instance.doctor.user,
@@ -98,4 +105,11 @@ def on_result_saved(sender, instance, created, **kwargs):
             message=f'Your {instance.booking.template.name} report is now available.',
             notification_type='LAB',
             action_url=f'/lab/bookings/{instance.booking.id}/',
+        )
+        notify_patient_whatsapp(
+            instance.booking.patient,
+            (
+                f"HMS: Your lab report for {instance.booking.template.name} is now available. "
+                f"Please check your HMS account."
+            ),
         )
