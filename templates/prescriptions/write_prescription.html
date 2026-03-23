@@ -142,9 +142,18 @@
     }
 
     function renderInteractionResult(payload) {
-        if (!payload || !payload.interactions_found) {
+        if (!payload) {
             interactionAlerts.classList.add('d-none');
             interactionAlerts.innerHTML = '';
+            return;
+        }
+
+        if (!payload.interactions_found) {
+            interactionAlerts.className = 'alert alert-success mb-3';
+            interactionAlerts.innerHTML = `
+                <h6 class="mb-1">Drug Interaction Check</h6>
+                <div class="mb-0">No known interactions found for current medicines.</div>
+            `;
             return;
         }
 
@@ -178,12 +187,21 @@
         try {
             const response = await fetch(`${interactionApiUrl}?${params.toString()}`);
             if (!response.ok) {
+                interactionAlerts.className = 'alert alert-secondary mb-3';
+                interactionAlerts.innerHTML = `
+                    <h6 class="mb-1">Drug Interaction Check</h6>
+                    <div class="mb-0">Could not check interactions right now. Please try again.</div>
+                `;
                 return;
             }
             const payload = await response.json();
             renderInteractionResult(payload);
         } catch (error) {
-            // Keep form usable even if checker endpoint is unavailable.
+            interactionAlerts.className = 'alert alert-secondary mb-3';
+            interactionAlerts.innerHTML = `
+                <h6 class="mb-1">Drug Interaction Check</h6>
+                <div class="mb-0">Network issue while checking interactions.</div>
+            `;
         }
     }
 

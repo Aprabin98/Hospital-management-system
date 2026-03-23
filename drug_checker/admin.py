@@ -8,6 +8,23 @@ class DrugInteractionAdmin(admin.ModelAdmin):
     list_display = ('drug_a', 'drug_b', 'severity', 'is_active', 'source')
     list_filter = ('severity', 'is_active')
     search_fields = ('drug_a', 'drug_b', 'description', 'management')
+    exclude = ('drug_a_normalized', 'drug_b_normalized')
+    fieldsets = (
+        (
+            'Interaction Details',
+            {
+                'fields': (
+                    'drug_a',
+                    'drug_b',
+                    'severity',
+                    'description',
+                    'management',
+                    'source',
+                    'is_active',
+                )
+            },
+        ),
+    )
 
 
 @admin.register(InteractionCheckLog)

@@ -35,6 +35,7 @@
             <div class="d-grid gap-2">
                 <a href="{% url 'appointments:todays_appointments' %}" class="btn btn-primary">📅 Today's Appointments</a>
                 <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary">📋 All Appointments</a>
+                <a href="{% url 'heart_risk:assess' %}" class="btn btn-outline-danger">❤️ Heart Risk Predictor</a>
                 <a href="{% url 'rooms:doctor_admission_requests' %}" class="btn btn-outline-primary">🏥 Admission Requests</a>
                 <a href="{% url 'prescriptions:doctor_prescriptions' %}" class="btn btn-outline-primary">💊 My Prescriptions</a>
                 {% if doctor_profile %}

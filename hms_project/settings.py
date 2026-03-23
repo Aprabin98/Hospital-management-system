@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'reviews',
     'drug_checker',
     'no_show_predictor',
+    'heart_risk',
     'prescriptions',
     'payments',
     'lab',

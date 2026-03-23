@@ -1,9 +1,12 @@
 from itertools import combinations
 
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
 
+from .forms import DrugInteractionForm
 from .models import DrugInteraction, InteractionCheckLog
 
 
@@ -93,3 +96,49 @@ def check_interactions(request):
         'worst_severity': worst_severity,
         'interactions': interactions,
     })
+
+
+@login_required
+def manage_interactions(request):
+    if request.user.role != 'ADMIN':
+        messages.error(request, 'Access denied. Admin only.')
+        return redirect('users:dashboard')
+
+    if request.method == 'POST':
+        form = DrugInteractionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Drug interaction added successfully.')
+            return redirect('drug_checker:manage_interactions')
+        messages.error(request, 'Please correct the form errors below.')
+    else:
+        form = DrugInteractionForm()
+
+    interactions = DrugInteraction.objects.all().order_by('-created_at')
+    return render(
+        request,
+        'drug_checker/manage_interactions.html',
+        {
+            'form': form,
+            'interactions': interactions,
+        },
+    )
+
+
+@login_required
+def toggle_interaction_status(request, pk):
+    if request.user.role != 'ADMIN':
+        messages.error(request, 'Access denied. Admin only.')
+        return redirect('users:dashboard')
+
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('drug_checker:manage_interactions')
+
+    interaction = get_object_or_404(DrugInteraction, pk=pk)
+    interaction.is_active = not interaction.is_active
+    interaction.save(update_fields=['is_active'])
+
+    state = 'activated' if interaction.is_active else 'deactivated'
+    messages.success(request, f'Interaction {state}.')
+    return redirect('drug_checker:manage_interactions')

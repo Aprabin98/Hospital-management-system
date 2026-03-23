@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Manage Drug Interactions{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Add Drug Interaction</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Drug A</label>
+                        {{ form.drug_a }}
+                        {% if form.drug_a.errors %}<div class="text-danger small">{{ form.drug_a.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Drug B</label>
+                        {{ form.drug_b }}
+                        {% if form.drug_b.errors %}<div class="text-danger small">{{ form.drug_b.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Severity</label>
+                        {{ form.severity }}
+                        {% if form.severity.errors %}<div class="text-danger small">{{ form.severity.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        {{ form.description }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Management</label>
+                        {{ form.management }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Source</label>
+                        {{ form.source }}
+                    </div>
+
+                    <div class="form-check mb-3">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Is active</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">Save Interaction</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Existing Interactions</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Drug Pair</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in interactions %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.drug_a }}</strong> + <strong>{{ item.drug_b }}</strong>
+                                    {% if item.management %}
+                                    <div class="small text-muted">{{ item.management|truncatechars:80 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.get_severity_display }}</td>
+                                <td>
+                                    {% if item.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="{% url 'drug_checker:toggle_interaction_status' item.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            {% if item.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No interactions added yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

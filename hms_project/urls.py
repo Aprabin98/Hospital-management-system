@@ -14,6 +14,7 @@ urlpatterns = [
     path('notifications/', include('notifications.urls', namespace='notifications')),
     path('reviews/', include('reviews.urls', namespace='reviews')),
     path('drug-checker/', include('drug_checker.urls', namespace='drug_checker')),
+    path('heart-risk/', include('heart_risk.urls', namespace='heart_risk')),
     path('prescriptions/', include('prescriptions.urls', namespace='prescriptions')),
     path('payments/', include('payments.urls', namespace='payments')),
     path('lab/', include('lab.urls', namespace='lab')),
