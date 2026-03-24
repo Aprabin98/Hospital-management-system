@@ -36,4 +36,11 @@ urlpatterns = [
     # Admin Routes
     path('statistics/', views.room_statistics, name='room_statistics'),
     path('statistics/export/csv/', views.room_statistics_export_csv, name='room_statistics_export_csv'),
+    
+    # API Routes - Real-time Occupancy
+    path('api/availability/', views.api_room_availability, name='api_room_availability'),
+    path('api/rooms/<int:room_id>/beds/', views.api_room_beds_availability, name='api_room_beds_availability'),
+    path('api/patient/assignments/', views.api_patient_room_assignments, name='api_patient_room_assignments'),
+    path('api/doctor/occupancy/', views.api_doctor_patient_occupancy, name='api_doctor_patient_occupancy'),
+    path('api/receptionist/bed-status/', views.api_receptionist_bed_status, name='api_receptionist_bed_status'),
 ]

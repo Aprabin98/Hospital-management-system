@@ -44,6 +44,15 @@
                         {% endfor %}
                     </div>
 
+                    <div class="alert alert-warning small">
+                        <strong>🚫 Doctor Leave Dates:</strong><br>
+                        {% for leave_date in leave_dates %}
+                            {{ leave_date }}<br>
+                        {% empty %}
+                            No leave dates marked.
+                        {% endfor %}
+                    </div>
+
                     <div class="d-flex gap-2">
                         <a href="{% url 'appointments:book_step2' %}" class="btn btn-outline-secondary w-50">← Back</a>
                         <button type="submit" class="btn btn-primary w-50">Next → Select Slot</button>

@@ -18,6 +18,7 @@ from .utils import send_activation_email, send_password_reset_email
 from .models import PatientProfile, TwoFactorCode
 from .security import clear_attempts, is_identifier_locked, register_failed_attempt
 from .tasks import send_email_task
+from notifications.utils import build_two_factor_otp_whatsapp, send_whatsapp_message
 
 User = get_user_model()
 
@@ -67,14 +68,40 @@ def _issue_two_factor_code(user, request):
             fail_silently=False,
         )
 
+    # Optional WhatsApp OTP notification based on available role profile phone.
+    if getattr(settings, 'WHATSAPP_SEND_2FA_OTP', True):
+        whatsapp_phone = ''
+        if user.role == 'PATIENT':
+            try:
+                whatsapp_phone = user.patient_profile.phone
+            except Exception:
+                whatsapp_phone = ''
+        elif user.role == 'DOCTOR':
+            try:
+                whatsapp_phone = user.doctor_profile.phone
+            except Exception:
+                whatsapp_phone = ''
+
+        if whatsapp_phone:
+            send_whatsapp_message(
+                whatsapp_phone,
+                build_two_factor_otp_whatsapp(user, code, expiry_minutes),
+            )
+
     request.session['two_factor_user_id'] = user.id
     request.session['two_factor_challenge_id'] = challenge.id
+    request.session['two_factor_backend'] = getattr(
+        user,
+        'backend',
+        settings.AUTHENTICATION_BACKENDS[0],
+    )
     request.session.set_expiry(60 * expiry_minutes)
 
 
 def _clear_two_factor_session(request):
     request.session.pop('two_factor_user_id', None)
     request.session.pop('two_factor_challenge_id', None)
+    request.session.pop('two_factor_backend', None)
 
 
 # ─── REGISTRATION ────────────────────────────────────────────────────────────
@@ -180,6 +207,7 @@ def two_factor_verify(request):
 
     user_id = request.session.get('two_factor_user_id')
     challenge_id = request.session.get('two_factor_challenge_id')
+    auth_backend = request.session.get('two_factor_backend')
     if not user_id or not challenge_id:
         messages.error(request, '2FA session expired. Please login again.')
         return redirect('users:login')
@@ -213,7 +241,11 @@ def two_factor_verify(request):
             challenge.is_used = True
             challenge.save(update_fields=['is_used'])
             _clear_two_factor_session(request)
-            login(request, user)
+            login(
+                request,
+                user,
+                backend=auth_backend or settings.AUTHENTICATION_BACKENDS[0],
+            )
             messages.success(request, f'Welcome back, {user.username}!')
             return redirect('users:dashboard')
 

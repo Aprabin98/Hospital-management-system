@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import refill_views
 
 app_name = 'prescriptions'
 
@@ -15,4 +16,11 @@ urlpatterns = [
     # Both
     path('<int:pk>/', views.prescription_detail, name='prescription_detail'),
     path('<int:pk>/download/', views.download_prescription_pdf, name='download_pdf'),
+
+    # Refill and pharmacy integration
+    path('refills/', refill_views.refill_list, name='refill_list'),
+    path('refills/request/<int:prescription_id>/', refill_views.request_refill, name='request_refill'),
+    path('refills/<int:refill_id>/approve/', refill_views.approve_refill, name='approve_refill'),
+    path('refills/<int:refill_id>/fill/', refill_views.pharmacy_fill_refill, name='pharmacy_fill_refill'),
+    path('pharmacies/', refill_views.pharmacy_list, name='pharmacy_list'),
 ]

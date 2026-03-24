@@ -863,3 +863,199 @@ def room_statistics_export_csv(request):
         ])
 
     return response
+
+
+# ===============================================
+# API VIEWS - Real-time Room Availability
+# ===============================================
+
+@login_required
+def api_room_availability(request):
+    """API endpoint to get real-time available rooms (no AJAX auth needed for frontend)"""
+    room_type = request.GET.get('room_type')
+    floor = request.GET.get('floor')
+    
+    rooms = Room.objects.prefetch_related('beds').filter(
+        is_active=True
+    ).annotate(
+        occupied_count=Count('beds', filter=Q(beds__status='OCCUPIED')),
+        available_count=Count('beds', filter=Q(beds__status='AVAILABLE')),
+    )
+    
+    if room_type:
+        rooms = rooms.filter(room_type=room_type)
+    if floor:
+        rooms = rooms.filter(floor__icontains=floor)
+    
+    # Only include rooms with available beds
+    rooms = rooms.filter(available_count__gt=0)
+    
+    data = {
+        'timestamp': timezone.now().isoformat(),
+        'rooms': [
+            {
+                'id': room.id,
+                'room_number': room.room_number,
+                'room_type': room.room_type,
+                'floor': room.floor,
+                'total_beds': room.capacity,
+                'occupied_beds': room.occupied_count,
+                'available_beds': room.available_count,
+                'occupancy_rate': int((room.occupied_count / room.capacity * 100)) if room.capacity > 0 else 0,
+                'is_full': room.available_count == 0,
+            }
+            for room in rooms
+        ]
+    }
+    return JsonResponse(data)
+
+
+@login_required
+def api_room_beds_availability(request, room_id):
+    """API endpoint to get available beds for a specific room"""
+    room = get_object_or_404(Room, id=room_id, is_active=True)
+    
+    beds = room.beds.filter(status__in=['AVAILABLE', 'OCCUPIED']).values(
+        'id', 'bed_number', 'status'
+    )
+    
+    data = {
+        'room_id': room.id,
+        'room_number': room.room_number,
+        'room_type': room.room_type,
+        'floor': room.floor,
+        'timestamp': timezone.now().isoformat(),
+        'beds': [
+            {
+                'id': bed['id'],
+                'bed_number': bed['bed_number'],
+                'status': bed['status'],
+                'is_available': bed['status'] == 'AVAILABLE',
+            }
+            for bed in beds
+        ]
+    }
+    return JsonResponse(data)
+
+
+@login_required
+def api_patient_room_assignments(request):
+    """API endpoint to get patient's current room assignments"""
+    if request.user.role != 'PATIENT':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    patient = request.user.patient_profile
+    assignments = RoomAssignment.objects.filter(
+        patient=patient,
+        status='ADMITTED'
+    ).select_related('bed__room', 'doctor__user').values(
+        'id',
+        'bed__room__room_number',
+        'bed__room__room_type',
+        'bed__bed_number',
+        'doctor__user__first_name',
+        'doctor__user__last_name',
+        'admitted_at'
+    )
+    
+    data = {
+        'timestamp': timezone.now().isoformat(),
+        'assignments': list(assignments)
+    }
+    return JsonResponse(data)
+
+
+@login_required 
+def api_doctor_patient_occupancy(request):
+    """API endpoint showing doctor's admitted patients with real-time room status"""
+    if request.user.role != 'DOCTOR':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    doctor = request.user.doctor_profile
+    
+    # Get all patients currently assigned to this doctor
+    assignments = RoomAssignment.objects.filter(
+        doctor=doctor,
+        status='ADMITTED'
+    ).select_related('patient__user', 'bed__room', 'bed').order_by('-admitted_at')
+    
+    patient_data = []
+    for assignment in assignments:
+        patient_data.append({
+            'assignment_id': assignment.id,
+            'patient_name': assignment.patient.full_name,
+            'phone': assignment.patient.phone,
+            'age': assignment.patient.age if hasattr(assignment.patient, 'age') else None,
+            'gender': assignment.patient.gender if hasattr(assignment.patient, 'gender') else None,
+            'room_number': assignment.bed.room.room_number,
+            'bed_number': assignment.bed.bed_number,
+            'room_type': assignment.bed.room.room_type,
+            'floor': assignment.bed.room.floor,
+            'admitted_at': assignment.admitted_at.isoformat() if assignment.admitted_at else None,
+            'bed_status': assignment.bed.status,
+        })
+    
+    data = {
+        'timestamp': timezone.now().isoformat(),
+        'total_patients': len(patient_data),
+        'patients': patient_data,
+    }
+    return JsonResponse(data)
+
+
+@login_required
+def api_receptionist_bed_status(request):
+    """API endpoint for receptionist to get live bed status by room"""
+    if request.user.role not in ['RECEPTIONIST', 'ADMIN']:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    room_id = request.GET.get('room_id')
+    room_type = request.GET.get('room_type')
+    
+    rooms = Room.objects.prefetch_related('beds').filter(is_active=True)
+    
+    if room_id:
+        rooms = rooms.filter(id=room_id)
+    elif room_type:
+        rooms = rooms.filter(room_type=room_type)
+    
+    room_data = []
+    for room in rooms:
+        beds = []
+        for bed in room.beds.all():
+            # Get current patient if occupied
+            assignment = RoomAssignment.objects.filter(
+                bed=bed,
+                status='ADMITTED'
+            ).select_related('patient__user', 'doctor__user').first()
+            
+            beds.append({
+                'bed_id': bed.id,
+                'bed_number': bed.bed_number,
+                'status': bed.status,
+                'current_patient': {
+                    'id': assignment.patient.id,
+                    'name': assignment.patient.full_name,
+                    'admitted_at': assignment.admitted_at.isoformat() if assignment.admitted_at else None,
+                    'doctor': f"{assignment.doctor.user.first_name} {assignment.doctor.user.last_name}",
+                } if assignment else None,
+            })
+        
+        room_data.append({
+            'room_id': room.id,
+            'room_number': room.room_number,
+            'room_type': room.room_type,
+            'floor': room.floor,
+            'capacity': room.capacity,
+            'beds': beds,
+            'occupancy': {
+                'occupied': sum(1 for b in beds if b['status'] == 'OCCUPIED'),
+                'available': sum(1 for b in beds if b['status'] == 'AVAILABLE'),
+                'maintenance': sum(1 for b in beds if b['status'] == 'MAINTENANCE'),
+            }
+        })
+    
+    return JsonResponse({
+        'timestamp': timezone.now().isoformat(),
+        'rooms': room_data,
+    })

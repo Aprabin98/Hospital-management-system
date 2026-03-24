@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, PatientProfile, LoginAttempt
 from .models import TwoFactorCode
+from .models import PatientHealthRecord, PatientVitalLog
 
 
 @admin.register(User)
@@ -43,3 +44,17 @@ class TwoFactorCodeAdmin(admin.ModelAdmin):
     list_display = ['user', 'code', 'expires_at', 'attempts', 'is_used', 'created_at']
     list_filter = ['is_used', 'created_at']
     search_fields = ['user__email']
+
+
+@admin.register(PatientHealthRecord)
+class PatientHealthRecordAdmin(admin.ModelAdmin):
+    list_display = ['patient', 'updated_by', 'updated_at']
+    search_fields = ['patient__full_name', 'patient__user__email']
+    ordering = ['-updated_at']
+
+
+@admin.register(PatientVitalLog)
+class PatientVitalLogAdmin(admin.ModelAdmin):
+    list_display = ['patient', 'blood_pressure', 'pulse', 'temperature_c', 'recorded_by', 'recorded_at']
+    search_fields = ['patient__full_name', 'patient__user__email']
+    ordering = ['-recorded_at']

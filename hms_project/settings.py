@@ -171,6 +171,10 @@ REST_FRAMEWORK = {
 # Site domain (used in activation emails)
 SITE_DOMAIN = 'http://127.0.0.1:8000'
 SITE_NAME = 'HMS - Hospital Management System'
+HOSPITAL_NAME = os.getenv('HOSPITAL_NAME', SITE_NAME)
+HOSPITAL_ADDRESS = os.getenv('HOSPITAL_ADDRESS', 'Kathmandu, Nepal')
+HOSPITAL_CONTACT_NUMBER = os.getenv('HOSPITAL_CONTACT_NUMBER', '+977-01-0000000')
+HOSPITAL_CONTACT_EMAIL = os.getenv('HOSPITAL_CONTACT_EMAIL', DEFAULT_FROM_EMAIL)
 
 # Session/Cookie hardening
 SESSION_COOKIE_HTTPONLY = True
@@ -252,6 +256,8 @@ WHATSAPP_DEFAULT_COUNTRY_CODE = os.getenv('WHATSAPP_DEFAULT_COUNTRY_CODE', '+977
 
 # OTP terminal fallback for development/support
 PRINT_2FA_OTP_IN_TERMINAL = os.getenv('PRINT_2FA_OTP_IN_TERMINAL', 'true').lower() == 'true'
+WHATSAPP_SEND_2FA_OTP = os.getenv('WHATSAPP_SEND_2FA_OTP', 'true').lower() == 'true'
+WHATSAPP_SEND_DOCTOR_ALERTS = os.getenv('WHATSAPP_SEND_DOCTOR_ALERTS', 'true').lower() == 'true'
 
 # Security Settings for Production
 if not DEBUG:

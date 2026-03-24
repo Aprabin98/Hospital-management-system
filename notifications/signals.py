@@ -5,7 +5,14 @@ from appointments.models import Appointment
 from lab.models import TestResult
 from payments.models import Payment
 
-from .utils import create_notification, notify_patient_whatsapp
+from .utils import (
+    build_doctor_appointment_whatsapp,
+    build_patient_appointment_whatsapp,
+    build_patient_status_whatsapp,
+    create_notification,
+    notify_doctor_whatsapp,
+    notify_patient_whatsapp,
+)
 
 
 @receiver(pre_save, sender=Appointment)
@@ -25,16 +32,16 @@ def on_appointment_saved(sender, instance, created, **kwargs):
         create_notification(
             recipient=instance.patient.user,
             title='Appointment Confirmed',
-            message=f'Your appointment with Dr. {instance.doctor.user.username} is confirmed for {instance.date} at {instance.start_time}.',
+            message=(
+                f'Your appointment with Dr. {instance.doctor.user.username} is confirmed '
+                f'for {instance.date} at {instance.start_time}. Please arrive 30 minutes early.'
+            ),
             notification_type='APPOINTMENT',
             action_url=f'/appointments/{instance.id}/',
         )
         notify_patient_whatsapp(
             instance.patient,
-            (
-                f"HMS: Your appointment with Dr. {instance.doctor.user.username} is confirmed "
-                f"for {instance.date} at {instance.start_time}."
-            ),
+            build_patient_appointment_whatsapp(instance, is_reminder=False),
         )
         create_notification(
             recipient=instance.doctor.user,
@@ -42,6 +49,10 @@ def on_appointment_saved(sender, instance, created, **kwargs):
             message=f'New appointment booked by {instance.patient.full_name} for {instance.date} at {instance.start_time}.',
             notification_type='APPOINTMENT',
             action_url=f'/appointments/{instance.id}/',
+        )
+        notify_doctor_whatsapp(
+            instance.doctor,
+            build_doctor_appointment_whatsapp(instance, is_reminder=False),
         )
         return
 
@@ -51,6 +62,19 @@ def on_appointment_saved(sender, instance, created, **kwargs):
             recipient=instance.patient.user,
             title='Appointment Status Updated',
             message=f'Your appointment status is now {instance.get_status_display()}.',
+            notification_type='APPOINTMENT',
+            action_url=f'/appointments/{instance.id}/',
+            metadata={'old_status': old_status, 'new_status': instance.status},
+        )
+        notify_patient_whatsapp(instance.patient, build_patient_status_whatsapp(instance))
+
+        create_notification(
+            recipient=instance.doctor.user,
+            title='Appointment Status Updated',
+            message=(
+                f'Appointment for {instance.patient.full_name} is now '
+                f'{instance.get_status_display()}.'
+            ),
             notification_type='APPOINTMENT',
             action_url=f'/appointments/{instance.id}/',
             metadata={'old_status': old_status, 'new_status': instance.status},

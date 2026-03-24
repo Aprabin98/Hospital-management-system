@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AdmissionRequest, Room, RoomAssignment, RoomBed
+from .models import AdmissionRequest, Room, RoomAssignment, RoomBed, RoomTransfer
 
 
 class RoomBedInline(admin.TabularInline):
@@ -35,3 +35,11 @@ class AdmissionRequestAdmin(admin.ModelAdmin):
     list_display = ['patient', 'doctor', 'status', 'preferred_room_type', 'created_at', 'processed_at']
     list_filter = ['status', 'preferred_room_type', 'created_at']
     search_fields = ['patient__full_name', 'doctor__user__username', 'reason']
+
+
+@admin.register(RoomTransfer)
+class RoomTransferAdmin(admin.ModelAdmin):
+    list_display = ['patient', 'from_bed', 'to_bed', 'doctor', 'status', 'requested_at', 'completed_at']
+    list_filter = ['status', 'requested_at']
+    search_fields = ['patient__full_name', 'doctor__user__username', 'reason']
+    readonly_fields = ['requested_at', 'completed_at']

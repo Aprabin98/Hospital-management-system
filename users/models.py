@@ -102,6 +102,63 @@ class PatientProfile(models.Model):
         return None
 
 
+class PatientHealthRecord(models.Model):
+    patient = models.OneToOneField(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name='health_record'
+    )
+    allergies = models.TextField(blank=True)
+    chronic_conditions = models.TextField(blank=True)
+    surgical_history = models.TextField(blank=True)
+    family_history = models.TextField(blank=True)
+    current_medications = models.TextField(blank=True)
+    immunization_notes = models.TextField(blank=True)
+    emergency_notes = models.TextField(blank=True)
+    updated_by = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_health_records'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Health record for {self.patient.full_name}"
+
+
+class PatientVitalLog(models.Model):
+    patient = models.ForeignKey(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name='vital_logs'
+    )
+    blood_pressure = models.CharField(max_length=20, blank=True)
+    pulse = models.PositiveIntegerField(null=True, blank=True)
+    temperature_c = models.FloatField(null=True, blank=True)
+    respiratory_rate = models.PositiveIntegerField(null=True, blank=True)
+    oxygen_saturation = models.PositiveIntegerField(null=True, blank=True)
+    weight_kg = models.FloatField(null=True, blank=True)
+    height_cm = models.FloatField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_vitals'
+    )
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-recorded_at']
+
+    def __str__(self):
+        return f"Vitals for {self.patient.full_name} at {self.recorded_at}"
+
+
 class LoginAttempt(models.Model):
     identifier = models.CharField(max_length=255, unique=True)
     failed_count = models.PositiveIntegerField(default=0)

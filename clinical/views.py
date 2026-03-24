@@ -337,6 +337,28 @@ def doctor_leave_delete(request, pk):
     return render(request, 'clinical/leave_confirm_delete.html', {'leave': leave})
 
 
+@login_required
+def doctor_leave_edit(request, pk):
+    if request.user.role != 'DOCTOR':
+        messages.error(request, 'Access denied.')
+        return redirect('users:dashboard')
+
+    leave = get_object_or_404(DoctorLeave, pk=pk, doctor__user=request.user)
+    form = DoctorLeaveForm(request.POST or None, instance=leave)
+
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Leave updated successfully!')
+            return redirect('clinical:doctor_leave')
+        messages.error(request, 'Could not update leave. You may already have leave on that date.')
+
+    return render(request, 'clinical/doctor_leave_edit.html', {
+        'form': form,
+        'leave': leave,
+    })
+
+
 # ─── PUBLIC DOCTOR SEARCH ────────────────────────────────────────────────────
 
 @login_required

@@ -1,10 +1,10 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
 
 from appointments.models import Appointment
-from clinical.models import Doctor
+from clinical.models import Doctor, DoctorLeave
 from users.models import PatientProfile, User
 
 
@@ -62,3 +62,27 @@ class AppointmentsSmokeTests(TestCase):
 		response = self.client.get(reverse('appointments:appointment_detail', args=[self.appointment.id]), follow=True)
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, 'Access denied')
+
+	def test_no_show_dashboard_access_for_doctor(self):
+		self.client.force_login(self.doctor_user)
+		response = self.client.get(reverse('appointments:no_show_risk_dashboard'))
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('items', response.json())
+
+	def test_book_step3_rejects_doctor_leave_date(self):
+		self.client.force_login(self.patient_user)
+		tomorrow = date.today() + timedelta(days=1)
+		DoctorLeave.objects.create(doctor=self.doctor, date=tomorrow, reason='Personal')
+
+		session = self.client.session
+		session['booking_specialization'] = 1
+		session['booking_doctor'] = self.doctor.id
+		session.save()
+
+		response = self.client.post(
+			reverse('appointments:book_step3'),
+			{'appointment_date': tomorrow.isoformat()},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'Doctor is on leave on this date')

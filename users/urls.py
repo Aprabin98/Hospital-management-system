@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import health_views
 
 app_name = 'users'
 
@@ -29,4 +30,11 @@ urlpatterns = [
     # Password Reset
     path('password-reset/', views.password_reset_request, name='password_reset'),
     path('reset-password/<int:user_id>/<str:token>/', views.password_reset_confirm, name='password_reset_confirm'),
+
+    # Patient health records
+    path('health-record/', health_views.health_record_detail, name='health_record_detail_self'),
+    path('health-record/<int:patient_id>/', health_views.health_record_detail, name='health_record_detail'),
+    path('health-record/update/', health_views.upsert_health_record, name='health_record_upsert'),
+    path('health-record/vitals/add/', health_views.add_vital_log, name='add_vital_log_self'),
+    path('health-record/<int:patient_id>/vitals/add/', health_views.add_vital_log, name='add_vital_log'),
 ]

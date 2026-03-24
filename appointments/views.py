@@ -13,7 +13,7 @@ from .forms import (
     AppointmentCancelForm
 )
 from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
-from clinical.models import Doctor, Specialization
+from clinical.models import Doctor, Specialization, DoctorLeave
 from users.models import PatientProfile
 
 
@@ -83,7 +83,13 @@ def book_step3(request):
         return redirect('appointments:book_step1')
 
     doctor = get_object_or_404(Doctor, id=doctor_id)
-    form = AppointmentStep3Form(request.POST or None)
+    form = AppointmentStep3Form(request.POST or None, doctor=doctor)
+
+    leave_dates = list(
+        DoctorLeave.objects.filter(doctor=doctor, date__gte=date.today())
+        .order_by('date')
+        .values_list('date', flat=True)
+    )
 
     if request.method == 'POST' and form.is_valid():
         appointment_date = form.cleaned_data['appointment_date']
@@ -92,7 +98,8 @@ def book_step3(request):
 
     return render(request, 'appointments/book_step3.html', {
         'form': form,
-        'doctor': doctor
+        'doctor': doctor,
+        'leave_dates': leave_dates,
     })
 
 
@@ -116,6 +123,11 @@ def book_step4(request):
 
     doctor = get_object_or_404(Doctor, id=doctor_id)
     booking_date = datetime.strptime(booking_date_str, '%Y-%m-%d').date()
+
+    if DoctorLeave.objects.filter(doctor=doctor, date=booking_date).exists():
+        messages.error(request, 'Doctor is on leave on the selected date. Please choose another date.')
+        request.session.pop('booking_date', None)
+        return redirect('appointments:book_step3')
 
     # Generate available slots
     available_slots = generate_available_slots(doctor, booking_date)
@@ -314,6 +326,14 @@ def cancel_appointment(request, pk):
     if request.method == 'POST':
         appointment.status = 'CANCELLED'
         appointment.save()
+
+        # When a slot is released, try to promote the highest-priority waiting patient.
+        try:
+            from .feature_views import promote_waiting_list
+            promote_waiting_list(appointment.doctor, appointment.date, created_by=request.user)
+        except Exception:
+            pass
+
         messages.success(request, 'Appointment cancelled successfully.')
         return redirect('appointments:appointment_list')
 

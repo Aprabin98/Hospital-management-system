@@ -3,7 +3,7 @@ from django.test.utils import override_settings
 from django.urls import reverse
 from django.core.cache import cache
 
-from users.models import User, TwoFactorCode
+from users.models import User, TwoFactorCode, PatientProfile
 
 
 class UsersSmokeTests(TestCase):
@@ -96,3 +96,51 @@ class RateLimitTests(TestCase):
 
 		self.assertEqual(first.status_code, 200)
 		self.assertEqual(second.status_code, 429)
+
+
+class HealthRecordTests(TestCase):
+	def setUp(self):
+		self.patient_user = User.objects.create_user(
+			email='patient.health@example.com',
+			username='patient_health',
+			password='pass1234',
+			role='PATIENT',
+			is_active=True,
+		)
+		self.patient_profile, _ = PatientProfile.objects.get_or_create(
+			user=self.patient_user,
+			defaults={'full_name': 'Patient Health'},
+		)
+
+	def test_patient_can_upsert_health_record(self):
+		self.client.force_login(self.patient_user)
+		response = self.client.post(
+			reverse('users:health_record_upsert'),
+			{
+				'allergies': 'Penicillin',
+				'chronic_conditions': 'Hypertension',
+				'surgical_history': 'Appendectomy',
+				'family_history': 'Diabetes',
+				'current_medications': 'Amlodipine',
+				'immunization_notes': 'Up to date',
+				'emergency_notes': 'N/A',
+			},
+		)
+		self.assertEqual(response.status_code, 200)
+
+	def test_patient_can_add_vital_log(self):
+		self.client.force_login(self.patient_user)
+		response = self.client.post(
+			reverse('users:add_vital_log_self'),
+			{
+				'blood_pressure': '120/80',
+				'pulse': 75,
+				'temperature_c': 36.8,
+				'respiratory_rate': 18,
+				'oxygen_saturation': 98,
+				'weight_kg': 70,
+				'height_cm': 172,
+				'notes': 'Stable',
+			},
+		)
+		self.assertEqual(response.status_code, 201)

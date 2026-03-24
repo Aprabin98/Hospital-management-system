@@ -10,6 +10,7 @@ class Appointment(models.Model):
         ('CONFIRMED', 'Confirmed'),
         ('CANCELLED', 'Cancelled'),
         ('COMPLETED', 'Completed'),
+        ('NO_SHOW', 'No Show'),
     ]
 
     patient = models.ForeignKey(
@@ -53,6 +54,13 @@ class Appointment(models.Model):
 
 
 class WaitingList(models.Model):
+    STATUS_CHOICES = [
+        ('WAITING', 'Waiting'),
+        ('NOTIFIED', 'Notified'),
+        ('PROMOTED', 'Promoted'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
     patient = models.ForeignKey(
         'users.PatientProfile',
         on_delete=models.CASCADE,
@@ -64,6 +72,10 @@ class WaitingList(models.Model):
         related_name='waiting_list'
     )
     date = models.DateField()
+    priority = models.PositiveSmallIntegerField(default=0)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='WAITING')
+    notified_at = models.DateTimeField(null=True, blank=True)
+    promoted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -72,3 +84,7 @@ class WaitingList(models.Model):
 
     def __str__(self):
         return f"{self.patient.full_name} waiting for Dr.{self.doctor.user.username} on {self.date}"
+
+
+# Register additional models in this app module so Django discovers them.
+from .no_show_predictor import NoShowPredictor, NoShowPredictor_Summary

@@ -1,6 +1,6 @@
 from django import forms
 from .models import Appointment, WaitingList
-from clinical.models import Specialization, Doctor
+from clinical.models import Specialization, Doctor, DoctorLeave
 from datetime import date
 
 
@@ -40,10 +40,18 @@ class AppointmentStep3Form(forms.Form):
         })
     )
 
+    def __init__(self, *args, doctor=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.doctor = doctor
+
     def clean_appointment_date(self):
         appointment_date = self.cleaned_data.get('appointment_date')
         if appointment_date < date.today():
             raise forms.ValidationError('Please select a future date.')
+
+        if self.doctor and DoctorLeave.objects.filter(doctor=self.doctor, date=appointment_date).exists():
+            raise forms.ValidationError('Doctor is on leave on this date. Please choose another date.')
+
         return appointment_date
 
 

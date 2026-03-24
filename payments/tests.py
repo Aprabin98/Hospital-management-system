@@ -62,3 +62,16 @@ class PaymentsSmokeTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.payment.refresh_from_db()
 		self.assertEqual(self.payment.status, 'PAID')
+
+	def test_patient_can_create_insurance(self):
+		self.client.force_login(self.patient_user)
+		response = self.client.post(
+			reverse('payments:insurance_create'),
+			{
+				'provider_name': 'NIBL Insurance',
+				'policy_number': 'POL-1001',
+				'plan_name': 'Family Plan',
+				'coverage_percent': 80,
+			},
+		)
+		self.assertEqual(response.status_code, 201)

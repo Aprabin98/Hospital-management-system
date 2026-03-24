@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import PatientProfile
+from .models import PatientProfile, PatientHealthRecord, PatientVitalLog
 
 User = get_user_model()
 
@@ -116,3 +116,41 @@ class SetNewPasswordForm(forms.Form):
         if password and confirm_password and password != confirm_password:
             raise forms.ValidationError('Passwords do not match.')
         return cleaned_data
+
+
+class PatientHealthRecordForm(forms.ModelForm):
+    class Meta:
+        model = PatientHealthRecord
+        fields = [
+            'allergies',
+            'chronic_conditions',
+            'surgical_history',
+            'family_history',
+            'current_medications',
+            'immunization_notes',
+            'emergency_notes',
+        ]
+        widgets = {
+            'allergies': forms.Textarea(attrs={'rows': 2}),
+            'chronic_conditions': forms.Textarea(attrs={'rows': 2}),
+            'surgical_history': forms.Textarea(attrs={'rows': 2}),
+            'family_history': forms.Textarea(attrs={'rows': 2}),
+            'current_medications': forms.Textarea(attrs={'rows': 2}),
+            'immunization_notes': forms.Textarea(attrs={'rows': 2}),
+            'emergency_notes': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+class PatientVitalLogForm(forms.ModelForm):
+    class Meta:
+        model = PatientVitalLog
+        fields = [
+            'blood_pressure',
+            'pulse',
+            'temperature_c',
+            'respiratory_rate',
+            'oxygen_saturation',
+            'weight_kg',
+            'height_cm',
+            'notes',
+        ]

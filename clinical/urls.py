@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import analytics_views
 
 app_name = 'clinical'
 
@@ -27,6 +28,7 @@ urlpatterns = [
 
     # Doctor Leave (Doctor)
     path('my-leaves/', views.doctor_leave, name='doctor_leave'),
+    path('my-leaves/<int:pk>/edit/', views.doctor_leave_edit, name='doctor_leave_edit'),
     path('my-leaves/<int:pk>/delete/', views.doctor_leave_delete, name='doctor_leave_delete'),
 
     # Public (Patient)
@@ -35,4 +37,8 @@ urlpatterns = [
 
     # Doctor (Own Profile)
     path('my-profile/', views.doctor_edit_own_profile, name='doctor_edit_own_profile'),
+
+    # Analytics and performance
+    path('analytics/dashboard/', analytics_views.hospital_analytics_dashboard, name='hospital_analytics_dashboard'),
+    path('analytics/doctor-metrics/', analytics_views.doctor_performance_metrics, name='doctor_performance_metrics'),
 ]

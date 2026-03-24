@@ -78,6 +78,7 @@ class AdmissionRequest(models.Model):
         ('PENDING', 'Pending'),
         ('APPROVED', 'Approved'),
         ('REJECTED', 'Rejected'),
+        ('ADMITTED', 'Admitted'),
     ]
 
     patient = models.ForeignKey('users.PatientProfile', on_delete=models.CASCADE, related_name='admission_requests')
@@ -98,3 +99,28 @@ class AdmissionRequest(models.Model):
     def __str__(self):
         requester = f"Dr. {self.doctor.user.username}" if self.doctor_id else "Patient"
         return f"Admission request: {self.patient.full_name} by {requester} ({self.status})"
+
+
+class RoomTransfer(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending Confirmation'),
+        ('APPROVED', 'Approved'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
+    patient = models.ForeignKey('users.PatientProfile', on_delete=models.CASCADE, related_name='room_transfers')
+    from_bed = models.ForeignKey(RoomBed, on_delete=models.PROTECT, related_name='transfers_from')
+    to_bed = models.ForeignKey(RoomBed, on_delete=models.PROTECT, related_name='transfers_to')
+    doctor = models.ForeignKey('clinical.Doctor', on_delete=models.SET_NULL, null=True, related_name='room_transfers')
+    reason = models.CharField(max_length=255)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+
+    def __str__(self):
+        return f"{self.patient.full_name}: {self.from_bed} → {self.to_bed}"

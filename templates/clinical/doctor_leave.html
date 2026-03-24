@@ -16,6 +16,7 @@
                             <td>{{ leave.date }}</td>
                             <td>{{ leave.reason|default:"No reason given" }}</td>
                             <td>
+                                <a href="{% url 'clinical:doctor_leave_edit' leave.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
                                 <form method="POST" action="{% url 'clinical:doctor_leave_delete' leave.pk %}" style="display:inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Cancel Leave</button>

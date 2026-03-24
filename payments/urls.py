@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import insurance_views
 
 app_name = 'payments'
 
@@ -15,4 +16,9 @@ urlpatterns = [
     path('<int:pk>/mark-paid/', views.mark_paid, name='mark_paid'),
     path('refund/<int:pk>/manage/', views.manage_refund, name='manage_refund'),
     path('revenue/', views.revenue_summary, name='revenue_summary'),
+
+    # Insurance verification workflow
+    path('insurance/', insurance_views.insurance_list, name='insurance_list'),
+    path('insurance/create/', insurance_views.insurance_create, name='insurance_create'),
+    path('insurance/<int:insurance_id>/verify/', insurance_views.insurance_verify, name='insurance_verify'),
 ]

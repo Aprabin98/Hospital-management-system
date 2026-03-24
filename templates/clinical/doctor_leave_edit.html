@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Edit Leave - HMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">✏️ Edit Leave</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Update your leave date or reason.</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'clinical:doctor_leave' %}" class="btn btn-outline-secondary w-50">Back</a>
+                        <button type="submit" class="btn btn-primary w-50">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

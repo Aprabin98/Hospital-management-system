@@ -193,11 +193,26 @@ class TestBooking(models.Model):
 
 
 class TestResult(models.Model):
-    """Lab technician fills test results."""
+    """Lab technician fills test results with workflow status tracking."""
+    STATUS_CHOICES = [
+        ('PENDING', 'Awaiting Lab Entry'),
+        ('ENTERED', 'Results Entered'),
+        ('REVIEWED', 'Under Doctor Review'),
+        ('APPROVED', 'Approved by Doctor'),
+        ('RELEASED', 'Released to Patient'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
     booking = models.OneToOneField(
         TestBooking,
         on_delete=models.CASCADE,
         related_name='result'
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='PENDING',
+        help_text="Workflow status of result"
     )
     filled_by = models.ForeignKey(
         'users.User',
@@ -229,11 +244,32 @@ class TestResult(models.Model):
         related_name='verified_results'
     )
     verified_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        'clinical.Doctor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_results',
+        help_text="Doctor who reviewed and approved results"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
     filled_at = models.DateTimeField(auto_now_add=True)
     released_at = models.DateTimeField(null=True, blank=True)
+    has_critical_values = models.BooleanField(
+        default=False,
+        help_text="Auto-flagged if any result item is critical"
+    )
+    critical_notification_sent = models.BooleanField(
+        default=False,
+        help_text="Track if critical values notification was sent to doctor"
+    )
 
     def __str__(self):
-        return f"Result for {self.booking}"
+        return f"Result for {self.booking} - {self.get_status_display()}"
+    
+    def check_critical_values(self):
+        """Check if any result items are critical"""
+        return self.items.filter(is_critical=True).exists()
 
 
 class TestResultItem(models.Model):

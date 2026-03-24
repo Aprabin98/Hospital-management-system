@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from no_show_predictor.views import predict_no_show_risk
+from . import feature_views
 
 app_name = 'appointments'
 
@@ -23,6 +24,13 @@ urlpatterns = [
 
     # Waiting List
     path('waiting-list/<int:doctor_id>/<str:date_str>/', views.join_waiting_list, name='join_waiting_list'),
+    path('waiting-list/queue/', feature_views.waiting_list_queue, name='waiting_list_queue'),
+    path('waiting-list/<int:waiting_id>/promote/', feature_views.manual_promote_waiting, name='manual_promote_waiting'),
+    path('waiting-list/<int:waiting_id>/priority/', feature_views.set_waiting_priority, name='set_waiting_priority'),
+
+    # No-show advanced workflow
+    path('no-show/dashboard/', feature_views.no_show_risk_dashboard, name='no_show_risk_dashboard'),
+    path('no-show/<int:appointment_id>/outcome/', feature_views.set_no_show_outcome, name='set_no_show_outcome'),
 
     # API
     path('api/slots/', views.get_slots_api, name='get_slots_api'),
