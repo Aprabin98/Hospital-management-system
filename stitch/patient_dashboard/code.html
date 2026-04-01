@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MediMind | Patient Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-background": "#1a1c1e",
+              "secondary-fixed-dim": "#b2c9e0",
+              "surface-container-low": "#f4f3f6",
+              "on-surface": "#1a1c1e",
+              "inverse-primary": "#a9c7ff",
+              "tertiary-fixed-dim": "#ffb691",
+              "primary-fixed": "#d6e3ff",
+              "surface-container": "#eeedf1",
+              "on-tertiary-container": "#ffcfb9",
+              "on-secondary": "#ffffff",
+              "inverse-surface": "#2f3033",
+              "outline-variant": "#c2c6d4",
+              "on-tertiary-fixed-variant": "#793100",
+              "secondary-fixed": "#cee5fd",
+              "surface-bright": "#faf9fc",
+              "tertiary": "#793100",
+              "surface-dim": "#dadadd",
+              "primary-container": "#005eb8",
+              "surface-container-highest": "#e2e2e5",
+              "background": "#faf9fc",
+              "secondary-container": "#cbe2fa",
+              "on-secondary-fixed-variant": "#33495c",
+              "outline": "#727783",
+              "primary-fixed-dim": "#a9c7ff",
+              "surface-variant": "#e2e2e5",
+              "on-error": "#ffffff",
+              "on-secondary-fixed": "#041d2f",
+              "on-secondary-container": "#4f6579",
+              "on-primary-fixed": "#001b3d",
+              "on-primary-container": "#c8daff",
+              "error": "#ba1a1a",
+              "on-primary-fixed-variant": "#00468c",
+              "on-primary": "#ffffff",
+              "on-tertiary-fixed": "#341100",
+              "surface": "#faf9fc",
+              "tertiary-fixed": "#ffdbcb",
+              "on-tertiary": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "secondary": "#4b6175",
+              "surface-container-high": "#e8e8eb",
+              "on-surface-variant": "#424752",
+              "inverse-on-surface": "#f1f0f4",
+              "surface-tint": "#005db6",
+              "tertiary-container": "#9f4300",
+              "error-container": "#ffdad6",
+              "on-error-container": "#93000a",
+              "primary": "#00478d"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "1rem", "xl": "1.25rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3 {
+        font-family: 'Manrope', sans-serif;
+      }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 gap-2 z-50 bg-surface-container-low h-screen w-64 border-r-0 font-['Inter'] font-medium text-sm">
+<div class="flex items-center gap-3 px-2 mb-8">
+<div class="w-10 h-10 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+</div>
+<div>
+<h1 class="text-lg font-extrabold text-[#005EB8] leading-tight">MediMind</h1>
+<p class="text-[10px] text-on-secondary-container uppercase tracking-widest font-bold">Clinical Curator</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 text-[#005EB8] font-bold rounded-lg shadow-sm transition-all scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#424752] hover:text-[#005EB8] hover:bg-white/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">person</span>
+<span>Patients</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#424752] hover:text-[#005EB8] hover:bg-white/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">event</span>
+<span>Appointments</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#424752] hover:text-[#005EB8] hover:bg-white/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span>Lab Results</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#424752] hover:text-[#005EB8] hover:bg-white/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span>Pharmacy</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#424752] hover:text-[#005EB8] hover:bg-white/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 border-t border-outline-variant/10 pt-4">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-white py-3 px-4 rounded-lg font-bold shadow-md hover:shadow-lg transition-all mb-4 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                New Registration
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 text-[#424752] hover:text-[#005EB8] hover:bg-white/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/20 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-8 py-4 z-40 sticky top-0 bg-[#faf9fc]/80 backdrop-blur-xl shadow-[0px_12px_32px_rgba(0,71,141,0.06)]">
+<div class="flex-1 max-w-xl">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-container-high/50 border-none rounded-full py-2.5 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all font-body text-sm" placeholder="Search medical records, doctors, or results..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-8">
+<button class="relative w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="flex items-center gap-3 pl-6 border-l border-outline-variant/30">
+<div class="text-right">
+<p class="text-sm font-bold text-on-surface leading-none">James Miller</p>
+<p class="text-[11px] text-on-surface-variant font-medium mt-1">Patient ID: #MM-9021</p>
+</div>
+<img alt="User profile photo" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary-fixed" data-alt="Close up portrait of a friendly middle-aged man with kind eyes and short grey hair in a clean professional setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWG_d92gxtKltkjUZUs5Zx7ZcAmg6oeDwbEdijmS-MVsQkiFgiy4FbSggVMn0bAz_rBvagbrEtI9d9SmlcCxGeq6vn5P1SlO_SKstX0C9mWAP7LzGl3hItIzLqf3vqeyrjkCrY5N2zFL8r0AoOGFIQrhsaHcp5nNCDaA-NE7pfP8od-wR1_nwGPtzqAxeBwIrRwwb-x30u6cz9GLFGf3ngJzrsSNH_uOta-UYwyCBZ6vm153h5usNOn6o8GyJ78mPpSFn4ReNPrFug"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Body -->
+<div class="p-8 max-w-7xl mx-auto">
+<!-- Welcome Header -->
+<section class="mb-10">
+<h2 class="text-3xl font-bold text-primary tracking-tight font-headline">Welcome back, James.</h2>
+<p class="text-on-surface-variant mt-2 max-w-2xl font-body">Your health metrics look stable today. You have an upcoming appointment in 2 days with Dr. Sarah Vance.</p>
+</section>
+<!-- Stats Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-l-4 border-primary group hover:shadow-md transition-all">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-primary bg-primary-fixed/30 p-2 rounded-lg">event_upcoming</span>
+<span class="text-[10px] font-bold text-on-secondary-container uppercase tracking-wider">Upcoming</span>
+</div>
+<p class="text-3xl font-bold text-on-surface font-headline">02</p>
+<p class="text-sm text-on-surface-variant font-medium">Scheduled Visits</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-l-4 border-error group hover:shadow-md transition-all">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-error bg-error-container/30 p-2 rounded-lg">payments</span>
+<span class="text-[10px] font-bold text-on-secondary-container uppercase tracking-wider">Action Required</span>
+</div>
+<p class="text-3xl font-bold text-on-surface font-headline">$142.50</p>
+<p class="text-sm text-on-surface-variant font-medium">Unpaid Balance</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-l-4 border-tertiary-container group hover:shadow-md transition-all">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-tertiary-container bg-tertiary-fixed/30 p-2 rounded-lg">pill</span>
+<span class="text-[10px] font-bold text-on-secondary-container uppercase tracking-wider">Active</span>
+</div>
+<p class="text-3xl font-bold text-on-surface font-headline">04</p>
+<p class="text-sm text-on-surface-variant font-medium">Prescriptions</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-l-4 border-secondary group hover:shadow-md transition-all">
+<div class="flex items-center justify-between mb-4">
+<span class="material-symbols-outlined text-secondary bg-secondary-container/30 p-2 rounded-lg">biotech</span>
+<span class="text-[10px] font-bold text-on-secondary-container uppercase tracking-wider">New</span>
+</div>
+<p class="text-3xl font-bold text-on-surface font-headline">01</p>
+<p class="text-sm text-on-surface-variant font-medium">Lab Result Pending</p>
+</div>
+</section>
+<!-- Main Layout: 2 Column Asymmetric -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+<!-- Left Column (Span 2) -->
+<div class="lg:col-span-2 flex flex-col gap-8">
+<!-- AI Report Reader Card (Visual Hero) -->
+<div class="relative overflow-hidden rounded-xl bg-primary-container p-8 text-white">
+<div class="relative z-10 max-w-md">
+<h3 class="text-2xl font-bold font-headline mb-3">AI Clinical Insight Engine</h3>
+<p class="text-primary-fixed/90 text-sm leading-relaxed mb-6">Upload your complex medical reports or blood work. Our Clinical AI will summarize findings and highlight key trends for your next doctor visit.</p>
+<button class="bg-white text-primary px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined">upload_file</span>
+                                Upload Report for Analysis
+                            </button>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/3 opacity-20 pointer-events-none overflow-hidden">
+<span class="material-symbols-outlined text-[240px] translate-x-20 translate-y-10" style="font-variation-settings: 'FILL' 1;">neurology</span>
+</div>
+</div>
+<!-- Appointment List -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-xl font-bold text-on-surface font-headline">Upcoming Appointments</h3>
+<a class="text-primary font-bold text-sm flex items-center gap-1 hover:underline" href="#">View Calendar <span class="material-symbols-outlined text-sm">chevron_right</span></a>
+</div>
+<div class="space-y-4">
+<!-- Appt 1 -->
+<div class="flex items-center gap-6 p-4 rounded-lg bg-surface-container-low/50 hover:bg-surface-container-low transition-colors">
+<div class="bg-white w-14 h-14 rounded-xl shadow-sm flex flex-col items-center justify-center border border-outline-variant/20">
+<span class="text-[10px] font-bold text-primary uppercase">Oct</span>
+<span class="text-xl font-bold text-on-surface">14</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-bold text-on-surface truncate">Dr. Sarah Vance</h4>
+<p class="text-xs text-on-surface-variant">General Cardiology • 10:30 AM</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">Reschedule</button>
+<button class="px-4 py-2 text-xs font-bold text-error bg-error-container/10 hover:bg-error-container/30 rounded-lg transition-colors">Cancel</button>
+</div>
+</div>
+<!-- Appt 2 -->
+<div class="flex items-center gap-6 p-4 rounded-lg bg-surface-container-low/50 hover:bg-surface-container-low transition-colors">
+<div class="bg-white w-14 h-14 rounded-xl shadow-sm flex flex-col items-center justify-center border border-outline-variant/20">
+<span class="text-[10px] font-bold text-primary uppercase">Oct</span>
+<span class="text-xl font-bold text-on-surface">22</span>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-bold text-on-surface truncate">Dr. Michael Chen</h4>
+<p class="text-xs text-on-surface-variant">Dermatology Consult • 02:15 PM</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">Reschedule</button>
+<button class="px-4 py-2 text-xs font-bold text-error bg-error-container/10 hover:bg-error-container/30 rounded-lg transition-colors">Cancel</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (Span 1) -->
+<div class="flex flex-col gap-8">
+<!-- Quick Actions -->
+<div class="bg-surface-container-low rounded-xl p-6">
+<h3 class="text-sm font-bold text-on-secondary-container uppercase tracking-widest mb-6">Quick Actions</h3>
+<div class="grid grid-cols-1 gap-3">
+<button class="w-full flex items-center gap-4 p-4 bg-white rounded-lg hover:shadow-md transition-all group">
+<span class="material-symbols-outlined text-primary bg-primary-fixed/20 p-2 rounded-lg group-hover:bg-primary-fixed transition-colors">calendar_add_on</span>
+<span class="font-bold text-sm text-on-surface">Book Appointment</span>
+</button>
+<button class="w-full flex items-center gap-4 p-4 bg-white rounded-lg hover:shadow-md transition-all group">
+<span class="material-symbols-outlined text-primary bg-primary-fixed/20 p-2 rounded-lg group-hover:bg-primary-fixed transition-colors">history_edu</span>
+<span class="font-bold text-sm text-on-surface">View Triage History</span>
+</button>
+<button class="w-full flex items-center gap-4 p-4 bg-white rounded-lg hover:shadow-md transition-all group">
+<span class="material-symbols-outlined text-primary bg-primary-fixed/20 p-2 rounded-lg group-hover:bg-primary-fixed transition-colors">contact_support</span>
+<span class="font-bold text-sm text-on-surface">Message Nurse</span>
+</button>
+</div>
+</div>
+<!-- Recent Activity Feed -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<h3 class="text-lg font-bold text-on-surface font-headline mb-6">Recent Activity</h3>
+<div class="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-surface-container-high">
+<!-- Item 1 -->
+<div class="relative flex gap-4">
+<div class="z-10 w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary border-4 border-white shadow-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">pill</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-on-surface">Prescription Renewal</p>
+<p class="text-xs text-on-surface-variant">Lisinopril 10mg - Refilled at CVS Pharmacy</p>
+<p class="text-[10px] text-outline mt-1 uppercase font-bold">2 hours ago</p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="relative flex gap-4">
+<div class="z-10 w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-error border-4 border-white shadow-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-on-surface">Payment Processed</p>
+<p class="text-xs text-on-surface-variant">Co-pay for Cardiology visit: $45.00</p>
+<p class="text-[10px] text-outline mt-1 uppercase font-bold">Yesterday</p>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="relative flex gap-4">
+<div class="z-10 w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary border-4 border-white shadow-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-on-surface">Lab Result Uploaded</p>
+<p class="text-xs text-on-surface-variant">Annual Comprehensive Metabolic Panel</p>
+<p class="text-[10px] text-outline mt-1 uppercase font-bold">Oct 10, 2023</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-2 text-sm font-bold text-primary hover:bg-primary-fixed/20 rounded-lg transition-colors">Show All Activity</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
