@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}AI Report Reader{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <h4><i class="fas fa-file-medical-alt text-primary"></i> AI Medical Report Reader</h4>
+        <p class="text-muted mb-0">Upload report files (PDF/TXT) to extract key abnormalities and suggested next actions.</p>
+    </div>
+</div>
+
+<div class="row">
+    {% if form %}
+    <div class="col-lg-5 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <strong>Upload Report</strong>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ form.title.label }}</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ form.report_file.label }}</label>
+                        {{ form.report_file }}
+                        <div class="form-text">Allowed: .pdf, .txt (max 5 MB)</div>
+                        {% if form.report_file.errors %}<div class="text-danger small">{{ form.report_file.errors }}</div>{% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Analyze Report</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7 mb-4">
+    {% else %}
+    <div class="col-12 mb-4">
+    {% endif %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <strong>Recent Analyses</strong>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-primary">
+                            <tr>
+                                {% if not form %}<th>Patient</th>{% endif %}
+                                <th>Type</th>
+                                <th>Risk</th>
+                                <th>Summary</th>
+                                <th>Flags</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in analyses %}
+                            <tr>
+                                {% if not form %}<td>{{ item.patient.full_name }}</td>{% endif %}
+                                <td>{{ item.get_report_type_display }}</td>
+                                <td>
+                                    <span class="badge {% if item.risk_level == 'CRITICAL' %}bg-danger{% elif item.risk_level == 'HIGH' %}bg-warning text-dark{% elif item.risk_level == 'MODERATE' %}bg-info text-dark{% else %}bg-success{% endif %}">
+                                        {{ item.risk_level }}
+                                    </span>
+                                </td>
+                                <td class="small">{{ item.ai_summary|truncatewords:28 }}</td>
+                                <td class="small">
+                                    {% if item.abnormal_flags %}
+                                        {% for flag in item.abnormal_flags|slice:':3' %}
+                                            <span class="badge bg-light text-dark border me-1">{{ flag.marker }}: {{ flag.value }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">No major flags</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.created_at|date:'Y-m-d H:i' }}</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="{% url 'appointments:report_reader_detail' item.id %}">
+                                        View Analysis
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">No report analyses yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="alert alert-warning mt-3 mb-0 small" role="alert">
+            This report is read and analyzed by trained AI models on real-world style data and may not always be fully accurate.
+            Please show the analyzed report to a professional licensed doctor before making medical decisions.
+        </div>
+    </div>
+</div>
+{% endblock %}

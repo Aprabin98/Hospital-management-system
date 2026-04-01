@@ -2,10 +2,43 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.shortcuts import redirect
+from django.http import HttpResponse
+from django.urls import reverse
+from users import views as user_views
+
+
+def robots_txt(request):
+    lines = [
+        'User-agent: *',
+        'Allow: /',
+        f'Sitemap: {request.build_absolute_uri(reverse("sitemap_xml"))}',
+    ]
+    return HttpResponse('\n'.join(lines), content_type='text/plain')
+
+
+def sitemap_xml(request):
+    pages = [
+        reverse('users:login'),
+        reverse('users:register'),
+        reverse('users:password_reset'),
+    ]
+    base_url = request.build_absolute_uri('/').rstrip('/')
+    entries = ''.join(
+        f'<url><loc>{base_url}{page}</loc></url>'
+        for page in pages
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f'{entries}'
+        '</urlset>'
+    )
+    return HttpResponse(xml, content_type='application/xml')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('robots.txt', robots_txt, name='robots_txt'),
+    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
     path('users/', include('users.urls', namespace='users')),
     path('clinical/', include('clinical.urls', namespace='clinical')),
     path('appointments/', include('appointments.urls', namespace='appointments')),
@@ -18,7 +51,7 @@ urlpatterns = [
     path('prescriptions/', include('prescriptions.urls', namespace='prescriptions')),
     path('payments/', include('payments.urls', namespace='payments')),
     path('lab/', include('lab.urls', namespace='lab')),
-    path('', lambda request: redirect('users:login'), name='home'),
+    path('', user_views.login_view, name='home'),
 ]
 
 # Serve media files in development

@@ -1,32 +1,40 @@
 {% extends 'base.html' %}
-{% block title %}Lab Technician Dashboard - HMS{% endblock %}
+{% block title %}Lab Technician Dashboard - MediMind{% endblock %}
 {% block content %}
 <h4>🔬 Lab Technician Dashboard</h4>
 <p class="text-muted">Welcome, {{ user.username }}</p>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-warning text-white text-center p-3">
             <h3>{{ todays_count }}</h3><p>Today's Tests</p>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-primary text-white text-center p-3">
             <h3>{{ pending_count }}</h3><p>Total Pending</p>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-success text-white text-center p-3">
             <h3>{{ completed_count }}</h3><p>Completed Today</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark text-white text-center p-3">
+            <h3>{{ ai_reports_count }}</h3><p>AI Reports Available</p>
         </div>
     </div>
 </div>
 
 <div class="card shadow p-3">
-    <h5>Quick Actions</h5>
+    <h5>Dashboard Actions</h5>
     <div class="d-grid gap-2">
         <a href="{% url 'lab:lab_dashboard' %}" class="btn btn-primary">🔬 View Pending Tests</a>
         <a href="{% url 'lab:admin_bookings' %}" class="btn btn-outline-primary">📋 All Bookings</a>
+    </div>
+    <div class="alert alert-light border mt-3 mb-0 small">
+        Use navbar <strong>Tests</strong> and <strong>Reports</strong> groups to open related workflows quickly.
     </div>
 </div>
 {% endblock %}

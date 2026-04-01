@@ -1,4 +1,4 @@
-# Hospital Management System - Room Management Enhancements
+# MediMind - Room Management Enhancements
 
 ## Overview
 Enhanced the room management module with a **complete workflow** for:

@@ -8,9 +8,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
 
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+def _env_bool(name, default='false'):
+    return os.getenv(name, default).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _env_list(name, default=''):
+    raw = os.getenv(name, default)
+    return [item.strip() for item in raw.split(',') if item.strip()]
+
+
+DEBUG = _env_bool('DEBUG', 'true')
+
+ALLOWED_HOSTS = _env_list('ALLOWED_HOSTS', '*' if DEBUG else '')
+
+SECURE_PROXY_SSL_HEADER = None
+_proxy_ssl_header_name = os.getenv('SECURE_PROXY_SSL_HEADER_NAME', '').strip()
+if _proxy_ssl_header_name:
+    SECURE_PROXY_SSL_HEADER = (
+        _proxy_ssl_header_name,
+        os.getenv('SECURE_PROXY_SSL_HEADER_VALUE', 'https').strip(),
+    )
+USE_X_FORWARDED_HOST = _env_bool('USE_X_FORWARDED_HOST', 'false')
+USE_X_FORWARDED_PORT = _env_bool('USE_X_FORWARDED_PORT', 'false')
 
 # Applications
 INSTALLED_APPS = [
@@ -44,6 +64,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
     'users.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -78,15 +100,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'hms_project.wsgi.application'
 
-# Database - PostgreSQL 18 (running on default port 5432)
+# Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hms_db',
-        'USER': 'hms_user',
-        'PASSWORD': 'StrongPassword123!',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.getenv('DB_NAME', 'hms_db'),
+        'USER': os.getenv('DB_USER', 'hms_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'StrongPassword123!'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 # Custom User Model
@@ -113,9 +135,24 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = '/static/'
-STATICFILES_DIRS = []
+STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+            if DEBUG else
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
+
+WHITENOISE_MAX_AGE = 31536000
+WHITENOISE_AUTOREFRESH = DEBUG
 
 # Media files (uploaded images, PDFs)
 MEDIA_URL = '/media/'
@@ -137,11 +174,12 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', '')
 
-# CORS (for React later)
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# CORS / CSRF trusted origins
+CORS_ALLOWED_ORIGINS = _env_list(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000',
+)
+CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS', '')
 
 # Django REST Framework
 REST_FRAMEWORK = {
@@ -170,11 +208,17 @@ REST_FRAMEWORK = {
 
 # Site domain (used in activation emails)
 SITE_DOMAIN = 'http://127.0.0.1:8000'
-SITE_NAME = 'HMS - Hospital Management System'
+SITE_NAME = 'MediMind'
 HOSPITAL_NAME = os.getenv('HOSPITAL_NAME', SITE_NAME)
-HOSPITAL_ADDRESS = os.getenv('HOSPITAL_ADDRESS', 'Kathmandu, Nepal')
-HOSPITAL_CONTACT_NUMBER = os.getenv('HOSPITAL_CONTACT_NUMBER', '+977-01-0000000')
+HOSPITAL_ADDRESS = os.getenv('HOSPITAL_ADDRESS', 'Bhairahawa, Nepal')
+HOSPITAL_CONTACT_NUMBER = os.getenv('HOSPITAL_CONTACT_NUMBER', '+977-71-000000')
 HOSPITAL_CONTACT_EMAIL = os.getenv('HOSPITAL_CONTACT_EMAIL', DEFAULT_FROM_EMAIL)
+HOSPITAL_REGISTRATION_NO = os.getenv('HOSPITAL_REGISTRATION_NO', 'NMC-REG-2082-001')
+HOSPITAL_PAN_NO = os.getenv('HOSPITAL_PAN_NO', 'PAN-600000001')
+HOSPITAL_LEGAL_FOOTER = os.getenv(
+    'HOSPITAL_LEGAL_FOOTER',
+    'This document is generated from the MediMind Health Information System and is valid under applicable healthcare documentation standards in Nepal.'
+)
 
 # Session/Cookie hardening
 SESSION_COOKIE_HTTPONLY = True
@@ -182,6 +226,13 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+SECURE_BROWSER_XSS_FILTER = True
+SECURITY_CSP_POLICY = os.getenv(
+    'SECURITY_CSP_POLICY',
+    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:;",
+)
 
 # JWT Token Configuration
 from datetime import timedelta
@@ -219,6 +270,8 @@ TWO_FACTOR_MAX_ATTEMPTS = int(os.getenv('TWO_FACTOR_MAX_ATTEMPTS', '5'))
 
 # Brute-force and endpoint abuse protection
 RATE_LIMIT_ENABLED = os.getenv('RATE_LIMIT_ENABLED', 'true').lower() == 'true'
+LOGIN_MAX_FAILED_ATTEMPTS = int(os.getenv('LOGIN_MAX_FAILED_ATTEMPTS', '5'))
+LOGIN_LOCK_MINUTES = int(os.getenv('LOGIN_LOCK_MINUTES', '30'))
 RATE_LIMIT_RULES = {
     '/users/login/': {
         'method': 'POST',
@@ -261,9 +314,9 @@ WHATSAPP_SEND_DOCTOR_ALERTS = os.getenv('WHATSAPP_SEND_DOCTOR_ALERTS', 'true').l
 
 # Security Settings for Production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', 'true')
+    SESSION_COOKIE_SECURE = _env_bool('SESSION_COOKIE_SECURE', 'true')
+    CSRF_COOKIE_SECURE = _env_bool('CSRF_COOKIE_SECURE', 'true')
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'true')
+    SECURE_HSTS_PRELOAD = _env_bool('SECURE_HSTS_PRELOAD', 'true')

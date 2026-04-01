@@ -19,6 +19,7 @@ from .models import PatientProfile, TwoFactorCode
 from .security import clear_attempts, is_identifier_locked, register_failed_attempt
 from .tasks import send_email_task
 from notifications.utils import build_two_factor_otp_whatsapp, send_whatsapp_message
+from audit.utils import log_audit_event
 
 User = get_user_model()
 
@@ -45,7 +46,7 @@ def _issue_two_factor_code(user, request):
 
     if getattr(settings, 'PRINT_2FA_OTP_IN_TERMINAL', True):
         print(
-            f"[HMS 2FA OTP] user={user.email} code={code} "
+            f"[MediMind 2FA OTP] user={user.email} code={code} "
             f"expires_in={expiry_minutes}m challenge_id={challenge.id}"
         )
 
@@ -162,6 +163,20 @@ def login_view(request):
             password = form.cleaned_data['password']
 
             if is_identifier_locked(email):
+                log_audit_event(
+                    action='SECURITY',
+                    request=request,
+                    description='Blocked login attempt for locked identifier.',
+                    target={
+                        'model_name': 'users.loginattempt',
+                        'object_id': '',
+                        'object_repr': email,
+                    },
+                    metadata={
+                        'identifier': email,
+                        'reason': 'identifier_locked',
+                    },
+                )
                 messages.error(request, 'Too many failed attempts. Try again in 30 minutes.')
                 return render(request, 'users/login.html', {'form': form})
 
@@ -185,7 +200,7 @@ def login_view(request):
                     )
             else:
                 ip_address = request.META.get('REMOTE_ADDR', '')
-                register_failed_attempt(email, ip_address=ip_address)
+                register_failed_attempt(email, ip_address=ip_address, request=request)
                 messages.error(request, 'Invalid email or password.')
 
     return render(request, 'users/login.html', {'form': form})
@@ -323,7 +338,7 @@ def patient_dashboard(request):
         )
 
     # Import here to avoid circular imports
-    from appointments.models import Appointment
+    from appointments.models import Appointment, MedicalReportAnalysis
     from datetime import date
 
     all_appointments = Appointment.objects.filter(
@@ -350,6 +365,7 @@ def patient_dashboard(request):
         'recent_appointments': all_appointments[:5],
         'unpaid_count': unpaid_count,
         'prescription_count': prescription_count,
+        'ai_reports_count': MedicalReportAnalysis.objects.filter(patient=profile).count(),
     }
     
     return render(request, 'users/patient_dashboard.html', context)
@@ -363,7 +379,7 @@ def doctor_dashboard(request):
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
 
-    from appointments.models import Appointment
+    from appointments.models import Appointment, MedicalReportAnalysis
     from reviews.models import Review
     from datetime import date
 
@@ -391,6 +407,7 @@ def doctor_dashboard(request):
             'doctor_profile': doctor,
             'avg_rating': doctor.get_average_rating(),
             'total_reviews': Review.objects.filter(doctor=doctor).count(),
+            'ai_reports_count': MedicalReportAnalysis.objects.count(),
         }
     except Exception:
         context = {
@@ -399,6 +416,7 @@ def doctor_dashboard(request):
             'upcoming_count': 0,
             'completed_count': 0,
             'todays_appointments': [],
+            'ai_reports_count': 0,
         }
 
     return render(request, 'users/doctor_dashboard.html', context)
@@ -412,7 +430,7 @@ def admin_dashboard(request):
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
 
-    from appointments.models import Appointment
+    from appointments.models import Appointment, MedicalReportAnalysis
     from datetime import date
 
     User = get_user_model()
@@ -424,6 +442,10 @@ def admin_dashboard(request):
             date=date.today()
         ).count(),
         'total_appointments': Appointment.objects.count(),
+        'report_reader_total': MedicalReportAnalysis.objects.count(),
+        'recent_report_analyses': MedicalReportAnalysis.objects.select_related(
+            'patient__user', 'created_by'
+        )[:20],
     }
     return render(request, 'users/admin_dashboard.html', context)
 
@@ -436,6 +458,7 @@ def lab_technician_dashboard(request):
         return redirect('users:dashboard')
 
     from lab.models import TestBooking
+    from appointments.models import MedicalReportAnalysis
     from datetime import date
     today = date.today()
 
@@ -448,6 +471,7 @@ def lab_technician_dashboard(request):
         'completed_count': TestBooking.objects.filter(
             date=today, status='COMPLETED'
         ).count(),
+        'ai_reports_count': MedicalReportAnalysis.objects.count(),
     }
     return render(request, 'users/lab_dashboard.html', context)
 
@@ -519,4 +543,22 @@ def receptionist_dashboard(request):
     if request.user.role != 'RECEPTIONIST':
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
-    return render(request, 'users/receptionist_dashboard.html', {'user': request.user})
+
+    from appointments.models import Appointment, MedicalReportAnalysis
+    from clinical.models import Doctor
+    from payments.models import Payment
+    from datetime import date
+
+    today = date.today()
+    context = {
+        'user': request.user,
+        'todays_appointments': Appointment.objects.filter(date=today).count(),
+        'checked_in_count': Appointment.objects.filter(
+            date=today,
+            status__in=['CONFIRMED', 'COMPLETED']
+        ).count(),
+        'pending_payments': Payment.objects.filter(status__in=['UNPAID', 'OVERDUE', 'PARTIALLY_PAID']).count(),
+        'available_doctors': Doctor.objects.filter(is_available=True).count(),
+        'ai_reports_count': MedicalReportAnalysis.objects.count(),
+    }
+    return render(request, 'users/receptionist_dashboard.html', context)

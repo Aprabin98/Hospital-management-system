@@ -2,8 +2,9 @@ from datetime import date, time, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 
-from appointments.models import Appointment
+from appointments.models import Appointment, TriageAssessment, MedicalReportAnalysis
 from clinical.models import Doctor, DoctorLeave
 from users.models import PatientProfile, User
 
@@ -86,3 +87,106 @@ class AppointmentsSmokeTests(TestCase):
 
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, 'Doctor is on leave on this date')
+
+	def test_patient_can_submit_triage_and_get_priority(self):
+		self.client.force_login(self.patient_user)
+		response = self.client.post(
+			reverse('appointments:triage_dashboard'),
+			{
+				'symptoms': 'I have chest pain and shortness of breath since morning',
+				'duration_days': 1,
+				'pain_level': 8,
+				'has_fever': False,
+				'has_breathing_issue': True,
+				'has_chest_pain': True,
+				'has_heavy_bleeding': False,
+				'had_fainting_episode': False,
+			},
+			follow=True,
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(TriageAssessment.objects.count(), 1)
+		triage = TriageAssessment.objects.first()
+		self.assertIn(triage.priority, ['P1', 'P2', 'P3', 'P4'])
+		self.assertGreaterEqual(triage.priority_score, 0)
+		self.assertContains(response, 'Priority assigned')
+
+	def test_lab_technician_cannot_access_triage_dashboard(self):
+		lab_user = User.objects.create_user(
+			email='labtriage@example.com',
+			username='lab_triage',
+			password='pass1234',
+			role='LAB_TECHNICIAN',
+			is_active=True,
+		)
+		self.client.force_login(lab_user)
+		response = self.client.get(reverse('appointments:triage_dashboard'), follow=True)
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'Access denied')
+
+	def test_patient_can_upload_report_and_get_ai_analysis(self):
+		self.client.force_login(self.patient_user)
+		report_file = SimpleUploadedFile(
+			'cbc_report.txt',
+			b'Hemoglobin: 9.2\nWBC: 14000\nPlatelets: 210000\nGlucose: 180',
+			content_type='text/plain',
+		)
+
+		response = self.client.post(
+			reverse('appointments:report_reader_dashboard'),
+			{'title': 'CBC test', 'report_file': report_file},
+			follow=True,
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(MedicalReportAnalysis.objects.count(), 1)
+		analysis = MedicalReportAnalysis.objects.first()
+		self.assertEqual(analysis.patient, self.patient_profile)
+		self.assertIn(analysis.risk_level, ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'])
+		summary_lines = [line for line in (analysis.ai_summary or '').splitlines() if line.strip()]
+		self.assertGreaterEqual(len(summary_lines), 8)
+		self.assertContains(response, 'Report analyzed successfully')
+
+	def test_doctor_can_access_report_reader_dashboard(self):
+		self.client.force_login(self.doctor_user)
+		response = self.client.get(reverse('appointments:report_reader_dashboard'))
+		self.assertEqual(response.status_code, 200)
+
+	def test_patient_can_view_own_analyzed_report_detail(self):
+		analysis = MedicalReportAnalysis.objects.create(
+			patient=self.patient_profile,
+			title='Sample',
+			report_file='appointments/reports/sample.txt',
+			report_type='CBC',
+			risk_level='MODERATE',
+			ai_summary='Detected 1 abnormal marker.',
+			abnormal_flags=[{'marker': 'Hemoglobin', 'value': 9.2, 'status': 'low', 'normal_range': '12 - 17.5'}],
+			recommendations='Follow-up suggested.',
+			created_by=self.patient_user,
+		)
+
+		self.client.force_login(self.patient_user)
+		response = self.client.get(reverse('appointments:report_reader_detail', args=[analysis.id]))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'Read Summary')
+		self.assertContains(response, 'Food Suggestions')
+		self.assertContains(response, 'trained AI models')
+
+	def test_patient_cannot_view_other_patient_analyzed_report_detail(self):
+		analysis = MedicalReportAnalysis.objects.create(
+			patient=self.other_patient_profile,
+			title='Other sample',
+			report_file='appointments/reports/sample2.txt',
+			report_type='GENERAL',
+			risk_level='LOW',
+			ai_summary='No major issue.',
+			abnormal_flags=[],
+			recommendations='Routine follow-up.',
+			created_by=self.other_patient_user,
+		)
+
+		self.client.force_login(self.patient_user)
+		response = self.client.get(reverse('appointments:report_reader_detail', args=[analysis.id]), follow=True)
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, 'Access denied')

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Patient Dashboard - HMS{% endblock %}
+{% block title %}Patient Dashboard - MediMind{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -38,39 +38,50 @@
             </div>
         {% endif %}
         <div class="row g-3 mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card bg-primary text-white text-center p-3">
                     <h3>{{ total_appointments }}</h3>
                     <p>Total Appointments</p>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card bg-success text-white text-center p-3">
                     <h3>{{ upcoming_appointments }}</h3>
                     <p>Upcoming</p>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card bg-info text-white text-center p-3">
                     <h3>{{ prescription_count }}</h3>
                     <p>Prescriptions</p>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="card bg-dark text-white text-center p-3">
+                    <h3>{{ ai_reports_count }}</h3>
+                    <p>AI Reports Analyzed</p>
+                </div>
+            </div>
         </div>
 
         <div class="card shadow p-3">
-            <h5 class="fw-bold">Quick Actions</h5>
-            <div class="d-grid gap-2">
-                <a href="{% url 'appointments:book_step1' %}" class="btn btn-primary">📅 Book Appointment</a>
-                <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-secondary">📋 View Appointments</a>
-                <a href="{% url 'clinical:doctor_search' %}" class="btn btn-outline-secondary">🔍 Find Doctors</a>
-                <a href="{% url 'prescriptions:patient_prescriptions' %}" class="btn btn-outline-secondary">💊 My Prescriptions</a>
-                <a href="{% url 'heart_risk:assess' %}" class="btn btn-outline-danger">❤️ My Heart Risk Check</a>
-                <a href="{% url 'reviews:my_reviews' %}" class="btn btn-outline-secondary">⭐ My Reviews</a>
-                <a href="{% url 'users:edit_profile' %}" class="btn btn-outline-secondary">✏️ Edit Profile</a>
-                <a href="{% url 'payments:patient_payments' %}" class="btn btn-outline-secondary">💳 My Payments</a>
-                <a href="{% url 'lab:test_list' %}" class="btn btn-outline-info">🧪 Book Lab Test</a>
-                <a href="{% url 'lab:my_bookings' %}" class="btn btn-outline-info">📋 My Lab Tests</a>
+            <h5 class="fw-bold mb-3">Dashboard Actions</h5>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <a href="{% url 'appointments:book_step1' %}" class="btn btn-primary w-100">📅 Book Appointment</a>
+                </div>
+                <div class="col-md-6">
+                    <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary w-100">📋 View Appointments</a>
+                </div>
+                <div class="col-md-6">
+                    <a href="{% url 'users:edit_profile' %}" class="btn btn-outline-secondary w-100">✏️ Edit Profile</a>
+                </div>
+                <div class="col-md-6">
+                    <a href="{% url 'clinical:doctor_search' %}" class="btn btn-outline-secondary w-100">🔍 Find Doctors</a>
+                </div>
+            </div>
+            <div class="alert alert-light border mt-3 mb-0 small">
+                Use the top navbar groups (<strong>Tests</strong>, <strong>Reports</strong>, <strong>Rooms</strong>) for all feature-specific actions.
             </div>
         </div>
 

@@ -220,15 +220,31 @@ def patient_available_rooms(request):
     if floor:
         rooms = rooms.filter(floor__icontains=floor)
     
-    # Add available beds count to each room
+    # Add bed availability status to each room so patients can see full/remaining status.
     available_rooms = []
     for room in rooms:
         available_beds = [bed for bed in room.beds.all() if bed.status == 'AVAILABLE']
-        if available_beds:
-            room.available_bed_list = available_beds
-            room.available_beds_count = len(available_beds)
-            room.get_estimated_cost = 5000  # Standard cost per day (can vary by type)
-            available_rooms.append(room)
+        occupied_beds = [bed for bed in room.beds.all() if bed.status == 'OCCUPIED']
+        maintenance_beds = [bed for bed in room.beds.all() if bed.status == 'MAINTENANCE']
+
+        room.available_bed_list = available_beds
+        room.available_beds_count = len(available_beds)
+        room.occupied_beds_count = len(occupied_beds)
+        room.maintenance_beds_count = len(maintenance_beds)
+        room.get_estimated_cost = 5000  # Standard cost per day (can vary by type)
+
+        room.is_full = room.available_beds_count == 0
+        if room.is_full:
+            room.availability_label = 'Occupied'
+            room.availability_badge_class = 'bg-danger'
+        elif room.available_beds_count == 1:
+            room.availability_label = '1 bed left'
+            room.availability_badge_class = 'bg-warning text-dark'
+        else:
+            room.availability_label = f'{room.available_beds_count} beds left'
+            room.availability_badge_class = 'bg-success'
+
+        available_rooms.append(room)
     
     # Get patient's current bookings
     patient = request.user.patient_profile
@@ -273,7 +289,7 @@ def patient_book_room(request):
             status='PENDING',
         )
 
-        for recipient in User.objects.filter(role__in=['RECEPTIONIST', 'ADMIN'], is_active=True):
+        for recipient in User.objects.filter(role='RECEPTIONIST', is_active=True):
             create_notification(
                 recipient=recipient,
                 title='New Room Request',
@@ -407,23 +423,92 @@ def doctor_admission_requests(request):
             messages.error(request, 'A pending admission request already exists for this patient.')
             return redirect('rooms:doctor_admission_requests')
 
-        admission_request = form.save(commit=False)
-        admission_request.doctor = doctor
-        admission_request.requested_by = request.user
-        admission_request.save()
+        preferred_room_type = form.cleaned_data.get('preferred_room_type', '')
+        notes = form.cleaned_data.get('reason', '').strip()
 
-        for recipient in User.objects.filter(role__in=['RECEPTIONIST', 'ADMIN'], is_active=True):
-            create_notification(
-                recipient=recipient,
-                title='New Admission Request',
-                message=(
-                    f"Dr. {doctor.user.username} requested admission for "
-                    f"{patient.full_name}."
-                ),
-                notification_type='ROOM',
+        with transaction.atomic():
+            available_beds = RoomBed.objects.select_for_update().select_related('room').filter(
+                status='AVAILABLE',
+                room__is_active=True,
             )
+            if preferred_room_type:
+                available_beds = available_beds.filter(room__room_type=preferred_room_type)
 
-        messages.success(request, 'Admission request submitted. Receptionist will assign room and bed.')
+            bed = available_beds.order_by('room__room_number', 'bed_number').first()
+
+            if bed:
+                RoomAssignment.objects.create(
+                    patient=patient,
+                    bed=bed,
+                    doctor=doctor,
+                    admitted_by=request.user,
+                    reason=notes or 'Doctor direct admission',
+                )
+
+                bed.status = 'OCCUPIED'
+                bed.save(update_fields=['status'])
+
+                AdmissionRequest.objects.create(
+                    patient=patient,
+                    doctor=doctor,
+                    requested_by=request.user,
+                    preferred_room=bed.room,
+                    preferred_room_type=preferred_room_type,
+                    reason=notes or 'Doctor direct admission',
+                    status='ADMITTED',
+                    processed_by=request.user,
+                    processed_at=timezone.now(),
+                    receptionist_notes='Directly booked by doctor',
+                )
+
+                beds_left = RoomBed.objects.filter(room=bed.room, status='AVAILABLE').count()
+
+                if patient.user_id:
+                    create_notification(
+                        recipient=patient.user,
+                        title='Room Assigned',
+                        message=(
+                            f'You have been admitted to Room {bed.room.room_number}, '
+                            f'Bed {bed.bed_number}. ({beds_left} bed(s) left in this room)'
+                        ),
+                        notification_type='ROOM',
+                    )
+
+                for recipient in User.objects.filter(role='RECEPTIONIST', is_active=True):
+                    create_notification(
+                        recipient=recipient,
+                        title='Doctor Direct Admission',
+                        message=(
+                            f'Dr. {doctor.user.username} directly admitted {patient.full_name} '
+                            f'to Room {bed.room.room_number}, Bed {bed.bed_number}.'
+                        ),
+                        notification_type='ROOM',
+                    )
+
+                messages.success(
+                    request,
+                    f'Patient admitted directly to Room {bed.room.room_number}, Bed {bed.bed_number}. '
+                    f'{beds_left} bed(s) left in this room.'
+                )
+                return redirect('rooms:doctor_admission_requests')
+
+            admission_request = form.save(commit=False)
+            admission_request.doctor = doctor
+            admission_request.requested_by = request.user
+            admission_request.save()
+
+            for recipient in User.objects.filter(role='RECEPTIONIST', is_active=True):
+                create_notification(
+                    recipient=recipient,
+                    title='New Admission Request',
+                    message=(
+                        f"Dr. {doctor.user.username} requested admission for "
+                        f"{patient.full_name}, but no bed is currently available."
+                    ),
+                    notification_type='ROOM',
+                )
+
+        messages.warning(request, 'No bed available now. Request saved for receptionist approval.')
         return redirect('rooms:doctor_admission_requests')
 
     my_requests = AdmissionRequest.objects.filter(

@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.core.cache import cache
 
 from users.models import User, TwoFactorCode, PatientProfile
+from audit.models import AuditLog
 
 
 class UsersSmokeTests(TestCase):
@@ -96,6 +97,63 @@ class RateLimitTests(TestCase):
 
 		self.assertEqual(first.status_code, 200)
 		self.assertEqual(second.status_code, 429)
+
+
+@override_settings(
+	TWO_FACTOR_REQUIRED_ROLES=[],
+	LOGIN_MAX_FAILED_ATTEMPTS=3,
+	LOGIN_LOCK_MINUTES=30,
+)
+class LoginLockoutTests(TestCase):
+	def setUp(self):
+		self.user = User.objects.create_user(
+			email='lock.user@example.com',
+			username='lock_user',
+			password='CorrectPass123!',
+			role='PATIENT',
+			is_active=True,
+		)
+
+	def test_identifier_is_locked_after_repeated_failures(self):
+		for _ in range(3):
+			response = self.client.post(
+				reverse('users:login'),
+				{'email': self.user.email, 'password': 'WrongPass!'},
+			)
+			self.assertEqual(response.status_code, 200)
+
+		locked_attempt = self.client.post(
+			reverse('users:login'),
+			{'email': self.user.email, 'password': 'CorrectPass123!'},
+		)
+
+		self.assertEqual(locked_attempt.status_code, 200)
+		self.assertContains(locked_attempt, 'Too many failed attempts', status_code=200)
+
+	def test_lockout_creates_security_audit_events(self):
+		for _ in range(3):
+			self.client.post(
+				reverse('users:login'),
+				{'email': self.user.email, 'password': 'WrongPass!'},
+			)
+
+		self.client.post(
+			reverse('users:login'),
+			{'email': self.user.email, 'password': 'CorrectPass123!'},
+		)
+
+		self.assertTrue(
+			AuditLog.objects.filter(
+				action='SECURITY',
+				description__icontains='lockout',
+			).exists()
+		)
+		self.assertTrue(
+			AuditLog.objects.filter(
+				action='SECURITY',
+				description__icontains='blocked login attempt',
+			).exists()
+		)
 
 
 class HealthRecordTests(TestCase):

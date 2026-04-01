@@ -1,23 +1,28 @@
 {% extends 'base.html' %}
-{% block title %}Doctor Dashboard - HMS{% endblock %}
+{% block title %}Doctor Dashboard - MediMind{% endblock %}
 {% block content %}
 <h4>👨‍⚕️ Doctor Dashboard</h4>
 <p class="text-muted">Welcome, Dr. {{ user.username }}</p>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-primary text-white text-center p-3">
             <h3>{{ todays_count }}</h3><p>Today's Appointments</p>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-success text-white text-center p-3">
             <h3>{{ upcoming_count }}</h3><p>Upcoming</p>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-warning text-white text-center p-3">
             <h3>{{ completed_count }}</h3><p>Completed</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-dark text-white text-center p-3">
+            <h3>{{ ai_reports_count }}</h3><p>AI Reports Reviewed</p>
         </div>
     </div>
 </div>
@@ -31,18 +36,15 @@
 <div class="row g-3">
     <div class="col-md-6">
         <div class="card shadow p-3">
-            <h5>Quick Actions</h5>
+            <h5>Dashboard Actions</h5>
             <div class="d-grid gap-2">
                 <a href="{% url 'appointments:todays_appointments' %}" class="btn btn-primary">📅 Today's Appointments</a>
                 <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary">📋 All Appointments</a>
-                <a href="{% url 'heart_risk:assess' %}" class="btn btn-outline-danger">❤️ Heart Risk Predictor</a>
-                <a href="{% url 'rooms:doctor_admission_requests' %}" class="btn btn-outline-primary">🏥 Admission Requests</a>
-                <a href="{% url 'prescriptions:doctor_prescriptions' %}" class="btn btn-outline-primary">💊 My Prescriptions</a>
-                {% if doctor_profile %}
-                <a href="{% url 'reviews:doctor_reviews' doctor_profile.id %}" class="btn btn-outline-primary">⭐ My Ratings</a>
-                {% endif %}
                 <a href="{% url 'clinical:doctor_leave' %}" class="btn btn-outline-secondary">🏖️ Manage Leaves</a>
                 <a href="{% url 'clinical:doctor_edit_own_profile' %}" class="btn btn-outline-secondary">✏️ Edit My Profile</a>
+            </div>
+            <div class="alert alert-light border mt-3 mb-0 small">
+                Detailed modules are grouped in the navbar under <strong>Reports</strong>, <strong>Tests</strong>, <strong>Rooms</strong>, and <strong>Reviews</strong>.
             </div>
         </div>
     </div>

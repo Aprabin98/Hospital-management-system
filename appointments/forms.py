@@ -1,5 +1,5 @@
 from django import forms
-from .models import Appointment, WaitingList
+from .models import Appointment, WaitingList, TriageAssessment, MedicalReportAnalysis
 from clinical.models import Specialization, Doctor, DoctorLeave
 from datetime import date
 
@@ -89,3 +89,65 @@ class WaitingListForm(forms.ModelForm):
             'doctor': forms.Select(attrs={'class': 'form-control'}),
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+
+class TriageAssessmentForm(forms.ModelForm):
+    class Meta:
+        model = TriageAssessment
+        fields = [
+            'symptoms',
+            'duration_days',
+            'pain_level',
+            'has_fever',
+            'has_breathing_issue',
+            'has_chest_pain',
+            'has_heavy_bleeding',
+            'had_fainting_episode',
+        ]
+        widgets = {
+            'symptoms': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Describe your symptoms, when they started, and how severe they are.'
+            }),
+            'duration_days': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'pain_level': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 10}),
+        }
+
+    def clean_symptoms(self):
+        symptoms = (self.cleaned_data.get('symptoms') or '').strip()
+        if len(symptoms) < 10:
+            raise forms.ValidationError('Please provide more symptom details (at least 10 characters).')
+        return symptoms
+
+
+class MedicalReportUploadForm(forms.ModelForm):
+    class Meta:
+        model = MedicalReportAnalysis
+        fields = ['title', 'report_file']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Optional title (e.g., CBC March 2026)'
+            }),
+            'report_file': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.txt'
+            }),
+        }
+
+    def clean_report_file(self):
+        report_file = self.cleaned_data.get('report_file')
+        if not report_file:
+            raise forms.ValidationError('Please upload a report file.')
+
+        allowed = ('.pdf', '.txt')
+        filename = (report_file.name or '').lower()
+        if not filename.endswith(allowed):
+            raise forms.ValidationError('Only PDF and TXT files are supported.')
+
+        max_size = 5 * 1024 * 1024
+        if report_file.size > max_size:
+            raise forms.ValidationError('Report file must be smaller than 5 MB.')
+
+        return report_file

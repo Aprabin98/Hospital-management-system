@@ -1,43 +1,55 @@
 {% extends 'base.html' %}
-{% block title %}Receptionist Dashboard - HMS{% endblock %}
+{% block title %}Receptionist Dashboard - MediMind{% endblock %}
 {% block content %}
 <h4>🏥 Receptionist Dashboard</h4>
 <p class="text-muted">Welcome, {{ user.username }}</p>
 <div class="row g-3">
     <div class="col-md-3">
         <div class="card bg-primary text-white text-center p-3">
-            <h3>0</h3><p>Today's Appointments</p>
+            <h3>{{ todays_appointments }}</h3><p>Today's Appointments</p>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card bg-success text-white text-center p-3">
-            <h3>0</h3><p>Patients Checked In</p>
+            <h3>{{ checked_in_count }}</h3><p>Checked In / Completed</p>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card bg-warning text-white text-center p-3">
-            <h3>0</h3><p>Pending Payments</p>
+            <h3>{{ pending_payments }}</h3><p>Pending Payments</p>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card bg-info text-white text-center p-3">
-            <h3>0</h3><p>Available Doctors</p>
+            <h3>{{ available_doctors }}</h3><p>Available Doctors</p>
         </div>
     </div>
 </div>
 <div class="row mt-3">
     <div class="col-md-6">
         <div class="card shadow p-3">
-            <h5>Quick Actions</h5>
+            <h5>Appointment Desk</h5>
             <div class="d-grid gap-2">
                 <a href="{% url 'appointments:book_step1' %}" class="btn btn-primary">📅 Book Appointment</a>
                 <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary">📋 View Appointments</a>
                 <a href="{% url 'clinical:doctor_search' %}" class="btn btn-outline-secondary">🔍 Find Doctors</a>
-                <a href="#" class="btn btn-outline-primary">👤 Register Patient</a>
-                <a href="#" class="btn btn-outline-primary">💳 Collect Payment</a>
+                <a href="{% url 'rooms:receptionist_assign_room' %}" class="btn btn-outline-secondary">🛏️ Assign Room</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow p-3">
+            <h5>Billing & Reports</h5>
+            <div class="d-grid gap-2">
+                <a href="{% url 'payments:admin_payments' %}" class="btn btn-outline-primary">💳 Collect / Track Payments</a>
+                <a href="{% url 'appointments:report_reader_dashboard' %}" class="btn btn-outline-dark">📄 AI Report Reader</a>
                 <a href="{% url 'heart_risk:assess' %}" class="btn btn-outline-danger">❤️ Heart Risk Predictor</a>
-                <a href="#" class="btn btn-outline-primary">📋 Today's Schedule</a>
-                <a href="{% url 'payments:admin_payments' %}" class="btn btn-outline-primary">💳 Collect Payment</a>
+            </div>
+            <div class="alert alert-light border mt-3 mb-0 small">
+                <strong>AI Reports Processed:</strong> {{ ai_reports_count }}
+            </div>
+            <div class="alert alert-light border mt-2 mb-0 small">
+                Use navbar groups for all modules: <strong>Tests</strong>, <strong>Reports</strong>, and <strong>Rooms</strong>.
             </div>
         </div>
     </div>

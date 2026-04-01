@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _hospital_details_line():
-    hospital_name = getattr(settings, 'HOSPITAL_NAME', getattr(settings, 'SITE_NAME', 'HMS'))
+    hospital_name = getattr(settings, 'HOSPITAL_NAME', getattr(settings, 'SITE_NAME', 'MediMind'))
     hospital_address = getattr(settings, 'HOSPITAL_ADDRESS', '').strip()
     hospital_contact = getattr(settings, 'HOSPITAL_CONTACT_NUMBER', '').strip()
 
@@ -154,7 +154,7 @@ def build_patient_appointment_whatsapp(appointment, is_reminder=False):
     hospital_details = _hospital_details_line()
 
     return (
-        f"HMS Appointment {verb}\n"
+        f"MediMind Appointment {verb}\n"
         f"Doctor: {doctor_name}\n"
         f"Date: {appointment_date}\n"
         f"Time: {appointment_time}\n"
@@ -171,7 +171,7 @@ def build_doctor_appointment_whatsapp(appointment, is_reminder=False):
     hospital_details = _hospital_details_line()
 
     return (
-        f"HMS Doctor {prefix}\n"
+        f"MediMind Doctor {prefix}\n"
         f"Patient: {patient_name}\n"
         f"Date: {appointment_date}\n"
         f"Time: {appointment_time}\n"
@@ -186,7 +186,7 @@ def build_patient_status_whatsapp(appointment):
     appointment_time = _format_appointment_time(appointment.start_time)
     hospital_details = _hospital_details_line()
     return (
-        f"HMS Appointment Update\n"
+        f"MediMind Appointment Update\n"
         f"Status: {status}\n"
         f"Date: {appointment_date}\n"
         f"Time: {appointment_time}\n"
@@ -195,7 +195,7 @@ def build_patient_status_whatsapp(appointment):
 
 
 def build_two_factor_otp_whatsapp(user, code, expiry_minutes):
-    hospital_name = getattr(settings, 'HOSPITAL_NAME', getattr(settings, 'SITE_NAME', 'HMS'))
+    hospital_name = getattr(settings, 'HOSPITAL_NAME', getattr(settings, 'SITE_NAME', 'MediMind'))
     return (
         f"{hospital_name} Login OTP\n"
         f"Code: {code}\n"

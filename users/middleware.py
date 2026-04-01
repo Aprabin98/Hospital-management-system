@@ -14,6 +14,20 @@ class SecurityHeadersMiddleware:
         response.setdefault('X-Content-Type-Options', 'nosniff')
         response.setdefault('Referrer-Policy', 'same-origin')
         response.setdefault('X-Frame-Options', 'DENY')
+        response.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        response.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+        response.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        response.setdefault('X-DNS-Prefetch-Control', 'on')
+        response.setdefault('Content-Security-Policy', getattr(settings, 'SECURITY_CSP_POLICY', "default-src 'self'"))
+
+        # Keep HTML dynamic, but encourage browser caching for static/media assets.
+        cache_control = response.get('Cache-Control', '')
+        if request.path.startswith('/static/') or request.path.startswith('/media/'):
+            if not cache_control:
+                response['Cache-Control'] = 'public, max-age=604800, immutable'
+        elif 'text/html' in (response.get('Content-Type', '') or '') and not cache_control:
+            response['Cache-Control'] = 'no-cache'
+
         return response
 
 

@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
+from datetime import date, time
 
+from appointments.models import Appointment
 from clinical.models import Doctor
 from rooms.models import AdmissionRequest, Room, RoomAssignment, RoomBed
 from users.models import PatientProfile, User
@@ -45,6 +47,15 @@ class RoomsWorkflowTests(TestCase):
             is_active=True,
         )
         self.bed = RoomBed.objects.create(room=self.room, bed_number='1', status='AVAILABLE')
+
+        Appointment.objects.create(
+            patient=self.patient_profile,
+            doctor=self.doctor_profile,
+            date=date.today(),
+            start_time=time(9, 0),
+            end_time=time(9, 30),
+            status='CONFIRMED',
+        )
 
     def test_patient_booking_creates_pending_request_not_assignment(self):
         self.client.force_login(self.patient_user)
@@ -99,3 +110,39 @@ class RoomsWorkflowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 405)
+
+    def test_doctor_request_directly_books_room_when_bed_available(self):
+        self.client.force_login(self.doctor_user)
+
+        response = self.client.post(
+            reverse('rooms:doctor_admission_requests'),
+            {
+                'patient': self.patient_profile.id,
+                'preferred_room_type': 'GENERAL',
+                'reason': 'Needs admission now',
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(RoomAssignment.objects.count(), 1)
+        assignment = RoomAssignment.objects.first()
+        self.assertEqual(assignment.patient, self.patient_profile)
+        self.assertEqual(assignment.doctor, self.doctor_profile)
+
+        self.bed.refresh_from_db()
+        self.assertEqual(self.bed.status, 'OCCUPIED')
+
+        record = AdmissionRequest.objects.first()
+        self.assertEqual(record.status, 'ADMITTED')
+
+    def test_patient_room_list_shows_occupied_status_when_full(self):
+        self.bed.status = 'OCCUPIED'
+        self.bed.save(update_fields=['status'])
+
+        self.client.force_login(self.patient_user)
+        response = self.client.get(reverse('rooms:patient_available_rooms'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Occupied')
+        self.assertContains(response, 'Room Occupied')

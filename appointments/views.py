@@ -6,11 +6,19 @@ from django.views.decorators.http import require_POST
 from datetime import date, datetime
 import json
 
-from .models import Appointment, WaitingList
+from .models import Appointment, WaitingList, TriageAssessment, MedicalReportAnalysis
 from .forms import (
     AppointmentStep1Form, AppointmentStep2Form,
     AppointmentStep3Form, AppointmentStep4Form,
-    AppointmentCancelForm
+    AppointmentCancelForm, TriageAssessmentForm, MedicalReportUploadForm
+)
+from .triage import evaluate_triage
+from .report_reader import (
+    extract_text_from_file,
+    analyze_report_text,
+    sanitize_text_for_storage,
+    sanitize_flags_for_storage,
+    build_personalized_guidance,
 )
 from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
 from clinical.models import Doctor, Specialization, DoctorLeave
@@ -488,3 +496,127 @@ def join_waiting_list(request, doctor_id, date_str):
         messages.success(request, 'Added to waiting list! We will notify you if a slot opens up.')
 
     return redirect('appointments:appointment_list')
+
+
+@login_required
+def triage_dashboard(request):
+    """Patient-facing symptom triage with automatic P1-P4 priority assignment."""
+    if request.user.role not in ['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN']:
+        messages.error(request, 'Access denied.')
+        return redirect('users:dashboard')
+
+    if request.user.role == 'PATIENT':
+        form = TriageAssessmentForm(request.POST or None)
+        if request.method == 'POST' and form.is_valid():
+            patient_profile = request.user.patient_profile
+            triage = form.save(commit=False)
+            triage.patient = patient_profile
+            triage.created_by = request.user
+
+            result = evaluate_triage(form.cleaned_data)
+            triage.priority = result['priority']
+            triage.priority_score = result['priority_score']
+            triage.ai_summary = result['ai_summary']
+            triage.recommended_action = result['recommended_action']
+            triage.save()
+
+            messages.success(
+                request,
+                f"Triage complete. Priority assigned: {triage.get_priority_display()}"
+            )
+            return redirect('appointments:triage_dashboard')
+
+        assessments = TriageAssessment.objects.filter(
+            patient=request.user.patient_profile
+        ).select_related('created_by')[:20]
+    else:
+        form = None
+        assessments = TriageAssessment.objects.select_related(
+            'patient__user', 'created_by'
+        )[:200]
+
+    return render(request, 'appointments/triage_dashboard.html', {
+        'form': form,
+        'assessments': assessments,
+    })
+
+
+@login_required
+def report_reader_dashboard(request):
+    """Upload and analyze medical reports to generate a quick AI summary and risk level."""
+    if request.user.role not in ['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN', 'LAB_TECHNICIAN']:
+        messages.error(request, 'Access denied.')
+        return redirect('users:dashboard')
+
+    if request.user.role == 'PATIENT':
+        form = MedicalReportUploadForm(request.POST or None, request.FILES or None)
+        if request.method == 'POST' and form.is_valid():
+            analysis = form.save(commit=False)
+            analysis.patient = request.user.patient_profile
+            analysis.created_by = request.user
+
+            extracted_text = extract_text_from_file(analysis.report_file)
+            report_result = analyze_report_text(extracted_text)
+
+            analysis.extracted_text = sanitize_text_for_storage(extracted_text[:20000])
+            analysis.report_type = report_result['report_type']
+            analysis.risk_level = report_result['risk_level']
+            analysis.ai_summary = sanitize_text_for_storage(report_result['ai_summary'])
+            analysis.abnormal_flags = sanitize_flags_for_storage(report_result['abnormal_flags'])
+            analysis.recommendations = sanitize_text_for_storage(report_result['recommendations'])
+            analysis.save()
+
+            messages.success(request, f"Report analyzed successfully. Risk level: {analysis.get_risk_level_display()}.")
+            return redirect('appointments:report_reader_dashboard')
+
+        analyses = MedicalReportAnalysis.objects.filter(
+            patient=request.user.patient_profile
+        ).select_related('created_by')[:30]
+    else:
+        form = None
+        analyses = MedicalReportAnalysis.objects.select_related(
+            'patient__user', 'created_by'
+        )[:200]
+
+    return render(request, 'appointments/report_reader_dashboard.html', {
+        'form': form,
+        'analyses': analyses,
+    })
+
+
+@login_required
+def report_reader_detail(request, analysis_id):
+    if request.user.role not in ['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN', 'LAB_TECHNICIAN']:
+        messages.error(request, 'Access denied.')
+        return redirect('users:dashboard')
+
+    analysis = get_object_or_404(
+        MedicalReportAnalysis.objects.select_related('patient__user', 'created_by'),
+        pk=analysis_id,
+    )
+
+    if request.user.role == 'PATIENT' and analysis.patient != request.user.patient_profile:
+        messages.error(request, 'Access denied.')
+        return redirect('appointments:report_reader_dashboard')
+
+    guidance = build_personalized_guidance(
+        analysis.report_type,
+        analysis.risk_level,
+        analysis.abnormal_flags,
+    )
+    summary_points = [
+        line.strip()
+        for line in (analysis.ai_summary or '').splitlines()
+        if line.strip()
+    ]
+    disclaimer = (
+        'This report is read and analyzed by trained AI models on real-world style data and may not always be fully accurate. '
+        'Please show this analysis to a professional licensed doctor before making medical decisions.'
+    )
+
+    return render(request, 'appointments/report_reader_detail.html', {
+        'analysis': analysis,
+        'guidance': guidance,
+        'summary_points': summary_points,
+        'disclaimer': disclaimer,
+    })

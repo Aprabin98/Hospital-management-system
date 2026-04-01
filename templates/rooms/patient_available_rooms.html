@@ -10,7 +10,7 @@
             <h1 class="h2">
                 <i class="fas fa-bed"></i> Available Rooms for Booking
             </h1>
-            <p class="text-muted">Browse available rooms and submit a booking request</p>
+            <p class="text-muted">Browse room status and submit a booking request (processed by receptionist).</p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{% url 'users:dashboard' %}" class="btn btn-outline-secondary">
@@ -57,7 +57,7 @@
                         <h5 class="mb-0">
                             <i class="fas fa-door-open"></i> Room {{ room.room_number }}
                         </h5>
-                        <span class="badge bg-success">Available</span>
+                        <span class="badge {{ room.availability_badge_class }}">{{ room.availability_label }}</span>
                     </div>
                 </div>
                 <div class="card-body">
@@ -87,6 +87,13 @@
                         </dd>
 
                         <dt class="col-sm-6">
+                            <i class="fas fa-procedures"></i> Occupied Beds:
+                        </dt>
+                        <dd class="col-sm-6">
+                            <strong>{{ room.occupied_beds_count }}</strong>
+                        </dd>
+
+                        <dt class="col-sm-6">
                             <i class="fas fa-dollar-sign"></i> Est. Cost per day:
                         </dt>
                         <dd class="col-sm-6">
@@ -101,6 +108,8 @@
                             <span class="badge bg-light text-dark border border-success">
                                 Bed {{ bed.bed_number }}
                             </span>
+                            {% empty %}
+                            <span class="badge bg-danger">Room Occupied</span>
                             {% endfor %}
                         </div>
                     </div>
@@ -109,8 +118,9 @@
                     <form method="POST" action="{% url 'rooms:patient_book_room' %}">
                         {% csrf_token %}
                         <input type="hidden" name="room_id" value="{{ room.id }}">
-                        <button type="submit" class="btn btn-success btn-sm w-100">
-                            <i class="fas fa-check-circle"></i> Request Booking
+                        <button type="submit" class="btn btn-success btn-sm w-100" {% if room.is_full %}disabled{% endif %}>
+                            <i class="fas fa-check-circle"></i>
+                            {% if room.is_full %}Room Occupied{% else %}Request Booking{% endif %}
                         </button>
                     </form>
                 </div>

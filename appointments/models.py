@@ -86,5 +86,104 @@ class WaitingList(models.Model):
         return f"{self.patient.full_name} waiting for Dr.{self.doctor.user.username} on {self.date}"
 
 
+class TriageAssessment(models.Model):
+    PRIORITY_CHOICES = [
+        ('P1', 'P1 - Immediate Emergency'),
+        ('P2', 'P2 - Urgent Care Needed'),
+        ('P3', 'P3 - Moderate Priority'),
+        ('P4', 'P4 - Routine Care'),
+    ]
+
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='triage_assessments'
+    )
+    symptoms = models.TextField(help_text='Describe current symptoms in detail.')
+    duration_days = models.PositiveIntegerField(default=1)
+    pain_level = models.PositiveSmallIntegerField(default=0)
+
+    has_fever = models.BooleanField(default=False)
+    has_breathing_issue = models.BooleanField(default=False)
+    has_chest_pain = models.BooleanField(default=False)
+    has_heavy_bleeding = models.BooleanField(default=False)
+    had_fainting_episode = models.BooleanField(default=False)
+
+    priority = models.CharField(max_length=2, choices=PRIORITY_CHOICES, default='P4')
+    priority_score = models.PositiveSmallIntegerField(default=0)
+    ai_summary = models.TextField(blank=True)
+    recommended_action = models.TextField(blank=True)
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_triage_assessments'
+    )
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_triage_assessments'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Triage {self.patient.full_name} - {self.priority} ({self.created_at.date()})"
+
+
+class MedicalReportAnalysis(models.Model):
+    REPORT_TYPE_CHOICES = [
+        ('GENERAL', 'General Report'),
+        ('CBC', 'CBC'),
+        ('LIPID', 'Lipid Profile'),
+        ('LIVER', 'Liver Function'),
+        ('RENAL', 'Renal Function'),
+        ('THYROID', 'Thyroid Panel'),
+        ('DIABETES', 'Diabetes Panel'),
+    ]
+
+    RISK_LEVEL_CHOICES = [
+        ('LOW', 'Low'),
+        ('MODERATE', 'Moderate'),
+        ('HIGH', 'High'),
+        ('CRITICAL', 'Critical'),
+    ]
+
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='report_analyses'
+    )
+    title = models.CharField(max_length=120, blank=True)
+    report_file = models.FileField(upload_to='appointments/reports/')
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES, default='GENERAL')
+    extracted_text = models.TextField(blank=True)
+    ai_summary = models.TextField(blank=True)
+    abnormal_flags = models.JSONField(default=list, blank=True)
+    recommendations = models.TextField(blank=True)
+    risk_level = models.CharField(max_length=10, choices=RISK_LEVEL_CHOICES, default='LOW')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_report_analyses'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report Analysis #{self.id} - {self.patient.full_name} ({self.risk_level})"
+
+
 # Register additional models in this app module so Django discovers them.
 from .no_show_predictor import NoShowPredictor, NoShowPredictor_Summary

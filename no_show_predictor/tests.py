@@ -31,7 +31,10 @@ class NoShowPredictorApiTests(TestCase):
             role='PATIENT',
             is_active=True,
         )
-        self.patient = PatientProfile.objects.create(user=self.patient_user, full_name='Patient One')
+        self.patient, _ = PatientProfile.objects.get_or_create(
+            user=self.patient_user,
+            defaults={'full_name': 'Patient One'},
+        )
 
         self.reception_user = User.objects.create_user(
             email='reception@example.com',

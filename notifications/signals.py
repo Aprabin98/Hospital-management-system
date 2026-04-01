@@ -133,7 +133,7 @@ def on_result_saved(sender, instance, created, **kwargs):
         notify_patient_whatsapp(
             instance.booking.patient,
             (
-                f"HMS: Your lab report for {instance.booking.template.name} is now available. "
-                f"Please check your HMS account."
+                f"MediMind: Your lab report for {instance.booking.template.name} is now available. "
+                f"Please check your MediMind account."
             ),
         )

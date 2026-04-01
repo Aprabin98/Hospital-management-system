@@ -1,4 +1,4 @@
-# Hospital Management System - Simplified Requirements
+# MediMind - Simplified Requirements
 # SQLite (default) - No PostgreSQL needed
 # Windows compatible - Pre-built wheels only
 
@@ -16,6 +16,7 @@ redis>=5.0.0
 
 # File & PDF
 reportlab>=4.0.0
+pypdf>=5.4.0
 
 # Environment
 python-dotenv>=1.0.0

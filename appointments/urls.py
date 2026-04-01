@@ -32,6 +32,11 @@ urlpatterns = [
     path('no-show/dashboard/', feature_views.no_show_risk_dashboard, name='no_show_risk_dashboard'),
     path('no-show/<int:appointment_id>/outcome/', feature_views.set_no_show_outcome, name='set_no_show_outcome'),
 
+    # AI triage workflow
+    path('triage/', views.triage_dashboard, name='triage_dashboard'),
+    path('report-reader/', views.report_reader_dashboard, name='report_reader_dashboard'),
+    path('report-reader/<int:analysis_id>/', views.report_reader_detail, name='report_reader_detail'),
+
     # API
     path('api/slots/', views.get_slots_api, name='get_slots_api'),
     path('api/no-show-risk/', predict_no_show_risk, name='predict_no_show_api'),

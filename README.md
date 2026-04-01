@@ -1,6 +1,6 @@
-# Hospital Management System (HMS)
+# MediMind
 
-Advanced Django-based Hospital Management System with a clear 30-day upgrade roadmap.
+Advanced Django-based MediMind with a clear 30-day upgrade roadmap.
 
 This README reflects:
 - The current system in this repository
@@ -9,7 +9,7 @@ This README reflects:
 
 ## Project Vision
 
-Build a practical HMS first, then upgrade it into a production-style, AI-assisted platform in 30 days.
+Build a practical MediMind system first, then upgrade it into a production-style, AI-assisted platform in 30 days.
 
 ## New Method: NEP (Next Evolution Plan)
 
@@ -116,7 +116,7 @@ Planned outcomes:
 ## Feature Status
 
 ### Already Present in Repository
-- Core HMS modules (users, doctors, appointments, lab, prescriptions, payments)
+- Core MediMind modules (users, doctors, appointments, lab, prescriptions, payments)
 - Django templates and media handling
 - Role-based dashboards and workflows
 
