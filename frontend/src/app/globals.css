@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f5f8fc;
+  --foreground: #102133;
+  --muted: #5d6b7c;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-solid: #ffffff;
+  --border: rgba(16, 33, 51, 0.12);
+  --accent: #0f766e;
+  --accent-strong: #0b5f59;
+  --accent-soft: rgba(15, 118, 110, 0.12);
+  --shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.12);
+  --shadow-md: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+html {
+  scroll-behavior: smooth;
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 34%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 26%),
+    linear-gradient(180deg, #f8fbff 0%, #f4f7fb 45%, #eef3f8 100%);
+}
+
+body {
+  position: relative;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(15, 118, 110, 0.08), transparent 22%),
+    radial-gradient(circle at 85% 0%, rgba(14, 165, 233, 0.08), transparent 20%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(245, 248, 252, 0.96) 100%);
+  font-family: var(--font-geist-sans), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(16, 33, 51, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 33, 51, 0.02) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 85%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.2);
+  color: var(--foreground);
+}
+
+/* Give app cards and form surfaces a consistent polished baseline. */
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl,
+.shadow-sm,
+.shadow-md,
+.shadow-lg {
+  transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
+}
+
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl {
+  border-color: var(--border);
+}
+
+.shadow-sm {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+input,
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.24);
+  outline-offset: 2px;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Better scrollbar treatment for content-heavy dashboards. */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.42), rgba(15, 118, 110, 0.72));
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.56), rgba(15, 118, 110, 0.88));
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}

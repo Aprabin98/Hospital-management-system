@@ -1,0 +1,280 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { MainLayout } from '@/components/Layout';
+import { apiClient } from '@/lib/api';
+import toast from 'react-hot-toast';
+
+interface AppointmentDetail {
+  id: number;
+  patient: number;
+  patient_name: string;
+  doctor: number;
+  doctor_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  notes?: string;
+  created_at?: string;
+}
+
+interface PrescriptionListResponse {
+  results: Array<{
+    id: number;
+    appointment: number;
+  }>;
+}
+
+export default function AppointmentDetailPage() {
+  const params = useParams<{ id: string }>();
+  const appointmentId = Number(params?.id);
+
+  const [appointment, setAppointment] = useState<AppointmentDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [existingPrescriptionId, setExistingPrescriptionId] = useState<number | null>(null);
+
+  const userRole = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem('userRole');
+  }, []);
+
+  const role = (userRole || '').toUpperCase();
+  const isDoctorRole = role === 'DOCTOR';
+  const canManageStatus = role === 'DOCTOR' || role === 'RECEPTIONIST' || role === 'ADMIN';
+  const isPatientRole = (userRole || '').toUpperCase() === 'PATIENT';
+  const canCancelForPatient =
+    isPatientRole && appointment?.status !== 'COMPLETED' && appointment?.status !== 'CANCELLED';
+
+  useEffect(() => {
+    if (!appointmentId || Number.isNaN(appointmentId)) {
+      setIsLoading(false);
+      return;
+    }
+
+    const run = async () => {
+      try {
+        setIsLoading(true);
+        const data = await apiClient.get<AppointmentDetail>(`/appointments/${appointmentId}/`);
+        setAppointment(data);
+
+        if (data.status === 'COMPLETED') {
+          const prescriptions = await apiClient.get<PrescriptionListResponse>('/prescriptions/?page_size=200');
+          const matched = (prescriptions.results || []).find((item) => item.appointment === data.id);
+          setExistingPrescriptionId(matched?.id ?? null);
+        }
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to load appointment details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    run();
+  }, [appointmentId]);
+
+  const updateStatus = async (status: AppointmentDetail['status']) => {
+    if (!appointment) {
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const updated = await apiClient.patch<AppointmentDetail>(`/appointments/${appointment.id}/update/`, { status });
+      setAppointment(updated);
+      toast.success(`Appointment marked as ${status.toLowerCase()}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update appointment status');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const downloadPdf = async (viewInBrowser = false) => {
+    if (!appointment) {
+      return;
+    }
+
+    try {
+      const blob = await apiClient.get<Blob>(`/appointments/${appointment.id}/download-pdf/`, {
+        responseType: 'blob',
+      } as any);
+      const url = window.URL.createObjectURL(blob);
+
+      if (viewInBrowser) {
+        window.open(url, '_blank');
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `appointment_${appointment.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to fetch appointment PDF');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex h-64 items-center justify-center text-gray-600">Loading appointment details...</div>
+      </MainLayout>
+    );
+  }
+
+  if (!appointment) {
+    return (
+      <MainLayout>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">Appointment not found.</div>
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Appointment Detail</h1>
+            <p className="mt-1 text-sm text-gray-600">Review appointment and take next actions.</p>
+          </div>
+          <Link href="/appointments" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Back to Appointments
+          </Link>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase text-gray-500">Patient</p>
+              <p className="text-base font-semibold text-gray-900">{appointment.patient_name}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-gray-500">Doctor</p>
+              <p className="text-base font-semibold text-gray-900">{appointment.doctor_name}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-gray-500">Date</p>
+              <p className="text-base text-gray-900">{appointment.date}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-gray-500">Time</p>
+              <p className="text-base text-gray-900">
+                {appointment.start_time} - {appointment.end_time}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-gray-500">Status</p>
+              <p className="text-base font-semibold text-gray-900">{appointment.status}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-gray-500">Appointment ID</p>
+              <p className="text-base text-gray-900">#{appointment.id}</p>
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <p className="text-xs uppercase text-gray-500">Notes</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{appointment.notes || 'No notes provided.'}</p>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => downloadPdf(true)}
+              className="rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              View Appointment PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadPdf(false)}
+              className="rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Download Appointment PDF
+            </button>
+          </div>
+        </div>
+
+        {(canManageStatus || canCancelForPatient) && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {canCancelForPatient && (
+                <button
+                  type="button"
+                  onClick={() => updateStatus('CANCELLED')}
+                  disabled={isUpdating}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-red-300"
+                >
+                  Cancel Appointment
+                </button>
+              )}
+
+              {canManageStatus && appointment.status !== 'COMPLETED' && appointment.status !== 'CANCELLED' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => updateStatus('COMPLETED')}
+                    disabled={isUpdating}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-green-300"
+                  >
+                    Mark as Completed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateStatus('CANCELLED')}
+                    disabled={isUpdating}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-red-300"
+                  >
+                    Cancel Appointment
+                  </button>
+                </>
+              )}
+
+              {isDoctorRole && appointment.status === 'COMPLETED' && !existingPrescriptionId && (
+                <Link
+                  href={`/prescriptions-writer?appointmentId=${appointment.id}&patientId=${appointment.patient}`}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                >
+                  Write Prescription
+                </Link>
+              )}
+
+              {isDoctorRole && appointment.status === 'COMPLETED' && existingPrescriptionId && (
+                <Link
+                  href="/prescriptions"
+                  className="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                >
+                  Prescription Exists (ID: {existingPrescriptionId})
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isPatientRole && appointment.status === 'COMPLETED' && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">Feedback</h2>
+            <p className="mt-2 text-sm text-gray-600">Share your consultation experience for this completed appointment.</p>
+            <Link
+              href={`/reviews?appointmentId=${appointment.id}`}
+              className="mt-4 inline-block rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-600"
+            >
+              Write Review
+            </Link>
+          </div>
+        )}
+      </div>
+    </MainLayout>
+  );
+}

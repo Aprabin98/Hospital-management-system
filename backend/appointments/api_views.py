@@ -1,0 +1,706 @@
+"""API views for appointments"""
+from datetime import datetime, timedelta
+
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Q
+from django.views.decorators.http import require_http_methods
+from django.http import FileResponse
+from appointments.models import Appointment, MedicalReportAnalysis, TriageAssessment, WaitingList
+from .api_serializers import AppointmentSerializer, MedicalReportAnalysisSerializer, TriageAssessmentSerializer
+from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
+from .triage import evaluate_triage
+from .feature_views import promote_waiting_list
+from .no_show_predictor import PredictionEngine
+from .report_reader import (
+    analyze_report_text,
+    build_personalized_guidance,
+    extract_text_from_file,
+    sanitize_flags_for_storage,
+    sanitize_text_for_storage,
+)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def appointments_list_api(request):
+    """
+    API endpoint to get appointments list with pagination.
+    
+    Query parameters:
+    - page: Page number (default: 1)
+    - page_size: Number of results per page (default: 10)
+    - status: Filter by status (optional)
+    
+    Returns:
+    {
+        "count": 10,
+        "next": "http://...",
+        "previous": null,
+        "results": [...]
+    }
+    """
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+    except (ValueError, TypeError):
+        page = 1
+        page_size = 10
+    
+    appointments = Appointment.objects.select_related('patient__user', 'doctor__user').all()
+
+    if request.user.role == 'PATIENT':
+        appointments = appointments.filter(patient__user=request.user)
+    elif request.user.role == 'DOCTOR':
+        if not hasattr(request.user, 'doctor_profile'):
+            return Response({'detail': 'Doctor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+        appointments = appointments.filter(doctor=request.user.doctor_profile)
+    elif request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    # Filter by status if provided
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        appointments = appointments.filter(status__iexact=status_filter)
+    
+    total_count = appointments.count()
+    
+    # Simple pagination
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_appointments = appointments[start_idx:end_idx]
+    
+    serializer = AppointmentSerializer(paginated_appointments, many=True)
+    
+    return Response(
+        {
+            'count': total_count,
+            'next': f'/api/appointments/?page={page + 1}&page_size={page_size}' if end_idx < total_count else None,
+            'previous': f'/api/appointments/?page={page - 1}&page_size={page_size}' if page > 1 else None,
+            'results': serializer.data,
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def appointment_detail_api(request, appointment_id):
+    """
+    API endpoint to get appointment detail.
+    """
+    try:
+        appointment = Appointment.objects.select_related('patient__user', 'doctor__user').get(id=appointment_id)
+
+        if request.user.role == 'PATIENT' and appointment.patient.user_id != request.user.id:
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+        if request.user.role == 'DOCTOR':
+            if not hasattr(request.user, 'doctor_profile'):
+                return Response({'detail': 'Doctor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if appointment.doctor_id != request.user.doctor_profile.id:
+                return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+        if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = AppointmentSerializer(appointment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Appointment.DoesNotExist:
+        return Response(
+            {'detail': 'Appointment not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def waiting_list_queue_api(request):
+    """Admin/reception queue list for waiting patients."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    doctor_id = request.GET.get('doctor_id')
+    queryset = WaitingList.objects.filter(status='WAITING').select_related('patient', 'doctor__user').order_by('-priority', 'created_at')
+    if doctor_id:
+        queryset = queryset.filter(doctor_id=doctor_id)
+
+    items = [
+        {
+            'id': row.id,
+            'patient_id': row.patient_id,
+            'patient': row.patient.full_name,
+            'doctor_id': row.doctor_id,
+            'doctor': row.doctor.user.username,
+            'date': row.date.isoformat(),
+            'priority': row.priority,
+            'status': row.status,
+        }
+        for row in queryset[:300]
+    ]
+    return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def waiting_list_promote_api(request, waiting_id):
+    """Manually promote a waiting list entry when a slot opens."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        waiting = WaitingList.objects.get(pk=waiting_id, status='WAITING')
+    except WaitingList.DoesNotExist:
+        return Response({'detail': 'Waiting list entry not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    promoted = promote_waiting_list(waiting.doctor, waiting.date, created_by=request.user)
+    if not promoted:
+        return Response({'detail': 'No promotable slot available right now.'}, status=status.HTTP_409_CONFLICT)
+
+    return Response({'promoted_appointment_id': promoted.id}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def waiting_list_priority_api(request, waiting_id):
+    """Set waiting-list priority score."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        waiting = WaitingList.objects.get(pk=waiting_id)
+    except WaitingList.DoesNotExist:
+        return Response({'detail': 'Waiting list entry not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        priority = int(request.data.get('priority', waiting.priority))
+    except (TypeError, ValueError):
+        return Response({'detail': 'priority must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    waiting.priority = max(0, min(100, priority))
+    waiting.save(update_fields=['priority'])
+    return Response({'id': waiting.id, 'priority': waiting.priority}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def no_show_dashboard_api(request):
+    """No-show risk dashboard for admin/reception/doctor roles."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'DOCTOR']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    upcoming = Appointment.objects.filter(
+        date__gte=datetime.today().date(),
+        status__in=['PENDING', 'CONFIRMED'],
+    ).select_related('patient', 'doctor__user')[:200]
+
+    items = []
+    for appointment in upcoming:
+        prediction = PredictionEngine.predict_appointment(appointment)
+        items.append(
+            {
+                'appointment_id': appointment.id,
+                'patient': appointment.patient.full_name,
+                'doctor': appointment.doctor.user.username,
+                'date': appointment.date.isoformat(),
+                'risk_level': prediction.risk_level,
+                'probability': round(prediction.no_show_probability, 3),
+                'status': appointment.status,
+            }
+        )
+
+    return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def no_show_outcome_api(request, appointment_id):
+    """Set final show/no-show outcome for an appointment."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'DOCTOR']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        appointment = Appointment.objects.get(pk=appointment_id)
+    except Appointment.DoesNotExist:
+        return Response({'detail': 'Appointment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    outcome = (request.data.get('outcome') or '').strip().lower()
+    if outcome not in {'showed', 'no_show'}:
+        return Response({'detail': 'Invalid outcome.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    prediction = PredictionEngine.predict_appointment(appointment)
+    prediction.actually_no_showed = outcome == 'no_show'
+    prediction.save(update_fields=['actually_no_showed', 'updated_at'])
+
+    appointment.status = 'NO_SHOW' if prediction.actually_no_showed else 'COMPLETED'
+    appointment.save(update_fields=['status', 'updated_at'])
+
+    return Response(
+        {
+            'appointment_id': appointment.id,
+            'status': appointment.status,
+            'risk_level': prediction.risk_level,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def appointment_create_api(request):
+    """
+    API endpoint to create appointment.
+    
+    Expected POST data:
+    {
+        "patient": 1,
+        "doctor": 1,
+        "date": "2026-04-13",
+        "start_time": "10:00",
+        "end_time": "10:30",
+        "status": "PENDING",
+        "notes": "Some notes"
+    }
+    """
+    from users.models import PatientProfile
+    from clinical.models import Doctor
+
+    allowed_roles = ['PATIENT', 'ADMIN', 'RECEPTIONIST']
+    if request.user.role not in allowed_roles:
+        return Response(
+            {'detail': 'Only patients or front-desk/admin staff can create appointments.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    doctor_id = request.data.get('doctor')
+    appointment_date = request.data.get('date')
+    start_time = request.data.get('start_time')
+    end_time = request.data.get('end_time')
+    notes = request.data.get('notes', '')
+    patient_id = request.data.get('patient')
+
+    if not doctor_id or not appointment_date or not start_time:
+        return Response(
+            {'detail': 'doctor, date, and start_time are required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        doctor = Doctor.objects.get(id=doctor_id)
+    except Doctor.DoesNotExist:
+        return Response({'detail': 'Doctor not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        booking_date = datetime.strptime(str(appointment_date), '%Y-%m-%d').date()
+        start_time_obj = datetime.strptime(str(start_time), '%H:%M').time()
+    except ValueError:
+        return Response(
+            {'detail': 'Invalid date or time format. Expected date=YYYY-MM-DD and start_time=HH:MM.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if booking_date < datetime.today().date():
+        return Response({'detail': 'Cannot book an appointment in the past.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Patient users can only book for themselves. Front-desk/admin can provide patient id.
+    if request.user.role == 'PATIENT':
+        try:
+            patient = PatientProfile.objects.get(user=request.user)
+        except PatientProfile.DoesNotExist:
+            return Response({'detail': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        if not patient_id:
+            return Response({'detail': 'patient is required for this booking.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            patient = PatientProfile.objects.get(id=patient_id, user__role='PATIENT')
+        except PatientProfile.DoesNotExist:
+            return Response({'detail': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Day-level limit: max 2 active appointments for same patient.
+    daily_count = Appointment.objects.filter(
+        patient=patient,
+        date=booking_date,
+        status__in=['PENDING', 'CONFIRMED'],
+    ).count()
+    if daily_count >= 2:
+        return Response(
+            {'detail': 'Patient already has 2 appointments on this day.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    available_slots = generate_available_slots(doctor, booking_date)
+    selected_slot = next((slot for slot in available_slots if slot['start'] == start_time_obj.strftime('%H:%M')), None)
+    if not selected_slot:
+        return Response({'detail': 'Selected slot is not available.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    end_time_obj = datetime.strptime(selected_slot['end'], '%H:%M').time()
+    if end_time:
+        try:
+            provided_end = datetime.strptime(str(end_time), '%H:%M').time()
+            end_time_obj = provided_end
+        except ValueError:
+            return Response({'detail': 'Invalid end_time format. Expected HH:MM.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    appointment = Appointment.objects.create(
+        patient=patient,
+        doctor=doctor,
+        date=booking_date,
+        start_time=start_time_obj,
+        end_time=end_time_obj,
+        status='CONFIRMED',
+        notes=notes,
+    )
+
+    # Keep API booking behavior aligned with template workflow.
+    generate_qr_code(appointment)
+    generate_appointment_pdf(appointment)
+    appointment.save()
+
+    serializer = AppointmentSerializer(appointment)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["PUT", "PATCH"])
+def appointment_update_api(request, appointment_id):
+    """
+    API endpoint to update appointment.
+    """
+    try:
+        appointment = Appointment.objects.get(id=appointment_id)
+
+        if request.user.role == 'PATIENT':
+            if appointment.patient.user_id != request.user.id:
+                return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+            # Patients can only cancel their own appointment via API.
+            requested_status = (request.data.get('status') or '').upper()
+            if requested_status and requested_status != 'CANCELLED':
+                return Response({'detail': 'Patients can only cancel appointments.'}, status=status.HTTP_403_FORBIDDEN)
+
+        elif request.user.role == 'DOCTOR':
+            if not hasattr(request.user, 'doctor_profile'):
+                return Response({'detail': 'Doctor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if appointment.doctor_id != request.user.doctor_profile.id:
+                return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+        elif request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        partial = request.method == 'PATCH'
+        serializer = AppointmentSerializer(appointment, data=request.data, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'detail': 'Validation error', 'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    except Appointment.DoesNotExist:
+        return Response(
+            {'detail': 'Appointment not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def appointments_available_slots_api(request):
+    """Get doctor schedule and currently available slots for a given date."""
+    doctor_id = request.GET.get('doctor_id')
+    date_str = request.GET.get('date')
+
+    if not doctor_id or not date_str:
+        return Response({'detail': 'doctor_id and date are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from clinical.models import Doctor, DoctorSchedule, DoctorLeave
+
+    try:
+        doctor = Doctor.objects.select_related('user').get(id=doctor_id)
+    except Doctor.DoesNotExist:
+        return Response({'detail': 'Doctor not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    day_name = booking_date.strftime('%A')[:3].upper()
+    full_day_name = booking_date.strftime('%A')
+    schedule = DoctorSchedule.objects.select_related('shift').filter(
+        doctor=doctor,
+        is_active=True,
+    ).filter(
+        Q(day=day_name)
+        | Q(day__iexact=full_day_name)
+        | Q(day__istartswith=day_name)
+    ).first()
+
+    is_on_leave = DoctorLeave.objects.filter(doctor=doctor, date=booking_date).exists()
+    slots = generate_available_slots(doctor, booking_date)
+
+    return Response(
+        {
+            'doctor_id': doctor.id,
+            'doctor_name': f"Dr. {doctor.user.first_name} {doctor.user.last_name}".strip(),
+            'date': str(booking_date),
+            'day': day_name,
+            'is_on_leave': is_on_leave,
+            'schedule': {
+                'shift_name': schedule.shift.name if schedule else None,
+                'start_time': schedule.shift.start_time.strftime('%H:%M') if schedule else None,
+                'end_time': schedule.shift.end_time.strftime('%H:%M') if schedule else None,
+                'slot_duration': schedule.shift.slot_duration if schedule else None,
+            },
+            'slots': [{'start': slot['start'], 'end': slot['end']} for slot in slots],
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def appointment_download_pdf_api(request, appointment_id):
+    """Download appointment PDF for authorized users."""
+    from users.models import PatientProfile
+
+    try:
+        appointment = Appointment.objects.select_related('patient', 'doctor__user').get(id=appointment_id)
+    except Appointment.DoesNotExist:
+        return Response({'detail': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.role == 'PATIENT':
+        try:
+            profile = PatientProfile.objects.get(user=request.user)
+        except PatientProfile.DoesNotExist:
+            return Response({'detail': 'Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        if appointment.patient_id != profile.id:
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.user.role == 'DOCTOR' and hasattr(request.user, 'doctor_profile'):
+        if appointment.doctor_id != request.user.doctor_profile.id:
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if not appointment.pdf_file:
+        generate_qr_code(appointment)
+        generate_appointment_pdf(appointment)
+        appointment.save()
+
+    if not appointment.pdf_file:
+        return Response({'detail': 'PDF not available.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    response = FileResponse(appointment.pdf_file.open('rb'), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="appointment_{appointment.id}.pdf"'
+    return response
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def report_reader_list_api(request):
+    """Get AI report analysis history for current user/patient."""
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+    except (ValueError, TypeError):
+        page = 1
+        page_size = 10
+
+    from users.models import PatientProfile
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+        analyses = MedicalReportAnalysis.objects.filter(patient=patient).select_related('patient__user')
+    except PatientProfile.DoesNotExist:
+        analyses = MedicalReportAnalysis.objects.filter(created_by=request.user).select_related('patient__user')
+
+    total_count = analyses.count()
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_analyses = analyses[start_idx:end_idx]
+
+    serializer = MedicalReportAnalysisSerializer(paginated_analyses, many=True, context={'request': request})
+    return Response(
+        {
+            'count': total_count,
+            'next': f'/api/ai-report-reader/?page={page + 1}&page_size={page_size}' if end_idx < total_count else None,
+            'previous': f'/api/ai-report-reader/?page={page - 1}&page_size={page_size}' if page > 1 else None,
+            'results': serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def report_reader_create_api(request):
+    """Upload a medical report file and generate AI analysis."""
+    report_file = request.FILES.get('report_file')
+    if not report_file:
+        return Response({'detail': 'Please upload a report file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    filename = (report_file.name or '').lower()
+    if not filename.endswith(('.pdf', '.txt')):
+        return Response({'detail': 'Only PDF and TXT files are supported.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if report_file.size > 5 * 1024 * 1024:
+        return Response({'detail': 'Report file must be smaller than 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from users.models import PatientProfile
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+    except PatientProfile.DoesNotExist:
+        inferred_name = (f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username or request.user.email)[:100]
+        patient = PatientProfile.objects.create(
+            user=request.user,
+            full_name=inferred_name,
+        )
+
+    analysis_title = (request.data.get('title') or '').strip()
+
+    extracted_text = extract_text_from_file(report_file)
+    report_result = analyze_report_text(extracted_text)
+
+    analysis = MedicalReportAnalysis(
+        patient=patient,
+        title=analysis_title,
+        report_file=report_file,
+        created_by=request.user,
+        extracted_text=sanitize_text_for_storage((extracted_text or '')[:20000]),
+        report_type=report_result['report_type'],
+        risk_level=report_result['risk_level'],
+        ai_summary=sanitize_text_for_storage(report_result['ai_summary']),
+        abnormal_flags=sanitize_flags_for_storage(report_result['abnormal_flags']),
+        recommendations=sanitize_text_for_storage(report_result['recommendations']),
+    )
+    analysis.save()
+
+    serializer = MedicalReportAnalysisSerializer(analysis, context={'request': request})
+    data = serializer.data
+    data['saved'] = True
+    return Response(data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def report_reader_detail_api(request, analysis_id):
+    """Get a single AI report analysis record."""
+    try:
+        analysis = MedicalReportAnalysis.objects.select_related('patient__user').get(pk=analysis_id)
+    except MedicalReportAnalysis.DoesNotExist:
+        return Response({'detail': 'Analysis not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.role == 'PATIENT':
+        from users.models import PatientProfile
+        try:
+            profile = PatientProfile.objects.get(user=request.user)
+            if analysis.patient_id != profile.id:
+                return Response({'detail': 'Not allowed.'}, status=status.HTTP_403_FORBIDDEN)
+        except PatientProfile.DoesNotExist:
+            return Response({'detail': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    guidance = build_personalized_guidance(
+        analysis.report_type,
+        analysis.risk_level,
+        analysis.abnormal_flags,
+    )
+    summary_points = [
+        line.strip()
+        for line in (analysis.ai_summary or '').splitlines()
+        if line.strip()
+    ]
+    disclaimer = (
+        'This report is read and analyzed by trained AI models on real-world style data and may not always be fully accurate. '
+        'Please show this analysis to a professional licensed doctor before making medical decisions.'
+    )
+
+    serializer = MedicalReportAnalysisSerializer(analysis, context={'request': request})
+    data = serializer.data
+    data['summary_points'] = summary_points
+    data['guidance'] = guidance
+    data['disclaimer'] = disclaimer
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def ai_triage_api(request):
+    """List/create triage assessments with patient-scoped visibility."""
+    from users.models import PatientProfile
+
+    if request.method == 'GET':
+        if request.user.role == 'PATIENT':
+            try:
+                patient = PatientProfile.objects.get(user=request.user)
+            except PatientProfile.DoesNotExist:
+                return Response({'detail': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+            queryset = TriageAssessment.objects.filter(patient=patient).select_related('patient__user')
+        elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+            queryset = TriageAssessment.objects.select_related('patient__user')
+        else:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = TriageAssessmentSerializer(queryset[:100], many=True)
+        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+
+    if request.user.role != 'PATIENT':
+        return Response({'detail': 'Only patients can create triage requests.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+    except PatientProfile.DoesNotExist:
+        return Response({'detail': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = TriageAssessmentSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    triage_input = serializer.validated_data
+    result = evaluate_triage(triage_input)
+
+    triage = TriageAssessment.objects.create(
+        patient=patient,
+        symptoms=triage_input.get('symptoms', ''),
+        duration_days=triage_input.get('duration_days', 1),
+        pain_level=triage_input.get('pain_level', 0),
+        has_fever=triage_input.get('has_fever', False),
+        has_breathing_issue=triage_input.get('has_breathing_issue', False),
+        has_chest_pain=triage_input.get('has_chest_pain', False),
+        has_heavy_bleeding=triage_input.get('has_heavy_bleeding', False),
+        had_fainting_episode=triage_input.get('had_fainting_episode', False),
+        priority=result['priority'],
+        priority_score=result['priority_score'],
+        ai_summary=result['ai_summary'],
+        recommended_action=result['recommended_action'],
+        created_by=request.user,
+    )
+
+    return Response(TriageAssessmentSerializer(triage).data, status=status.HTTP_201_CREATED)

@@ -1,0 +1,712 @@
+"""API views for lab endpoints"""
+from datetime import datetime
+
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.views.decorators.http import require_http_methods
+from .models import TestBooking, TestResult, TestTemplate, TestRecommendation, TestSchedule, TestField
+from .api_serializers import (
+    TestBookingSerializer,
+    TestResultSerializer,
+    TestTemplateSerializer,
+    TestRecommendationSerializer,
+)
+
+
+_WEEKDAY_TO_CODE = {
+    0: 'MON',
+    1: 'TUE',
+    2: 'WED',
+    3: 'THU',
+    4: 'FRI',
+    5: 'SAT',
+    6: 'SUN',
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_tests_list_api(request):
+    """Get list of available lab tests"""
+    try:
+        tests = TestTemplate.objects.filter(is_available=True)
+        serializer = TestTemplateSerializer(tests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'detail': f'Error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_bookings_list_api(request):
+    """Get patient's test bookings with pagination"""
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+    except (ValueError, TypeError):
+        page = 1
+        page_size = 10
+    
+    # Role-scoped access: patient gets own bookings; staff roles can view all.
+    from users.models import PatientProfile
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+        bookings = TestBooking.objects.filter(patient=patient).select_related('template')
+    except PatientProfile.DoesNotExist:
+        if request.user.role in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
+            bookings = TestBooking.objects.all().select_related('template')
+        else:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    total_count = bookings.count()
+    
+    # Simple pagination
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_bookings = bookings[start_idx:end_idx]
+    
+    serializer = TestBookingSerializer(paginated_bookings, many=True)
+    
+    return Response(
+        {
+            'count': total_count,
+            'next': f'/api/lab/bookings/?page={page + 1}&page_size={page_size}' if end_idx < total_count else None,
+            'previous': f'/api/lab/bookings/?page={page - 1}&page_size={page_size}' if page > 1 else None,
+            'results': serializer.data,
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_booking_detail_api(request, booking_id):
+    """Get specific test booking detail"""
+    try:
+        booking = TestBooking.objects.select_related('template').get(id=booking_id)
+
+        if request.user.role == 'PATIENT':
+            if booking.patient.user_id != request.user.id:
+                return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+        elif request.user.role not in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = TestBookingSerializer(booking)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except TestBooking.DoesNotExist:
+        return Response(
+            {'detail': 'Test booking not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def lab_booking_create_api(request):
+    """Create a new lab booking for the authenticated patient."""
+    if request.user.role != 'PATIENT':
+        return Response({'detail': 'Only patients can book lab tests.'}, status=status.HTTP_403_FORBIDDEN)
+
+    template_id = request.data.get('template')
+    date_str = (request.data.get('date') or '').strip()
+    notes = (request.data.get('notes') or '').strip()
+
+    if not template_id or not date_str:
+        return Response({'detail': 'template and date are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        template_id = int(template_id)
+    except (TypeError, ValueError):
+        return Response({'detail': 'template must be a valid ID.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'detail': 'date must be in YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if booking_date < timezone.localdate():
+        return Response({'detail': 'Booking date cannot be in the past.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from users.models import PatientProfile
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+    except PatientProfile.DoesNotExist:
+        return Response({'detail': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        template = TestTemplate.objects.get(pk=template_id, is_available=True)
+    except TestTemplate.DoesNotExist:
+        return Response({'detail': 'Test not found or not available.'}, status=status.HTTP_404_NOT_FOUND)
+
+    day_code = _WEEKDAY_TO_CODE.get(booking_date.weekday())
+    has_schedule = TestSchedule.objects.filter(template=template, day=day_code, is_active=True).exists()
+    if not has_schedule:
+        return Response({'detail': 'Selected date is not available for this test.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if TestBooking.objects.filter(patient=patient, template=template, date=booking_date).exclude(status='CANCELLED').exists():
+        return Response({'detail': 'You already booked this test on selected date.'}, status=status.HTTP_409_CONFLICT)
+
+    booking = TestBooking.objects.create(
+        patient=patient,
+        template=template,
+        date=booking_date,
+        status='PENDING',
+        payment_status='UNPAID',
+        amount=template.price,
+        notes=notes,
+    )
+
+    TestRecommendation.objects.filter(
+        patient=patient,
+        template=template,
+        status='PENDING',
+    ).update(status='BOOKED')
+
+    serializer = TestBookingSerializer(booking)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_results_list_api(request):
+    """Get patient's test results with pagination"""
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+    except (ValueError, TypeError):
+        page = 1
+        page_size = 10
+    
+    # Role-scoped access: patient gets own results; staff roles can view all.
+    from users.models import PatientProfile
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+        results = TestResult.objects.filter(booking__patient=patient).select_related('booking')
+    except PatientProfile.DoesNotExist:
+        if request.user.role in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
+            results = TestResult.objects.all().select_related('booking')
+        else:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    total_count = results.count()
+    
+    # Simple pagination
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_results = results[start_idx:end_idx]
+    
+    serializer = TestResultSerializer(paginated_results, many=True)
+    
+    return Response(
+        {
+            'count': total_count,
+            'next': f'/api/lab/results/?page={page + 1}&page_size={page_size}' if end_idx < total_count else None,
+            'previous': f'/api/lab/results/?page={page - 1}&page_size={page_size}' if page > 1 else None,
+            'results': serializer.data,
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_recommendations_list_api(request):
+    """List lab test recommendations for the current account."""
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+    except (ValueError, TypeError):
+        page = 1
+        page_size = 10
+
+    from users.models import PatientProfile
+    try:
+        patient = PatientProfile.objects.get(user=request.user)
+        recommendations = TestRecommendation.objects.filter(patient=patient).select_related('patient__user', 'template', 'recommended_by', 'doctor__user')
+    except PatientProfile.DoesNotExist:
+        recommendations = TestRecommendation.objects.filter(recommended_by=request.user).select_related('patient__user', 'template', 'recommended_by', 'doctor__user')
+
+    total_count = recommendations.count()
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated = recommendations[start_idx:end_idx]
+
+    serializer = TestRecommendationSerializer(paginated, many=True)
+    return Response(
+        {
+            'count': total_count,
+            'next': f'/api/lab/recommendations/?page={page + 1}&page_size={page_size}' if end_idx < total_count else None,
+            'previous': f'/api/lab/recommendations/?page={page - 1}&page_size={page_size}' if page > 1 else None,
+            'results': serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def lab_recommendation_create_api(request):
+    """Create a lab test recommendation for a specific patient."""
+    allowed_roles = {'ADMIN', 'DOCTOR', 'RECEPTIONIST'}
+    if request.user.role not in allowed_roles:
+        return Response({'detail': 'Not allowed to recommend tests.'}, status=status.HTTP_403_FORBIDDEN)
+
+    patient_id = request.data.get('patient')
+    template_id = request.data.get('template')
+    reason = (request.data.get('reason') or '').strip()
+    priority = (request.data.get('priority') or 'MEDIUM').upper()
+
+    if not patient_id or not template_id:
+        return Response({'detail': 'patient and template are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        patient_id = int(patient_id)
+        template_id = int(template_id)
+    except (TypeError, ValueError):
+        return Response({'detail': 'patient and template must be valid IDs.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from users.models import PatientProfile
+    from clinical.models import Doctor
+
+    try:
+        patient = PatientProfile.objects.get(pk=patient_id)
+    except PatientProfile.DoesNotExist:
+        return Response({'detail': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        template = TestTemplate.objects.get(pk=template_id, is_available=True)
+    except TestTemplate.DoesNotExist:
+        return Response({'detail': 'Test not found or not available.'}, status=status.HTTP_404_NOT_FOUND)
+
+    doctor = None
+    if request.user.role == 'DOCTOR':
+        doctor = getattr(request.user, 'doctor_profile', None)
+
+    if priority not in {'LOW', 'MEDIUM', 'HIGH'}:
+        return Response({'detail': 'priority must be LOW, MEDIUM, or HIGH.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.user.role == 'DOCTOR':
+        # doctors can recommend the same test multiple times only if previous recommendation has changed state
+        pass
+
+    recommendation = TestRecommendation.objects.create(
+        patient=patient,
+        template=template,
+        recommended_by=request.user,
+        doctor=doctor,
+        reason=reason,
+        priority=priority,
+        status='PENDING',
+    )
+
+    serializer = TestRecommendationSerializer(recommendation)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_result_detail_api(request, result_id):
+    """Get specific test result detail with all items"""
+    try:
+        result = TestResult.objects.select_related('booking').prefetch_related('items').get(id=result_id)
+
+        if request.user.role == 'PATIENT':
+            if result.booking.patient.user_id != request.user.id:
+                return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+        elif request.user.role not in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = TestResultSerializer(result)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except TestResult.DoesNotExist:
+        return Response(
+            {'detail': 'Test result not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def lab_templates_admin_api(request):
+    """Admin API for test template listing and creation."""
+    if request.method == 'GET':
+        try:
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 20))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 20
+
+        templates = TestTemplate.objects.all().order_by('name')
+        total_count = templates.count()
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated = templates[start_idx:end_idx]
+        serializer = TestTemplateSerializer(paginated, many=True)
+
+        return Response(
+            {
+                'count': total_count,
+                'next': f'/api/lab/templates/?page={page + 1}&page_size={page_size}' if end_idx < total_count else None,
+                'previous': f'/api/lab/templates/?page={page - 1}&page_size={page_size}' if page > 1 else None,
+                'results': serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = TestTemplateSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "PATCH", "DELETE"])
+def lab_template_admin_detail_api(request, template_id):
+    """Admin API for a single test template."""
+    try:
+        template = TestTemplate.objects.get(id=template_id)
+    except TestTemplate.DoesNotExist:
+        return Response({'detail': 'Template not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = TestTemplateSerializer(template)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'DELETE':
+        template.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    serializer = TestTemplateSerializer(template, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def lab_template_fields_api(request, template_id):
+    """Admin API for template fields management."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        template = TestTemplate.objects.get(id=template_id)
+    except TestTemplate.DoesNotExist:
+        return Response({'detail': 'Template not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        items = [
+            {
+                'id': field.id,
+                'template': template.id,
+                'field_name': field.field_name,
+                'unit': field.unit,
+                'normal_min': field.normal_min,
+                'normal_max': field.normal_max,
+                'critical_min': field.critical_min,
+                'critical_max': field.critical_max,
+                'normal_text': field.normal_text,
+                'field_type': field.field_type,
+                'is_required': field.is_required,
+                'order': field.order,
+            }
+            for field in template.fields.all().order_by('order', 'id')
+        ]
+        return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
+
+    field_name = (request.data.get('field_name') or '').strip()
+    field_type = (request.data.get('field_type') or 'NUMBER').strip().upper()
+    if not field_name:
+        return Response({'detail': 'field_name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if field_type not in {'NUMBER', 'TEXT'}:
+        return Response({'detail': 'field_type must be NUMBER or TEXT.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    test_field = TestField.objects.create(
+        template=template,
+        field_name=field_name,
+        unit=(request.data.get('unit') or '').strip(),
+        normal_min=request.data.get('normal_min') or None,
+        normal_max=request.data.get('normal_max') or None,
+        critical_min=request.data.get('critical_min') or None,
+        critical_max=request.data.get('critical_max') or None,
+        normal_text=(request.data.get('normal_text') or '').strip(),
+        field_type=field_type,
+        is_required=bool(request.data.get('is_required', False)),
+        order=request.data.get('order') or 0,
+    )
+
+    return Response(
+        {
+            'id': test_field.id,
+            'template': template.id,
+            'field_name': test_field.field_name,
+            'unit': test_field.unit,
+            'normal_min': test_field.normal_min,
+            'normal_max': test_field.normal_max,
+            'critical_min': test_field.critical_min,
+            'critical_max': test_field.critical_max,
+            'normal_text': test_field.normal_text,
+            'field_type': test_field.field_type,
+            'is_required': test_field.is_required,
+            'order': test_field.order,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["PATCH", "DELETE"])
+def lab_template_field_detail_api(request, field_id):
+    """Admin API for one template field."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        field = TestField.objects.get(id=field_id)
+    except TestField.DoesNotExist:
+        return Response({'detail': 'Field not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        field.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    for key in ['field_name', 'unit', 'normal_min', 'normal_max', 'critical_min', 'critical_max', 'normal_text', 'field_type', 'is_required', 'order']:
+        if key in request.data:
+            setattr(field, key, request.data.get(key))
+    field.save()
+
+    return Response(
+        {
+            'id': field.id,
+            'template': field.template_id,
+            'field_name': field.field_name,
+            'unit': field.unit,
+            'normal_min': field.normal_min,
+            'normal_max': field.normal_max,
+            'critical_min': field.critical_min,
+            'critical_max': field.critical_max,
+            'normal_text': field.normal_text,
+            'field_type': field.field_type,
+            'is_required': field.is_required,
+            'order': field.order,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def lab_template_schedules_api(request, template_id):
+    """Admin API for template schedules management."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        template = TestTemplate.objects.get(id=template_id)
+    except TestTemplate.DoesNotExist:
+        return Response({'detail': 'Template not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        items = [
+            {
+                'id': item.id,
+                'template': template.id,
+                'day': item.day,
+                'start_time': item.start_time.strftime('%H:%M'),
+                'end_time': item.end_time.strftime('%H:%M'),
+                'max_bookings': item.max_bookings,
+                'is_active': item.is_active,
+            }
+            for item in template.schedules.all().order_by('day')
+        ]
+        return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
+
+    day = (request.data.get('day') or '').strip().upper()
+    start_time = (request.data.get('start_time') or '').strip()
+    end_time = (request.data.get('end_time') or '').strip()
+    if not day or not start_time or not end_time:
+        return Response({'detail': 'day, start_time and end_time are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if TestSchedule.objects.filter(template=template, day=day).exists():
+        return Response({'detail': 'Schedule already exists for this day.'}, status=status.HTTP_409_CONFLICT)
+
+    item = TestSchedule.objects.create(
+        template=template,
+        day=day,
+        start_time=start_time,
+        end_time=end_time,
+        max_bookings=request.data.get('max_bookings') or 20,
+        is_active=bool(request.data.get('is_active', True)),
+    )
+
+    return Response(
+        {
+            'id': item.id,
+            'template': template.id,
+            'day': item.day,
+            'start_time': item.start_time.strftime('%H:%M'),
+            'end_time': item.end_time.strftime('%H:%M'),
+            'max_bookings': item.max_bookings,
+            'is_active': item.is_active,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["PATCH", "DELETE"])
+def lab_template_schedule_detail_api(request, schedule_id):
+    """Admin API for one template schedule."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        item = TestSchedule.objects.get(id=schedule_id)
+    except TestSchedule.DoesNotExist:
+        return Response({'detail': 'Schedule not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    for key in ['day', 'start_time', 'end_time', 'max_bookings', 'is_active']:
+        if key in request.data:
+            setattr(item, key, request.data.get(key))
+    item.save()
+    return Response(
+        {
+            'id': item.id,
+            'template': item.template_id,
+            'day': item.day,
+            'start_time': item.start_time.strftime('%H:%M'),
+            'end_time': item.end_time.strftime('%H:%M'),
+            'max_bookings': item.max_bookings,
+            'is_active': item.is_active,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def lab_admin_bookings_api(request):
+    """Admin workflow list of lab bookings with result verification/release flags."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    bookings = (
+        TestBooking.objects
+        .select_related('patient__user', 'template')
+        .prefetch_related('result')
+        .order_by('-date', '-created_at')[:300]
+    )
+    items = []
+    for booking in bookings:
+        result = getattr(booking, 'result', None)
+        items.append(
+            {
+                'id': booking.id,
+                'patient_name': booking.patient.full_name,
+                'template_name': booking.template.name,
+                'date': booking.date.isoformat(),
+                'status': booking.status,
+                'payment_status': booking.payment_status,
+                'result_id': result.id if result else None,
+                'is_verified': bool(result and result.is_verified),
+                'is_released': bool(result and result.is_released),
+                'result_status': result.status if result else None,
+            }
+        )
+
+    return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def lab_verify_result_api(request, result_id):
+    """Admin verifies lab result before release."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        result = TestResult.objects.select_related('booking').get(id=result_id)
+    except TestResult.DoesNotExist:
+        return Response({'detail': 'Result not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    result.is_verified = True
+    result.verified_by = request.user
+    result.verified_at = timezone.now()
+    result.status = 'APPROVED'
+    result.save(update_fields=['is_verified', 'verified_by', 'verified_at', 'status'])
+
+    return Response({'id': result.id, 'is_verified': result.is_verified, 'status': result.status}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def lab_release_result_api(request, result_id):
+    """Admin releases verified and paid lab result to patient."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        result = TestResult.objects.select_related('booking').get(id=result_id)
+    except TestResult.DoesNotExist:
+        return Response({'detail': 'Result not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not result.is_verified:
+        return Response({'detail': 'Please verify this report before release.'}, status=status.HTTP_400_BAD_REQUEST)
+    if result.booking.payment_status != 'PAID':
+        return Response({'detail': 'Cannot release report before payment is marked paid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    result.is_released = True
+    result.released_at = timezone.now()
+    result.status = 'RELEASED'
+    result.booking.status = 'COMPLETED'
+    result.booking.completed_at = timezone.now()
+    result.booking.save(update_fields=['status', 'completed_at'])
+    result.save(update_fields=['is_released', 'released_at', 'status'])
+
+    return Response({'id': result.id, 'is_released': result.is_released, 'status': result.status}, status=status.HTTP_200_OK)
