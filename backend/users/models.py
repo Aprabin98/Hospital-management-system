@@ -25,14 +25,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('PATIENT', 'Patient'),
         ('DOCTOR', 'Doctor'),
+        ('NURSE', 'Nurse'),
         ('RECEPTIONIST', 'Receptionist'),
         ('LAB_TECHNICIAN', 'Lab Technician'),
+        ('PHARMACIST', 'Pharmacist'),
+        ('BILLING_OFFICER', 'Billing Officer'),
+        ('INSURANCE_COORDINATOR', 'Insurance Coordinator'),
+        ('QUALITY_COMPLIANCE_OFFICER', 'Quality Compliance Officer'),
         ('ADMIN', 'Super Admin'),
     ]
 
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=50)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PATIENT')
+    first_name = models.CharField(max_length=150, blank=True, default='')
+    last_name = models.CharField(max_length=150, blank=True, default='')
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='PATIENT')
     is_active = models.BooleanField(default=False)  # False until email activated
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -56,9 +63,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def is_admin(self):
         return self.role == 'ADMIN'
+
+    def is_quality_compliance_officer(self):
+        return self.role == 'QUALITY_COMPLIANCE_OFFICER'
     
     def is_receptionist(self):
         return self.role == 'RECEPTIONIST'
+
+    def is_nurse(self):
+        return self.role == 'NURSE'
+    
+    def is_pharmacist(self):
+        return self.role == 'PHARMACIST'
+    
+    def is_lab_technician(self):
+        return self.role == 'LAB_TECHNICIAN'
 
 
 class PatientProfile(models.Model):
@@ -157,6 +176,52 @@ class PatientVitalLog(models.Model):
 
     def __str__(self):
         return f"Vitals for {self.patient.full_name} at {self.recorded_at}"
+
+
+class PatientAllergy(models.Model):
+    SEVERITY_CHOICES = [
+        ('MILD', 'Mild'),
+        ('MODERATE', 'Moderate'),
+        ('SEVERE', 'Severe'),
+        ('LIFE_THREATENING', 'Life Threatening'),
+    ]
+
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('RESOLVED', 'Resolved'),
+        ('UNKNOWN', 'Unknown'),
+    ]
+
+    patient = models.ForeignKey(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name='allergies'
+    )
+    allergen = models.CharField(max_length=150)
+    reaction = models.CharField(max_length=255, blank=True)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='MODERATE')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    diagnosed_on = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_allergies'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['patient', 'status']),
+            models.Index(fields=['allergen']),
+        ]
+
+    def __str__(self):
+        return f"{self.patient.full_name} - {self.allergen} ({self.severity})"
 
 
 class LoginAttempt(models.Model):

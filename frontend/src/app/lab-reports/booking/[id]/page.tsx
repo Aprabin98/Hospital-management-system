@@ -8,13 +8,18 @@ import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 
 export default function BookingDetailsPage() {
-  const params = useParams();
-  const bookingId = params.id as string;
+  const params = useParams<{ id?: string | string[] }>();
+  const bookingId = typeof params?.id === 'string' ? params.id : '';
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!bookingId) {
+      setError('Invalid booking id');
+      setIsLoading(false);
+      return;
+    }
     fetchBookingDetails();
   }, [bookingId]);
 

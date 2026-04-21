@@ -9,20 +9,20 @@ import { apiClient } from '@/lib/api';
 interface WaitingEntry {
   id: number;
   patient: string;
-  scheduled_time: string;
-  priority_score: number;
-  requested_priority: string;
+  doctor: string;
+  date: string;
+  priority: number;
   status: string;
 }
 
 interface NoShowPrediction {
   appointment_id: number;
-  patient_name: string;
-  doctor_name: string;
-  appointment_date: string;
-  appointment_time: string;
-  risk_probability: number;
-  risk_band: 'HIGH' | 'MEDIUM' | 'LOW';
+  patient: string;
+  doctor: string;
+  date: string;
+  probability: number;
+  risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  status: string;
 }
 
 function getErrorMessage(err: unknown, fallback: string) {
@@ -53,11 +53,11 @@ export default function QueueOpsPage() {
     try {
       setLoading(true);
       const [waitingResponse, predictionResponse] = await Promise.all([
-        apiClient.get<{ count: number; results: WaitingEntry[] }>('/appointments/waiting-list/'),
-        apiClient.get<{ prediction_count: number; predictions: NoShowPrediction[] }>('/appointments/no-show/dashboard/'),
+        apiClient.get<{ count: number; results: WaitingEntry[] }>('/appointments/waiting-list/queue/'),
+        apiClient.get<{ count: number; results: NoShowPrediction[] }>('/appointments/no-show/dashboard/'),
       ]);
       setWaitingList(waitingResponse.results || []);
-      setPredictions(predictionResponse.predictions || []);
+      setPredictions(predictionResponse.results || []);
     } catch {
       toast.error('Failed to load queue operations data');
     } finally {
@@ -65,7 +65,7 @@ export default function QueueOpsPage() {
     }
   };
 
-  const highRisk = useMemo(() => predictions.filter((item) => item.risk_band === 'HIGH'), [predictions]);
+  const highRisk = useMemo(() => predictions.filter((item) => item.risk_level === 'HIGH'), [predictions]);
 
   const promoteWaiting = async (id: number) => {
     try {
@@ -80,8 +80,14 @@ export default function QueueOpsPage() {
   const updatePriority = async () => {
     if (!selectedWaitingId) return;
     try {
+      const priorityMap: Record<'HIGH' | 'MEDIUM' | 'LOW', number> = {
+        HIGH: 90,
+        MEDIUM: 60,
+        LOW: 30,
+      };
+
       await apiClient.post(`/appointments/waiting-list/${selectedWaitingId}/priority/`, {
-        priority,
+        priority: priorityMap[priority],
       });
       toast.success('Waiting list priority updated');
       setSelectedWaitingId(null);
@@ -91,13 +97,12 @@ export default function QueueOpsPage() {
     }
   };
 
-  const updateNoShowOutcome = async (prediction: NoShowPrediction, status: 'RESCHEDULED' | 'CANCELLED' | 'COMPLETED') => {
+  const updateNoShowOutcome = async (prediction: NoShowPrediction, outcome: 'showed' | 'no_show') => {
     try {
       await apiClient.post(`/appointments/no-show/${prediction.appointment_id}/outcome/`, {
-        status,
-        note: `Set from admin queue operations (${status}).`,
+        outcome,
       });
-      toast.success(`No-show outcome set to ${status}`);
+      toast.success(`No-show outcome set to ${outcome}`);
       loadData();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to update no-show outcome'));
@@ -143,8 +148,8 @@ export default function QueueOpsPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-medium text-gray-900">{entry.patient}</p>
-                          <p className="text-sm text-gray-600">Requested: {entry.requested_priority} | Score: {entry.priority_score}</p>
-                          <p className="text-sm text-gray-500">Scheduled: {entry.scheduled_time}</p>
+                          <p className="text-sm text-gray-600">Doctor: {entry.doctor} | Priority: {entry.priority}</p>
+                          <p className="text-sm text-gray-500">Date: {entry.date}</p>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => promoteWaiting(entry.id)} className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700">Promote</button>
@@ -168,18 +173,17 @@ export default function QueueOpsPage() {
                     <div key={item.appointment_id} className="rounded border border-gray-200 p-3">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="font-medium text-gray-900">{item.patient_name}</p>
-                          <p className="text-sm text-gray-600">Doctor: {item.doctor_name}</p>
-                          <p className="text-sm text-gray-500">{item.appointment_date} {item.appointment_time}</p>
+                          <p className="font-medium text-gray-900">{item.patient}</p>
+                          <p className="text-sm text-gray-600">Doctor: {item.doctor}</p>
+                          <p className="text-sm text-gray-500">{item.date}</p>
                         </div>
-                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.risk_band === 'HIGH' ? 'bg-red-100 text-red-700' : item.risk_band === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                          {item.risk_band} ({Math.round(item.risk_probability * 100)}%)
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.risk_level === 'HIGH' ? 'bg-red-100 text-red-700' : item.risk_level === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                          {item.risk_level} ({Math.round(item.probability * 100)}%)
                         </span>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button onClick={() => updateNoShowOutcome(item, 'RESCHEDULED')} className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">Mark Rescheduled</button>
-                        <button onClick={() => updateNoShowOutcome(item, 'COMPLETED')} className="rounded border border-green-300 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100">Mark Completed</button>
-                        <button onClick={() => updateNoShowOutcome(item, 'CANCELLED')} className="rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100">Mark Cancelled</button>
+                        <button onClick={() => updateNoShowOutcome(item, 'showed')} className="rounded border border-green-300 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100">Mark Showed</button>
+                        <button onClick={() => updateNoShowOutcome(item, 'no_show')} className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">Mark No-Show</button>
                       </div>
                     </div>
                   ))}

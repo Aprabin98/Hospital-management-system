@@ -138,6 +138,242 @@ class TriageAssessment(models.Model):
         return f"Triage {self.patient.full_name} - {self.priority} ({self.created_at.date()})"
 
 
+class Queue(models.Model):
+    """
+    Phase 2: Queue management for receptionist board.
+    Tracks both scheduled and walk-in patients in a unified queue with SLA timestamps.
+    """
+    STATUS_CHOICES = [
+        ('WAITING', 'Waiting'),
+        ('CALLED', 'Called to consultation'),
+        ('IN_CONSULTATION', 'In consultation'),
+        ('COMPLETED', 'Completed'),
+        ('NO_SHOW', 'No show'),
+        ('ARCHIVED', 'Archived'),
+    ]
+    
+    SOURCE_CHOICES = [
+        ('SCHEDULED', 'Scheduled appointment'),
+        ('WALK_IN', 'Walk-in'),
+        ('REFERRAL', 'Referral'),
+    ]
+
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='queue_entries'
+    )
+    doctor = models.ForeignKey(
+        'clinical.Doctor',
+        on_delete=models.CASCADE,
+        related_name='queue_entries'
+    )
+    appointment = models.OneToOneField(
+        Appointment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='queue_entry'
+    )
+    
+    # Queue state
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='WAITING'
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default='SCHEDULED'
+    )
+    
+    # SLA and timing
+    queued_at = models.DateTimeField(auto_now_add=True)
+    called_at = models.DateTimeField(null=True, blank=True)
+    consultation_start = models.DateTimeField(null=True, blank=True)
+    consultation_end = models.DateTimeField(null=True, blank=True)
+    
+    # Priority and triage
+    priority = models.CharField(
+        max_length=2,
+        choices=[('P1', 'P1'), ('P2', 'P2'), ('P3', 'P3'), ('P4', 'P4')],
+        default='P4'
+    )
+    triage_assessment = models.ForeignKey(
+        'TriageAssessment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    
+    # Notes
+    notes = models.TextField(blank=True, help_text="Receptionist notes")
+    
+    # No-show handling
+    no_show_reason = models.TextField(blank=True)
+    rebooking_attempted = models.BooleanField(default=False)
+    rebooking_contact_date = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-queued_at']
+        indexes = [
+            models.Index(fields=['doctor', 'status', '-queued_at']),
+            models.Index(fields=['status', '-queued_at']),
+        ]
+    
+    def __str__(self):
+        return f"Queue {self.patient.full_name} - Dr.{self.doctor.user.username} - {self.status}"
+    
+    @property
+    def wait_time_minutes(self):
+        """Calculate wait time in minutes."""
+        from django.utils import timezone
+        if self.called_at:
+            return int((self.called_at - self.queued_at).total_seconds() / 60)
+        return int((timezone.now() - self.queued_at).total_seconds() / 60)
+    
+    @property
+    def consultation_duration_minutes(self):
+        """Calculate consultation duration in minutes."""
+        if self.consultation_start and self.consultation_end:
+            return int((self.consultation_end - self.consultation_start).total_seconds() / 60)
+        return None
+
+
+class PatientMatch(models.Model):
+    """
+    Phase 2: Fuzzy patient matching for duplicate prevention.
+    Stores match scores when registering walk-ins or new referrals.
+    """
+    MATCH_TYPE_CHOICES = [
+        ('EXACT_NAME_DOB', 'Exact name and DOB'),
+        ('SIMILAR_NAME_DOB', 'Similar name and DOB'),
+        ('PHONE_MATCH', 'Phone number match'),
+        ('EMAIL_MATCH', 'Email match'),
+    ]
+    
+    new_patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='match_as_new'
+    )
+    existing_patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='match_as_existing'
+    )
+    match_type = models.CharField(max_length=20, choices=MATCH_TYPE_CHOICES)
+    confidence_score = models.FloatField(
+        help_text="0.0 to 1.0 confidence of match"
+    )
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_patient_matches'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    is_duplicate = models.BooleanField(null=True, blank=True, help_text="Null=pending, True=confirmed duplicate, False=not a duplicate")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['new_patient', 'existing_patient']
+        ordering = ['-confidence_score']
+    
+    def __str__(self):
+        return f"Match: {self.new_patient.full_name} vs {self.existing_patient.full_name} ({self.confidence_score:.2f})"
+
+
+class NursingNote(models.Model):
+    """Phase 3: Nurse handoff notes attached to appointment/patient context."""
+
+    appointment = models.ForeignKey(
+        'Appointment',
+        on_delete=models.CASCADE,
+        related_name='nursing_notes'
+    )
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='nursing_notes'
+    )
+    nurse = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='nursing_notes_written'
+    )
+    triage_tag = models.CharField(
+        max_length=2,
+        choices=[('P1', 'P1'), ('P2', 'P2'), ('P3', 'P3'), ('P4', 'P4')],
+        default='P4'
+    )
+    note = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Nursing note for appointment #{self.appointment_id}"
+
+
+class NursingTask(models.Model):
+    """Phase 3: Nurse checklist tasks per appointment."""
+
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('IN_PROGRESS', 'In progress'),
+        ('DONE', 'Done'),
+    ]
+
+    appointment = models.ForeignKey(
+        'Appointment',
+        on_delete=models.CASCADE,
+        related_name='nursing_tasks'
+    )
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='nursing_tasks'
+    )
+    title = models.CharField(max_length=120)
+    details = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    due_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='nursing_tasks_assigned'
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='nursing_tasks_created'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['status', '-created_at']
+
+    def __str__(self):
+        return f"Task {self.title} (#{self.appointment_id})"
+
+
 class MedicalReportAnalysis(models.Model):
     REPORT_TYPE_CHOICES = [
         ('GENERAL', 'General Report'),

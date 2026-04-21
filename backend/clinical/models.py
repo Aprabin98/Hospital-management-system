@@ -90,9 +90,25 @@ class DoctorSchedule(models.Model):
 
 
 class DoctorLeave(models.Model):
+    APPROVAL_STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='leaves')
     date = models.DateField()
     reason = models.CharField(max_length=200, blank=True)
+    approval_status = models.CharField(max_length=10, choices=APPROVAL_STATUS_CHOICES, default='PENDING')
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_doctor_leaves',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

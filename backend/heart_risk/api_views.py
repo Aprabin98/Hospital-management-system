@@ -66,8 +66,16 @@ def heart_risk_latest_api(request):
         return Response(serializer.data, status=status.HTTP_200_OK)
     except HeartRiskAssessment.DoesNotExist:
         return Response(
-            {'detail': 'No heart risk assessment found'},
-            status=status.HTTP_404_NOT_FOUND
+            {
+                'id': None,
+                'risk_level': None,
+                'risk_score': None,
+                'summary': '',
+                'recommendations': [],
+                'saved': False,
+                'detail': 'No heart risk assessment found',
+            },
+            status=status.HTTP_200_OK
         )
     except Exception as e:
         return Response(

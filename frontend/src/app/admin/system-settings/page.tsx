@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
+import { apiClient } from '@/lib/api';
 
 interface SystemSettings {
   hospitalName: string;
@@ -42,18 +43,31 @@ export default function SystemSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-      // Load settings from localStorage (in real app, would fetch from backend)
-      const savedSettings = localStorage.getItem('systemSettings');
-      if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+    const role = (localStorage.getItem('userRole') || '').toUpperCase();
+    setUserRole(role);
+
+    const loadSettings = async () => {
+      if (role !== 'ADMIN') {
+        setIsLoading(false);
+        return;
       }
-    }
+
+      try {
+        const response = await apiClient.get<SystemSettings>('/system/settings/');
+        setSettings(response);
+      } catch (error) {
+        toast.error('Failed to load system settings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
   }, []);
 
   const handleSettingChange = (key: keyof SystemSettings, value: SystemSettings[keyof SystemSettings]) => {
@@ -67,8 +81,8 @@ export default function SystemSettingsPage() {
   const handleSaveSettings = async () => {
     try {
       setIsSaving(true);
-      // In real app, would send to backend API
-      localStorage.setItem('systemSettings', JSON.stringify(settings));
+      const response = await apiClient.put<SystemSettings>('/system/settings/', settings);
+      setSettings(response);
       setHasChanges(false);
       toast.success('Settings saved successfully');
     } catch {
@@ -77,6 +91,16 @@ export default function SystemSettingsPage() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-gray-600">Loading system settings...</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!isAdmin) {
     return (

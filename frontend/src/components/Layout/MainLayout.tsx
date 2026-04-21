@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useAuth } from '@/hooks';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -11,31 +12,16 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isChecking, setIsChecking] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted || typeof window === 'undefined') {
-      return;
-    }
-
-    const token = localStorage.getItem('authToken');
-    if (!token) {
+    if (!isLoading && !isAuthenticated) {
       router.replace('/login');
-      return;
     }
+  }, [router, isAuthenticated, isLoading]);
 
-    if (isChecking) {
-      setIsChecking(false);
-    }
-  }, [router, isChecking, isMounted]);
-
-  if (!isMounted || isChecking) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <div className="flex flex-col items-center gap-3">

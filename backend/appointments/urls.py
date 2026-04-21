@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from no_show_predictor.views import predict_no_show_risk
 from . import feature_views
+from . import queue_api_views
 
 app_name = 'appointments'
 
@@ -40,4 +41,10 @@ urlpatterns = [
     # API
     path('api/slots/', views.get_slots_api, name='get_slots_api'),
     path('api/no-show-risk/', predict_no_show_risk, name='predict_no_show_api'),
+    
+    # Phase 2: Queue Management APIs
+    path('api/queue/', queue_api_views.queue_list_api, name='queue_list_api'),
+    path('api/queue/<int:queue_id>/status/', queue_api_views.queue_update_status_api, name='queue_update_status_api'),
+    path('api/queue/check-duplicate/', queue_api_views.check_duplicate_patient_api, name='check_duplicate_api'),
+    path('api/queue/<int:queue_id>/rebook/', queue_api_views.no_show_rebook_api, name='no_show_rebook_api'),
 ]

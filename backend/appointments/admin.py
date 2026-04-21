@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Appointment, WaitingList, TriageAssessment, MedicalReportAnalysis
+from .models import Appointment, WaitingList, TriageAssessment, MedicalReportAnalysis, NursingNote, NursingTask
 from .no_show_predictor import NoShowPredictor, NoShowPredictor_Summary
 
 
@@ -44,3 +44,19 @@ class MedicalReportAnalysisAdmin(admin.ModelAdmin):
     list_filter = ['report_type', 'risk_level', 'created_at']
     search_fields = ['patient__full_name', 'patient__user__email', 'title', 'ai_summary']
     ordering = ['-created_at']
+
+
+@admin.register(NursingNote)
+class NursingNoteAdmin(admin.ModelAdmin):
+    list_display = ['id', 'appointment', 'patient', 'triage_tag', 'nurse', 'created_at']
+    list_filter = ['triage_tag', 'created_at']
+    search_fields = ['patient__full_name', 'note']
+    ordering = ['-created_at']
+
+
+@admin.register(NursingTask)
+class NursingTaskAdmin(admin.ModelAdmin):
+    list_display = ['id', 'appointment', 'patient', 'title', 'status', 'assigned_to', 'due_at']
+    list_filter = ['status', 'due_at', 'created_at']
+    search_fields = ['patient__full_name', 'title', 'details']
+    ordering = ['status', '-created_at']

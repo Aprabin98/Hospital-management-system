@@ -159,7 +159,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                 onClick={() => router.push('/profile')}
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
               >
-                👤 My Profile
+                👤 Profile & Account
               </button>
               <button
                 onClick={handleLogout}

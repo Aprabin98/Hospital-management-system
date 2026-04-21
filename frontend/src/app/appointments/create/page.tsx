@@ -35,7 +35,7 @@ interface SlotResponse {
 function CreateAppointmentPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const doctorId = searchParams.get('doctor');
+  const doctorId = searchParams?.get('doctor');
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(doctorId ? parseInt(doctorId) : null);

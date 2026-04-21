@@ -33,7 +33,7 @@ interface ReviewsPayload {
 
 function ReviewsPageContent() {
   const searchParams = useSearchParams();
-  const appointmentFromQuery = searchParams.get('appointmentId');
+  const appointmentFromQuery = searchParams?.get('appointmentId');
 
   const [eligible, setEligible] = useState<EligibleAppointment[]>([]);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);

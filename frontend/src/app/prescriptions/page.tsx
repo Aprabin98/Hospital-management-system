@@ -300,7 +300,7 @@ export default function PrescriptionsPage() {
                 {/* Advice */}
                 {prescription.advice && (
                   <div className="mb-4 p-3 bg-blue-50 rounded">
-                    <p className="text-sm font-medium text-blue-700">Doctor's Advice:</p>
+                    <p className="text-sm font-medium text-blue-700">Doctor&apos;s Advice:</p>
                     <p className="text-sm text-blue-600 mt-1">{prescription.advice}</p>
                   </div>
                 )}

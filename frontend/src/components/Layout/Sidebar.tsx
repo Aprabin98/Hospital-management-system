@@ -18,7 +18,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician'] },
+  { name: 'Dashboard', href: '/dashboard', icon: '📊', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician', 'nurse'] },
   { name: 'Manage Doctors', href: '/admin/doctors-management', icon: '👨‍⚕️', roles: ['admin'] },
   { name: 'Manage Tests', href: '/admin/manage-tests', icon: '🧪', roles: ['admin'] },
   { name: 'Specializations', href: '/admin/specializations', icon: '🧬', roles: ['admin'] },
@@ -30,6 +30,8 @@ const navItems: NavItem[] = [
   { name: 'Lab Workflow', href: '/admin/lab-workflow', icon: '🧫', roles: ['admin'] },
   { name: 'Insurance Verification', href: '/admin/insurance-verification', icon: '🛡️', roles: ['admin', 'receptionist'] },
   { name: 'Waiting & No-Show', href: '/admin/queue-ops', icon: '⏱️', roles: ['admin', 'receptionist'] },
+  { name: 'Reception Queue', href: '/receptionist/queue', icon: '🎟️', roles: ['admin', 'receptionist', 'doctor'] },
+  { name: 'Nurse Dashboard', href: '/nurse/dashboard', icon: '🩹', roles: ['nurse', 'admin', 'doctor'] },
   { name: 'Room Statistics', href: '/admin/room-analytics', icon: '📈', roles: ['admin'] },
   { name: 'Approvals Center', href: '/admin/approvals-center', icon: '✅', roles: ['admin', 'receptionist'] },
   { name: 'Patient Operations', href: '/admin/patient-operations', icon: '👥', roles: ['admin', 'receptionist'] },
@@ -39,20 +41,35 @@ const navItems: NavItem[] = [
   { name: 'Security Monitoring', href: '/admin/security-monitoring', icon: '🛡️', roles: ['admin'] },
   { name: 'RBAC Verification', href: '/admin/rbac-verification', icon: '🔑', roles: ['admin'] },
   { name: 'System Health', href: '/admin/system-health', icon: '💚', roles: ['admin'] },
-  { name: 'Patients', href: '/patients', icon: '👥', roles: ['admin', 'doctor', 'receptionist'] },
-  { name: 'Appointments', href: '/appointments', icon: '📅', roles: ['admin', 'doctor', 'patient', 'receptionist'] },
-  { name: 'Notifications', href: '/notifications', icon: '🔔', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician'] },
+  { name: 'Patients', href: '/patients', icon: '👥', roles: ['admin', 'doctor', 'receptionist', 'nurse'] },
+  { name: 'Appointments', href: '/appointments', icon: '📅', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse'] },
+  { name: 'Medical Records', href: '/medical-records', icon: '📂', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse'] },
+  { name: 'Prescriptions', href: '/prescriptions', icon: '💊', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse', 'pharmacist'] },
+  { name: 'Notifications', href: '/notifications', icon: '🔔', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician', 'nurse'] },
   { name: 'Billing', href: '/billing', icon: '💳', roles: ['patient', 'admin', 'receptionist'] },
+  { name: 'Lab Reports', href: '/lab-reports', icon: '🧾', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician'] },
+  { name: 'Reviews', href: '/reviews', icon: '⭐', roles: ['admin', 'doctor', 'patient', 'receptionist'] },
+  { name: 'My Ratings', href: '/my-ratings', icon: '🌟', roles: ['patient'] },
   { name: 'Rooms', href: '/rooms', icon: '🛏️', roles: ['doctor', 'patient', 'receptionist'] },
   { name: 'Manage Leaves', href: '/manage-leaves', icon: '🏖️', roles: ['doctor'] },
   { name: 'Reports', href: '/reports', icon: '📑', roles: ['doctor', 'admin', 'receptionist'] },
   { name: 'Audit Logs', href: '/audit-logs', icon: '🛡️', roles: ['admin'] },
   { name: 'Heart Risk Detector', href: '/ai-health/heart-risk', icon: '❤️', roles: ['doctor', 'patient'] },
   { name: 'AI Report Reader', href: '/ai-health/report-reader', icon: '📄', roles: ['doctor', 'patient', 'receptionist'] },
-  { name: 'AI Triage', href: '/ai-health/triage', icon: '🩺', roles: ['doctor', 'patient', 'receptionist'] },
+  { name: 'AI Triage', href: '/ai-health/triage', icon: '🩺', roles: ['doctor', 'patient', 'receptionist', 'nurse'] },
   { name: 'Issued Prescriptions', href: '/prescriptions-writer', icon: '🧾', roles: ['doctor'] },
-  { name: 'Doctors', href: '/doctors', icon: '👨‍⚕️', roles: ['doctor', 'patient', 'receptionist'] },
-  { name: 'Settings', href: '/settings', icon: '⚙️', roles: ['doctor', 'patient', 'receptionist', 'lab_technician'] },
+  { name: 'Doctors', href: '/doctors', icon: '👨‍⚕️', roles: ['doctor', 'patient', 'receptionist', 'nurse'] },
+  { name: 'Settings', href: '/settings', icon: '⚙️', roles: ['doctor', 'patient', 'receptionist', 'lab_technician', 'nurse'] },
+  { name: 'Lab Samples', href: '/lab/samples', icon: '🧬', roles: ['admin', 'lab_technician'] },
+  { name: 'QC Logs', href: '/lab/qc-logs', icon: '✓', roles: ['admin', 'lab_technician'] },
+  { name: 'Critical Lab Values', href: '/lab/critical-values', icon: '🚨', roles: ['admin', 'doctor', 'lab_technician'] },
+  { name: 'Pharmacy Dashboard', href: '/pharmacy/dashboard', icon: '💊', roles: ['admin', 'pharmacist'] },
+  { name: 'Pending Dispense', href: '/pharmacy/dispense', icon: '📋', roles: ['admin', 'pharmacist'] },
+  { name: 'Medication Inventory', href: '/pharmacy/inventory', icon: '📦', roles: ['admin', 'pharmacist'] },
+  { name: 'IPD Patients', href: '/ipd', icon: '🏥', roles: ['admin', 'doctor', 'nurse', 'receptionist'] },
+  { name: 'Doctor IPD Rounds', href: '/ipd/doctor-rounds', icon: '🩺', roles: ['admin', 'doctor'] },
+  { name: 'Finance Dashboard', href: '/finance/dashboard', icon: '💼', roles: ['admin', 'billing_officer', 'insurance_coordinator'] },
+  { name: 'Compliance Center', href: '/compliance', icon: '🛡️', roles: ['admin', 'quality_compliance_officer'] },
 ];
 
 const defaultNavSections = [
@@ -72,13 +89,13 @@ const defaultNavSections = [
     id: 'clinical',
     label: 'Clinical',
     icon: '🩺',
-    items: ['Patients', 'Appointments', 'Medical Records', 'Prescriptions', 'Issued Prescriptions', 'Manage Leaves', 'Doctors'],
+    items: ['Patients', 'Appointments', 'Nurse Dashboard', 'Medical Records', 'Prescriptions', 'Issued Prescriptions', 'Manage Leaves', 'Doctors'],
   },
   {
     id: 'diagnostics',
-    label: 'Diagnostics',
+    label: 'Diagnostics & Pharmacy',
     icon: '🧪',
-    items: ['Lab Reports', 'Reports', 'Reviews', 'My Ratings'],
+    items: ['Lab Reports', 'Lab Samples', 'QC Logs', 'Critical Lab Values', 'Medication Inventory', 'Pharmacy Dashboard', 'Pending Dispense', 'Reports', 'Reviews', 'My Ratings'],
   },
   {
     id: 'ai',
@@ -90,7 +107,7 @@ const defaultNavSections = [
     id: 'operations',
     label: 'Operations',
     icon: '🏥',
-    items: ['Patient Operations', 'Rooms', 'Audit Logs'],
+    items: ['Patient Operations', 'Rooms', 'IPD Patients', 'Doctor IPD Rounds', 'Nurse Dashboard', 'Audit Logs'],
   },
 ];
 
@@ -105,7 +122,7 @@ const adminNavSections = [
     id: 'finance',
     label: 'Finance',
     icon: '💰',
-    items: ['Revenue Summary', 'Billing'],
+    items: ['Revenue Summary', 'Billing', 'Finance Dashboard'],
   },
   {
     id: 'management',
@@ -117,25 +134,27 @@ const adminNavSections = [
     id: 'operations',
     label: 'Operations',
     icon: '🏥',
-    items: ['Patient Operations', 'Patients', 'Appointments', 'Billing', 'Notifications'],
+    items: ['Patient Operations', 'Patients', 'Appointments', 'Reception Queue', 'Billing', 'Notifications'],
   },
   {
     id: 'workflow',
     label: 'Workflow',
     icon: '⚙️',
-    items: ['Lab Workflow', 'Insurance Verification', 'Waiting & No-Show', 'Room Statistics', 'Approvals Center', 'Reports'],
+    items: ['Lab Workflow', 'Lab Samples', 'QC Logs', 'Critical Lab Values', 'Pharmacy Dashboard', 'Pending Dispense', 'Medication Inventory', 'IPD Patients', 'Doctor IPD Rounds', 'Insurance Verification', 'Waiting & No-Show', 'Reception Queue', 'Room Statistics', 'Approvals Center', 'Reports'],
   },
   {
     id: 'system',
     label: 'System',
     icon: '🛠️',
-    items: ['Users Management', 'System Settings', 'Analytics', 'Security Monitoring', 'RBAC Verification', 'System Health', 'Audit Logs'],
+    items: ['Users Management', 'System Settings', 'Analytics', 'Security Monitoring', 'RBAC Verification', 'System Health', 'Audit Logs', 'Compliance Center'],
   },
 ];
 
 export default function Sidebar({ isOpen }: SidebarProps) {
   const pathname = usePathname();
+  const currentPath = pathname || '';
   const { userRole } = useAuth();
+  const normalizedRole = (userRole || '').toLowerCase();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     overview: true,
     finance: true,
@@ -151,12 +170,16 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     other: true,
   });
 
-  const filteredNavItems = userRole
-    ? navItems.filter((item) => item.roles.includes(userRole.toLowerCase()))
-    : navItems; // Show all items if role not loaded yet (prevents flash of empty sidebar)
+  const filteredNavItems = normalizedRole
+    ? navItems.filter((item) => item.roles.includes(normalizedRole))
+    : [];
 
   const groupedNav = useMemo(() => {
-    const sections = userRole?.toLowerCase() === 'admin' ? adminNavSections : defaultNavSections;
+    if (!normalizedRole) {
+      return [];
+    }
+
+    const sections = normalizedRole === 'admin' ? adminNavSections : defaultNavSections;
 
     const grouped = sections.map((section) => ({
       ...section,
@@ -164,7 +187,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     }));
 
     // Admin users should see admin controls first in the sidebar hierarchy.
-    if (userRole?.toLowerCase() === 'admin') {
+    if (normalizedRole === 'admin') {
       grouped.sort((a, b) => {
         const order = ['overview', 'finance', 'management', 'operations', 'workflow', 'system'];
         const aIndex = order.indexOf(a.id);
@@ -190,7 +213,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     }
 
     return grouped.filter((section) => section.nav.length > 0);
-  }, [filteredNavItems, userRole]);
+  }, [filteredNavItems, normalizedRole]);
 
   const toggleSection = (id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -218,7 +241,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
         {!isOpen && (
           <div className="space-y-1">
             {filteredNavItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+              const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href));
               return (
                 <Link
                   key={`${item.href}-${item.name}`}
@@ -257,7 +280,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
                 {expanded[section.id] && (
                   <div className="space-y-1 px-2 pb-2">
                     {section.nav.map((item) => {
-                      const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                      const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href));
                       return (
                         <Link
                           key={`${item.href}-${item.name}`}

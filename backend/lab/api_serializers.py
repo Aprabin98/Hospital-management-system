@@ -3,7 +3,10 @@ from datetime import timedelta
 
 from django.utils import timezone
 from rest_framework import serializers
-from .models import TestTemplate, TestBooking, TestResult, TestResultItem, TestRecommendation, TestSchedule
+from .models import (
+    TestTemplate, TestBooking, TestResult, TestResultItem, TestRecommendation, TestSchedule,
+    LabSample, QCLog, CriticalValueAcknowledgment
+)
 
 
 class TestScheduleSerializer(serializers.ModelSerializer):
@@ -154,3 +157,133 @@ class TestRecommendationSerializer(serializers.ModelSerializer):
             return None
         full_name = f"{obj.recommended_by.first_name} {obj.recommended_by.last_name}".strip()
         return full_name or obj.recommended_by.username or obj.recommended_by.email
+
+
+# ==================== PHASE 4 Serializers ====================
+
+class LabSampleSerializer(serializers.ModelSerializer):
+    """Serializer for LabSample model with tracking metadata."""
+    result_id = serializers.IntegerField(source='result.id', read_only=True)
+    collected_by_name = serializers.SerializerMethodField()
+    processed_by_name = serializers.SerializerMethodField()
+    validated_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LabSample
+        fields = [
+            'id',
+            'result_id',
+            'barcode_id',
+            'status',
+            'collected_by',
+            'collected_by_name',
+            'collected_at',
+            'processed_by',
+            'processed_by_name',
+            'processed_at',
+            'validated_by',
+            'validated_by_name',
+            'validated_at',
+            'rejection_reason',
+            'recollect_reason',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'collected_by_name', 'processed_by_name', 'validated_by_name', 'result_id']
+
+    def get_collected_by_name(self, obj):
+        if not obj.collected_by:
+            return None
+        return f"{obj.collected_by.first_name} {obj.collected_by.last_name}".strip() or obj.collected_by.email
+
+    def get_processed_by_name(self, obj):
+        if not obj.processed_by:
+            return None
+        return f"{obj.processed_by.first_name} {obj.processed_by.last_name}".strip() or obj.processed_by.email
+
+    def get_validated_by_name(self, obj):
+        if not obj.validated_by:
+            return None
+        return f"{obj.validated_by.first_name} {obj.validated_by.last_name}".strip() or obj.validated_by.email
+
+
+class QCLogSerializer(serializers.ModelSerializer):
+    """Serializer for QCLog model."""
+    performed_by_name = serializers.SerializerMethodField()
+    test_name = serializers.CharField(source='test_template.name', read_only=True)
+
+    class Meta:
+        model = QCLog
+        fields = [
+            'id',
+            'sample',
+            'qc_type',
+            'test_template',
+            'test_name',
+            'performed_by',
+            'performed_by_name',
+            'result',
+            'details',
+            'reference_value',
+            'actual_value',
+            'deviation',
+            'performed_at',
+        ]
+        read_only_fields = ['id', 'performed_at', 'performed_by_name', 'test_name']
+
+    def get_performed_by_name(self, obj):
+        if not obj.performed_by:
+            return None
+        return f"{obj.performed_by.first_name} {obj.performed_by.last_name}".strip() or obj.performed_by.email
+
+
+class CriticalValueAcknowledgmentSerializer(serializers.ModelSerializer):
+    """Serializer for CriticalValueAcknowledgment model."""
+    acknowledged_by_name = serializers.SerializerMethodField()
+    escalated_to_name = serializers.SerializerMethodField()
+    result_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CriticalValueAcknowledgment
+        fields = [
+            'id',
+            'result',
+            'result_details',
+            'is_critical',
+            'urgency',
+            'critical_fields',
+            'notification_sent_at',
+            'notification_method',
+            'acknowledged_by',
+            'acknowledged_by_name',
+            'acknowledged_at',
+            'acknowledgment_notes',
+            'escalated_to',
+            'escalated_to_name',
+            'escalated_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'acknowledged_by_name', 'escalated_to_name', 'result_details']
+
+    def get_acknowledged_by_name(self, obj):
+        if not obj.acknowledged_by:
+            return None
+        doctor = obj.acknowledged_by
+        return f"Dr. {doctor.user.first_name} {doctor.user.last_name}".strip()
+
+    def get_escalated_to_name(self, obj):
+        if not obj.escalated_to:
+            return None
+        return f"{obj.escalated_to.first_name} {obj.escalated_to.last_name}".strip() or obj.escalated_to.email
+
+    def get_result_details(self, obj):
+        """Include basic result info for context."""
+        if not obj.result:
+            return None
+        return {
+            'id': obj.result.id,
+            'booking_id': obj.result.booking.id,
+            'status': obj.result.status,
+            'has_critical_values': obj.result.has_critical_values,
+        }

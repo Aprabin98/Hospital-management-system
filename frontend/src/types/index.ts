@@ -53,7 +53,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'admin' | 'doctor' | 'patient' | 'staff';
+  role: 'admin' | 'doctor' | 'patient' | 'staff' | 'nurse';
   is_active: boolean;
   created_at: string;
   updated_at: string;

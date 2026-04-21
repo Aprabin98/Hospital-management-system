@@ -33,8 +33,8 @@ interface Payment {
 }
 
 const BillingDetailPage = () => {
-  const params = useParams();
-  const paymentId = params.id as string;
+  const params = useParams<{ id?: string | string[] }>();
+  const paymentId = typeof params?.id === 'string' ? params.id : '';
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,6 +50,12 @@ const BillingDetailPage = () => {
   }, []);
 
   useEffect(() => {
+    if (!paymentId) {
+      setLoading(false);
+      setError('Invalid payment id');
+      return;
+    }
+
     const fetchPayment = async () => {
       try {
         setLoading(true);

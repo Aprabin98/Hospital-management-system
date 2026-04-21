@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
+import { apiClient } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 
 interface DoctorMetric {
@@ -34,82 +36,59 @@ interface AnalyticsData {
 }
 
 const DEFAULT_ANALYTICS: AnalyticsData = {
-  total_appointments_month: 245,
-  completed_appointments_month: 198,
-  cancelled_appointments_month: 32,
-  no_show_appointments_month: 15,
-  pending_appointments: 12,
-  total_revenue_month: 495000,
-  average_revenue_per_appointment: 2500,
-  unique_patients_month: 156,
-  new_patients_month: 24,
-  top_specializations: [
-    { name: 'Cardiology', count: 45 },
-    { name: 'Orthopedics', count: 38 },
-    { name: 'Neurology', count: 32 },
-    { name: 'Pediatrics', count: 28 },
-  ],
-  appointment_status_trend: [
-    { date: '2025-04-01', completed: 18, cancelled: 3, no_show: 1 },
-    { date: '2025-04-02', completed: 21, cancelled: 2, no_show: 2 },
-    { date: '2025-04-03', completed: 19, cancelled: 4, no_show: 1 },
-    { date: '2025-04-04', completed: 22, cancelled: 2, no_show: 0 },
-    { date: '2025-04-05', completed: 20, cancelled: 3, no_show: 2 },
-  ],
-  revenue_trend: [
-    { date: '2025-04-01', amount: 45000 },
-    { date: '2025-04-02', amount: 52500 },
-    { date: '2025-04-03', amount: 47500 },
-    { date: '2025-04-04', amount: 55000 },
-    { date: '2025-04-05', amount: 50000 },
-  ],
-  doctor_metrics: [
-    {
-      doctor_id: 1,
-      name: 'Dr. Rajesh Kumar',
-      specialization: 'Cardiology',
-      completed_appointments: 48,
-      no_show_count: 2,
-      no_show_rate: 4.0,
-      average_rating: 4.8,
-      total_reviews: 42,
-      paid_revenue: 120000,
-    },
-    {
-      doctor_id: 2,
-      name: 'Dr. Priya Singh',
-      specialization: 'Orthopedics',
-      completed_appointments: 35,
-      no_show_count: 1,
-      no_show_rate: 2.8,
-      average_rating: 4.6,
-      total_reviews: 28,
-      paid_revenue: 87500,
-    },
-    {
-      doctor_id: 3,
-      name: 'Dr. Amit Patel',
-      specialization: 'Neurology',
-      completed_appointments: 28,
-      no_show_count: 3,
-      no_show_rate: 9.7,
-      average_rating: 4.4,
-      total_reviews: 18,
-      paid_revenue: 70000,
-    },
-  ],
+  total_appointments_month: 0,
+  completed_appointments_month: 0,
+  cancelled_appointments_month: 0,
+  no_show_appointments_month: 0,
+  pending_appointments: 0,
+  total_revenue_month: 0,
+  average_revenue_per_appointment: 0,
+  unique_patients_month: 0,
+  new_patients_month: 0,
+  top_specializations: [],
+  appointment_status_trend: [],
+  revenue_trend: [],
+  doctor_metrics: [],
 };
 
 export default function AnalyticsPage() {
-  const userRole = typeof window !== 'undefined' 
-    ? (localStorage.getItem('userRole') || 'PATIENT').toUpperCase()
-    : 'PATIENT';
-  const [analytics] = useState<AnalyticsData>(DEFAULT_ANALYTICS);
+  const [userRole, setUserRole] = useState('PATIENT');
+  const [analytics, setAnalytics] = useState<AnalyticsData>(DEFAULT_ANALYTICS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter'>('month');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserRole((localStorage.getItem('userRole') || 'PATIENT').toUpperCase());
+    }
+
+    const loadAnalytics = async () => {
+      try {
+        setIsLoading(true);
+        const [summary, doctorMetrics] = await Promise.all([
+          apiClient.get<AnalyticsData>('/analytics/dashboard/'),
+          apiClient.get<{ count: number; items: AnalyticsData['doctor_metrics'] }>('/analytics/doctor-metrics/'),
+        ]);
+
+        setAnalytics({
+          ...DEFAULT_ANALYTICS,
+          ...summary,
+          doctor_metrics: doctorMetrics.items || [],
+        });
+        setError(null);
+      } catch (requestError: any) {
+        setError(requestError?.message || 'Failed to load analytics');
+        toast.error('Failed to load analytics');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAnalytics();
+  }, []);
+
   const isAdminOpsRole = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-
-
 
   const appointmentCompletionRate = useMemo(() => {
     const total = analytics.total_appointments_month;
@@ -135,6 +114,11 @@ export default function AnalyticsPage() {
   return (
     <MainLayout>
       <div className="space-y-6 p-6">
+        {isLoading ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-600">Loading analytics...</div>
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
+        ) : null}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

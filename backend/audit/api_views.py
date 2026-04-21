@@ -7,6 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from audit.models import AuditLog
+from audit.models import SystemSetting
+from audit.utils import log_audit_event
 
 
 @api_view(['GET'])
@@ -109,3 +111,108 @@ def audit_logs_list_api(request):
         },
         status=status.HTTP_200_OK,
     )
+
+
+def _settings_to_payload(settings_obj: SystemSetting) -> dict:
+    return {
+        'hospitalName': settings_obj.hospital_name,
+        'hospitalEmail': settings_obj.hospital_email,
+        'hospitalPhone': settings_obj.hospital_phone,
+        'hospitalAddress': settings_obj.hospital_address,
+        'maxAppointmentsPerDay': settings_obj.max_appointments_per_day,
+        'appointmentSlotDuration': settings_obj.appointment_slot_duration,
+        'cancellationNoticeHours': settings_obj.cancellation_notice_hours,
+        'maxConcurrentUsers': settings_obj.max_concurrent_users,
+        'maintenanceMode': settings_obj.maintenance_mode,
+        'autoBackupEnabled': settings_obj.auto_backup_enabled,
+        'backupFrequencyDays': settings_obj.backup_frequency_days,
+        'enableTwoFactor': settings_obj.enable_two_factor,
+        'enableNotifications': settings_obj.enable_notifications,
+    }
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def system_settings_api(request):
+    """Read or update admin system settings."""
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Access denied. Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+
+    settings_obj, _ = SystemSetting.objects.get_or_create(pk=1)
+
+    if request.method == 'GET':
+        return Response(_settings_to_payload(settings_obj), status=status.HTTP_200_OK)
+
+    payload = request.data or {}
+
+    field_map = {
+        'hospitalName': 'hospital_name',
+        'hospitalEmail': 'hospital_email',
+        'hospitalPhone': 'hospital_phone',
+        'hospitalAddress': 'hospital_address',
+        'maxAppointmentsPerDay': 'max_appointments_per_day',
+        'appointmentSlotDuration': 'appointment_slot_duration',
+        'cancellationNoticeHours': 'cancellation_notice_hours',
+        'maxConcurrentUsers': 'max_concurrent_users',
+        'maintenanceMode': 'maintenance_mode',
+        'autoBackupEnabled': 'auto_backup_enabled',
+        'backupFrequencyDays': 'backup_frequency_days',
+        'enableTwoFactor': 'enable_two_factor',
+        'enableNotifications': 'enable_notifications',
+    }
+
+    int_fields = {
+        'maxAppointmentsPerDay',
+        'appointmentSlotDuration',
+        'cancellationNoticeHours',
+        'maxConcurrentUsers',
+        'backupFrequencyDays',
+    }
+
+    bool_fields = {
+        'maintenanceMode',
+        'autoBackupEnabled',
+        'enableTwoFactor',
+        'enableNotifications',
+    }
+
+    errors = {}
+    for client_key, model_field in field_map.items():
+        if client_key not in payload:
+            continue
+
+        value = payload.get(client_key)
+
+        if client_key in int_fields:
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                errors[client_key] = 'Must be a valid integer.'
+                continue
+            if value < 0:
+                errors[client_key] = 'Must be greater than or equal to 0.'
+                continue
+
+        if client_key in bool_fields:
+            if not isinstance(value, bool):
+                errors[client_key] = 'Must be true or false.'
+                continue
+
+        setattr(settings_obj, model_field, value)
+
+    if errors:
+        return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    settings_obj.updated_by = request.user
+    settings_obj.save()
+
+    log_audit_event(
+        action='UPDATE',
+        target=settings_obj,
+        description='System settings updated via API',
+        metadata={'updated_fields': list(payload.keys())},
+        actor=request.user,
+        request=request,
+    )
+
+    return Response(_settings_to_payload(settings_obj), status=status.HTTP_200_OK)

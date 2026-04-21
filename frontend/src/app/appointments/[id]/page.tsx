@@ -28,6 +28,23 @@ interface PrescriptionListResponse {
   }>;
 }
 
+interface NursingNoteItem {
+  id: number;
+  triage_tag: string;
+  note: string;
+  created_at: string;
+  nurse_name: string | null;
+}
+
+interface NursingTaskItem {
+  id: number;
+  title: string;
+  details: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+  due_at: string | null;
+  assigned_to_name: string | null;
+}
+
 export default function AppointmentDetailPage() {
   const params = useParams<{ id: string }>();
   const appointmentId = Number(params?.id);
@@ -36,6 +53,8 @@ export default function AppointmentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [existingPrescriptionId, setExistingPrescriptionId] = useState<number | null>(null);
+  const [nursingNotes, setNursingNotes] = useState<NursingNoteItem[]>([]);
+  const [nursingTasks, setNursingTasks] = useState<NursingTaskItem[]>([]);
 
   const userRole = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -46,10 +65,13 @@ export default function AppointmentDetailPage() {
 
   const role = (userRole || '').toUpperCase();
   const isDoctorRole = role === 'DOCTOR';
+  const isNurseRole = role === 'NURSE';
   const canManageStatus = role === 'DOCTOR' || role === 'RECEPTIONIST' || role === 'ADMIN';
   const isPatientRole = (userRole || '').toUpperCase() === 'PATIENT';
   const canCancelForPatient =
     isPatientRole && appointment?.status !== 'COMPLETED' && appointment?.status !== 'CANCELLED';
+
+  const canViewNurseHandoff = isDoctorRole || isNurseRole || role === 'ADMIN';
 
   useEffect(() => {
     if (!appointmentId || Number.isNaN(appointmentId)) {
@@ -68,6 +90,15 @@ export default function AppointmentDetailPage() {
           const matched = (prescriptions.results || []).find((item) => item.appointment === data.id);
           setExistingPrescriptionId(matched?.id ?? null);
         }
+
+        if (canViewNurseHandoff) {
+          const [notesResponse, tasksResponse] = await Promise.all([
+            apiClient.get<{ results: NursingNoteItem[] }>(`/nurse/notes/?appointment_id=${data.id}`),
+            apiClient.get<{ results: NursingTaskItem[] }>(`/nurse/tasks/?appointment_id=${data.id}`),
+          ]);
+          setNursingNotes(notesResponse.results || []);
+          setNursingTasks(tasksResponse.results || []);
+        }
       } catch (err: any) {
         toast.error(err?.message || 'Failed to load appointment details');
       } finally {
@@ -76,7 +107,7 @@ export default function AppointmentDetailPage() {
     };
 
     run();
-  }, [appointmentId]);
+  }, [appointmentId, canViewNurseHandoff]);
 
   const updateStatus = async (status: AppointmentDetail['status']) => {
     if (!appointment) {
@@ -258,6 +289,48 @@ export default function AppointmentDetailPage() {
                   Prescription Exists (ID: {existingPrescriptionId})
                 </Link>
               )}
+            </div>
+          </div>
+        )}
+
+        {canViewNurseHandoff && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">Nurse Handoff Panel</h2>
+            <p className="mt-1 text-sm text-gray-600">Doctor encounter context from nurse notes and task checklist.</p>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">Nursing Notes</h3>
+                <div className="mt-2 space-y-2">
+                  {nursingNotes.length === 0 ? (
+                    <p className="text-sm text-gray-500">No nursing notes recorded for this appointment.</p>
+                  ) : (
+                    nursingNotes.map((item) => (
+                      <div key={item.id} className="rounded border border-gray-200 p-3">
+                        <p className="text-xs text-gray-500">{item.triage_tag} • {item.nurse_name || 'Nurse'} • {new Date(item.created_at).toLocaleString()}</p>
+                        <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{item.note}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">Nursing Tasks</h3>
+                <div className="mt-2 space-y-2">
+                  {nursingTasks.length === 0 ? (
+                    <p className="text-sm text-gray-500">No nursing tasks for this appointment.</p>
+                  ) : (
+                    nursingTasks.map((item) => (
+                      <div key={item.id} className="rounded border border-gray-200 p-3">
+                        <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                        <p className="text-xs text-gray-500">{item.status} {item.assigned_to_name ? `• ${item.assigned_to_name}` : ''}</p>
+                        <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{item.details || 'No details provided.'}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

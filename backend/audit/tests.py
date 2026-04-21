@@ -6,6 +6,7 @@ from django.core.cache import cache
 from datetime import date, time
 
 from audit.models import AuditLog
+from audit.models import SystemSetting
 from reviews.models import Review
 from clinical.models import Specialization, Doctor
 from appointments.models import Appointment
@@ -156,3 +157,58 @@ class AuditCrudSignalTests(TestCase):
                 model_name='reviews.review',
             ).exists()
         )
+
+
+@override_settings(TWO_FACTOR_REQUIRED_ROLES=[])
+class SystemSettingsApiTests(TestCase):
+    def setUp(self):
+        self.user_model = get_user_model()
+        self.admin_user = self.user_model.objects.create_user(
+            email='settings.admin@example.com',
+            username='settings_admin',
+            password='StrongPass123!',
+            role='ADMIN',
+            is_active=True,
+            is_staff=True,
+        )
+        self.patient_user = self.user_model.objects.create_user(
+            email='settings.patient@example.com',
+            username='settings_patient',
+            password='StrongPass123!',
+            role='PATIENT',
+            is_active=True,
+        )
+
+    def test_admin_can_read_system_settings(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get('/api/system/settings/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('hospitalName', response.json())
+
+    def test_admin_can_update_system_settings(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.put(
+            '/api/system/settings/',
+            {
+                'hospitalName': 'City Care Hospital',
+                'maintenanceMode': True,
+                'maxConcurrentUsers': 250,
+            },
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        updated = SystemSetting.objects.get(pk=1)
+        self.assertEqual(updated.hospital_name, 'City Care Hospital')
+        self.assertTrue(updated.maintenance_mode)
+        self.assertEqual(updated.max_concurrent_users, 250)
+
+    def test_non_admin_cannot_access_system_settings(self):
+        self.client.force_login(self.patient_user)
+
+        response = self.client.get('/api/system/settings/')
+
+        self.assertEqual(response.status_code, 403)

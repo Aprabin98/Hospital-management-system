@@ -192,6 +192,67 @@ class TestBooking(models.Model):
         ordering = ['-date']
 
 
+class TestRecommendation(models.Model):
+    """Doctor/staff recommendation for a patient to book a lab test."""
+    PRIORITY_CHOICES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+    ]
+
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('BOOKED', 'Booked'),
+        ('COMPLETED', 'Completed'),
+        ('DECLINED', 'Declined'),
+    ]
+
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='test_recommendations'
+    )
+    template = models.ForeignKey(
+        TestTemplate,
+        on_delete=models.CASCADE,
+        related_name='recommendations'
+    )
+    recommended_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recommended_tests'
+    )
+    doctor = models.ForeignKey(
+        'clinical.Doctor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='test_recommendations'
+    )
+    reason = models.TextField(blank=True)
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default='MEDIUM'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='PENDING'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.patient.full_name} - {self.template.name} ({self.status})"
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['patient', 'template', 'status']
+
+
 class TestResult(models.Model):
     """Lab technician fills test results with workflow status tracking."""
     STATUS_CHOICES = [
@@ -353,4 +414,205 @@ class TestResultItem(models.Model):
 
     def __str__(self):
         return f"{self.field.field_name}: {self.value or '—'}"
+
+
+# ==================== PHASE 4: Lab Lifecycle Models ====================
+
+class LabSample(models.Model):
+    """Phase 4: Sample accession with barcode tracking and status lifecycle."""
+    STATUS_CHOICES = [
+        ('COLLECTED', 'Sample Collected'),
+        ('IN_PROCESS', 'In Process'),
+        ('VALIDATED', 'Validated'),
+        ('RELEASED', 'Released'),
+        ('REJECTED', 'Rejected'),
+        ('RECOLLECT', 'Recollect Requested'),
+    ]
+
+    result = models.OneToOneField(
+        TestResult,
+        on_delete=models.CASCADE,
+        related_name='sample'
+    )
+    barcode_id = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Unique barcode for sample tracking"
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='COLLECTED'
+    )
+    collected_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lab_samples_collected',
+        help_text="Staff who collected the sample"
+    )
+    collected_at = models.DateTimeField(null=True, blank=True)
+    
+    processed_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lab_samples_processed',
+        help_text="Lab tech who processed the sample"
+    )
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    validated_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lab_samples_validated',
+        help_text="Lab supervisor who validated the sample"
+    )
+    validated_at = models.DateTimeField(null=True, blank=True)
+    
+    rejection_reason = models.TextField(blank=True, help_text="Why sample was rejected")
+    recollect_reason = models.TextField(blank=True, help_text="Why recollection is needed")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Sample {self.barcode_id} - {self.get_status_display()}"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class QCLog(models.Model):
+    """Phase 4: Quality control and calibration logs."""
+    QC_TYPE_CHOICES = [
+        ('CALIBRATION', 'Equipment Calibration'),
+        ('QUALITY_CONTROL', 'Quality Control Check'),
+        ('MAINTENANCE', 'Equipment Maintenance'),
+        ('VALIDATION', 'Test Validation'),
+    ]
+
+    sample = models.ForeignKey(
+        LabSample,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='qc_logs',
+        help_text="Optional: Link to specific sample if QC relates to one"
+    )
+    qc_type = models.CharField(
+        max_length=20,
+        choices=QC_TYPE_CHOICES,
+        default='QUALITY_CONTROL'
+    )
+    test_template = models.ForeignKey(
+        TestTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='qc_logs'
+    )
+    performed_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='qc_logs_performed'
+    )
+    result = models.CharField(
+        max_length=50,
+        choices=[
+            ('PASSED', 'Passed'),
+            ('FAILED', 'Failed'),
+            ('CONDITIONAL', 'Conditional Pass'),
+        ],
+        default='PASSED'
+    )
+    details = models.TextField(help_text="QC details, calibration values, or findings")
+    reference_value = models.CharField(max_length=100, blank=True)
+    actual_value = models.CharField(max_length=100, blank=True)
+    deviation = models.CharField(max_length=100, blank=True, help_text="Acceptable deviation percentage or range")
+    
+    performed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-performed_at']
+
+    def __str__(self):
+        return f"{self.get_qc_type_display()} - {self.get_result_display()}"
+
+
+class CriticalValueAcknowledgment(models.Model):
+    """Phase 4: Doctor acknowledgment of critical lab values."""
+    URGENCY_CHOICES = [
+        ('IMMEDIATE', 'Immediate (Life-threatening)'),
+        ('URGENT', 'Urgent (Within 1 hour)'),
+        ('PRIORITY', 'Priority (Within 4 hours)'),
+    ]
+
+    result = models.OneToOneField(
+        TestResult,
+        on_delete=models.CASCADE,
+        related_name='critical_acknowledgment'
+    )
+    
+    # Critical value details
+    is_critical = models.BooleanField(default=True, help_text="Flag if this is truly critical")
+    urgency = models.CharField(
+        max_length=15,
+        choices=URGENCY_CHOICES,
+        default='URGENT'
+    )
+    critical_fields = models.JSONField(default=list, help_text="List of critical field IDs and their values")
+    
+    # Notification tracking
+    notification_sent_at = models.DateTimeField(null=True, blank=True)
+    notification_method = models.CharField(
+        max_length=50,
+        choices=[
+            ('SMS', 'SMS'),
+            ('EMAIL', 'Email'),
+            ('PUSH', 'Push Notification'),
+            ('PHONE', 'Phone Call'),
+            ('MANUAL', 'Manual Contact'),
+        ],
+        default='SMS',
+        help_text="How the doctor was notified"
+    )
+    
+    # Doctor acknowledgment
+    acknowledged_by = models.ForeignKey(
+        'clinical.Doctor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='critical_value_acknowledgments',
+        help_text="Doctor who acknowledged the critical value"
+    )
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    acknowledgment_notes = models.TextField(blank=True, help_text="Doctor's response or action taken")
+    
+    # Escalation tracking
+    escalated_to = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='escalated_critical_values',
+        help_text="If not acknowledged, escalated to senior/admin"
+    )
+    escalated_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        status = "Acknowledged" if self.acknowledged_at else "Pending"
+        return f"Critical Value - {status} ({self.urgency})"
+
+    class Meta:
+        ordering = ['-created_at']
     

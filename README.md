@@ -7,6 +7,26 @@ This README reflects:
 - The new development method you are following
 - The next features planned for your portfolio-grade version
 
+## Current Delivery Status (Phase 6 + 7)
+
+The latest hardening pass is complete with these verified outcomes:
+- CI pipeline added at `.github/workflows/ci.yml` for backend and frontend checks on push/PR.
+- Backend quality gates in CI: `python manage.py migrate`, `python manage.py check`, and `python manage.py test inpatient.tests -v 2`.
+- Frontend quality gates in CI: `npm run lint` and `npm run build` from `frontend/`.
+- Inpatient test coverage upgraded from placeholder to real API/model tests in `backend/inpatient/tests.py`.
+
+Local validation commands:
+
+```powershell
+# Backend (from backend/)
+..\pp\Scripts\python manage.py check
+..\pp\Scripts\python manage.py test inpatient.tests -v 2
+
+# Frontend (from frontend/)
+npm run lint
+npm run build
+```
+
 ## Project Vision
 
 Build a practical MediMind system first, then upgrade it into a production-style, AI-assisted platform in 30 days.

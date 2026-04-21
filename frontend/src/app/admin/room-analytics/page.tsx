@@ -73,7 +73,7 @@ export default function RoomAnalyticsPage() {
 
   const exportCsv = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
       const response = await fetch(`${baseURL}/rooms/statistics/export/csv/`, {
         headers: {

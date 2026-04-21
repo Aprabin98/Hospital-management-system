@@ -8,13 +8,18 @@ import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 
 export default function ResultDetailsPage() {
-  const params = useParams();
-  const resultId = params.id as string;
+  const params = useParams<{ id?: string | string[] }>();
+  const resultId = typeof params?.id === 'string' ? params.id : '';
   const [result, setResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!resultId) {
+      setError('Invalid result id');
+      setIsLoading(false);
+      return;
+    }
     fetchResultDetails();
   }, [resultId]);
 

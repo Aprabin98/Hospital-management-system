@@ -8,12 +8,28 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.http import FileResponse
-from appointments.models import Appointment, MedicalReportAnalysis, TriageAssessment, WaitingList
-from .api_serializers import AppointmentSerializer, MedicalReportAnalysisSerializer, TriageAssessmentSerializer
+from django.utils import timezone
+from appointments.models import (
+    Appointment,
+    MedicalReportAnalysis,
+    TriageAssessment,
+    WaitingList,
+    Queue,
+    NursingNote,
+    NursingTask,
+)
+from .api_serializers import (
+    AppointmentSerializer,
+    MedicalReportAnalysisSerializer,
+    TriageAssessmentSerializer,
+    NursingNoteSerializer,
+    NursingTaskSerializer,
+)
 from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
 from .triage import evaluate_triage
 from .feature_views import promote_waiting_list
 from .no_show_predictor import PredictionEngine
+from audit.utils import log_audit_event
 from .report_reader import (
     analyze_report_text,
     build_personalized_guidance,
@@ -21,6 +37,28 @@ from .report_reader import (
     sanitize_flags_for_storage,
     sanitize_text_for_storage,
 )
+
+
+ACTIVE_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED']
+
+
+def _appointment_time_range_conflicts(doctor, patient, booking_date, start_time_obj, end_time_obj, exclude_id=None):
+    queryset = Appointment.objects.filter(
+        date=booking_date,
+        status__in=ACTIVE_APPOINTMENT_STATUSES,
+    )
+
+    if exclude_id:
+        queryset = queryset.exclude(id=exclude_id)
+
+    overlapping = queryset.filter(
+        Q(doctor=doctor) | Q(patient=patient)
+    ).filter(
+        start_time__lt=end_time_obj,
+        end_time__gt=start_time_obj,
+    ).select_related('patient__user', 'doctor__user')
+
+    return overlapping.first()
 
 
 @api_view(['GET'])
@@ -58,7 +96,7 @@ def appointments_list_api(request):
         if not hasattr(request.user, 'doctor_profile'):
             return Response({'detail': 'Doctor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
         appointments = appointments.filter(doctor=request.user.doctor_profile)
-    elif request.user.role not in ['ADMIN', 'RECEPTIONIST']:
+    elif request.user.role not in ['ADMIN', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
     
     # Filter by status if provided
@@ -105,7 +143,7 @@ def appointment_detail_api(request, appointment_id):
             if appointment.doctor_id != request.user.doctor_profile.id:
                 return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
 
-        if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+        if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = AppointmentSerializer(appointment)
@@ -356,6 +394,26 @@ def appointment_create_api(request):
         except ValueError:
             return Response({'detail': 'Invalid end_time format. Expected HH:MM.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    if end_time_obj <= start_time_obj:
+        return Response({'detail': 'end_time must be later than start_time.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    conflict = _appointment_time_range_conflicts(doctor, patient, booking_date, start_time_obj, end_time_obj)
+    if conflict:
+        return Response(
+            {
+                'detail': 'Appointment overlaps with an existing booking.',
+                'conflict': {
+                    'appointment_id': conflict.id,
+                    'doctor_id': conflict.doctor_id,
+                    'patient_id': conflict.patient_id,
+                    'date': conflict.date.isoformat(),
+                    'start_time': conflict.start_time.strftime('%H:%M'),
+                    'end_time': conflict.end_time.strftime('%H:%M'),
+                },
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
     appointment = Appointment.objects.create(
         patient=patient,
         doctor=doctor,
@@ -403,6 +461,78 @@ def appointment_update_api(request, appointment_id):
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         partial = request.method == 'PATCH'
+
+        updated_doctor = appointment.doctor
+        updated_patient = appointment.patient
+        updated_date = appointment.date
+        updated_start_time = appointment.start_time
+        updated_end_time = appointment.end_time
+
+        doctor_id = request.data.get('doctor')
+        patient_id = request.data.get('patient')
+        appointment_date = request.data.get('date')
+        start_time = request.data.get('start_time')
+        end_time = request.data.get('end_time')
+
+        if doctor_id:
+            from clinical.models import Doctor
+            try:
+                updated_doctor = Doctor.objects.get(id=doctor_id)
+            except Doctor.DoesNotExist:
+                return Response({'detail': 'Doctor not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if patient_id:
+            from users.models import PatientProfile
+            try:
+                updated_patient = PatientProfile.objects.get(id=patient_id, user__role='PATIENT')
+            except PatientProfile.DoesNotExist:
+                return Response({'detail': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if appointment_date:
+            try:
+                updated_date = datetime.strptime(str(appointment_date), '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'detail': 'Invalid date format. Expected YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if start_time:
+            try:
+                updated_start_time = datetime.strptime(str(start_time), '%H:%M').time()
+            except ValueError:
+                return Response({'detail': 'Invalid start_time format. Expected HH:MM.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if end_time:
+            try:
+                updated_end_time = datetime.strptime(str(end_time), '%H:%M').time()
+            except ValueError:
+                return Response({'detail': 'Invalid end_time format. Expected HH:MM.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if updated_end_time <= updated_start_time:
+            return Response({'detail': 'end_time must be later than start_time.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        conflict = _appointment_time_range_conflicts(
+            updated_doctor,
+            updated_patient,
+            updated_date,
+            updated_start_time,
+            updated_end_time,
+            exclude_id=appointment.id,
+        )
+        if conflict:
+            return Response(
+                {
+                    'detail': 'Appointment overlaps with an existing booking.',
+                    'conflict': {
+                        'appointment_id': conflict.id,
+                        'doctor_id': conflict.doctor_id,
+                        'patient_id': conflict.patient_id,
+                        'date': conflict.date.isoformat(),
+                        'start_time': conflict.start_time.strftime('%H:%M'),
+                        'end_time': conflict.end_time.strftime('%H:%M'),
+                    },
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
         serializer = AppointmentSerializer(appointment, data=request.data, partial=partial)
         if serializer.is_valid():
             serializer.save()
@@ -504,7 +634,7 @@ def appointment_download_pdf_api(request, appointment_id):
         if appointment.doctor_id != request.user.doctor_profile.id:
             return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
 
-    if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+    if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
     if not appointment.pdf_file:
@@ -663,7 +793,7 @@ def ai_triage_api(request):
             except PatientProfile.DoesNotExist:
                 return Response({'detail': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
             queryset = TriageAssessment.objects.filter(patient=patient).select_related('patient__user')
-        elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+        elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
             queryset = TriageAssessment.objects.select_related('patient__user')
         else:
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
@@ -704,3 +834,178 @@ def ai_triage_api(request):
     )
 
     return Response(TriageAssessmentSerializer(triage).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def nurse_dashboard_api(request):
+    """Phase 3 nurse board: queue, triage and pending nursing workload."""
+    if request.user.role not in ['NURSE', 'ADMIN', 'DOCTOR']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    today = timezone.localdate()
+
+    queue_queryset = Queue.objects.select_related('patient__user', 'doctor__user').filter(
+        status__in=['WAITING', 'CALLED', 'IN_CONSULTATION'],
+    ).order_by('priority', 'queued_at')
+    queue_items = queue_queryset[:120]
+
+    triage_queryset = TriageAssessment.objects.select_related('patient__user').order_by('-created_at')
+    triage_items = triage_queryset[:120]
+
+    task_queryset = NursingTask.objects.select_related('patient__user', 'assigned_to').exclude(status='DONE').order_by('status', 'due_at', '-created_at')
+    task_items = task_queryset[:120]
+
+    return Response(
+        {
+            'kpis': {
+                'active_queue_count': queue_queryset.count(),
+                'high_priority_triage_count': triage_queryset.filter(priority__in=['P1', 'P2']).count(),
+                'pending_tasks_count': task_queryset.count(),
+                'today_appointments_count': Appointment.objects.filter(date=today).count(),
+            },
+            'queue': [
+                {
+                    'id': entry.id,
+                    'patient_id': entry.patient_id,
+                    'patient_name': entry.patient.full_name,
+                    'doctor_name': f"Dr. {entry.doctor.user.first_name} {entry.doctor.user.last_name}".strip(),
+                    'status': entry.status,
+                    'priority': entry.priority,
+                    'wait_time_minutes': entry.wait_time_minutes,
+                }
+                for entry in queue_items
+            ],
+            'triage': TriageAssessmentSerializer(triage_items, many=True).data,
+            'tasks': NursingTaskSerializer(task_items, many=True).data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def nursing_notes_api(request):
+    if request.user.role not in ['NURSE', 'DOCTOR', 'ADMIN']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'GET':
+        queryset = NursingNote.objects.select_related('patient__user', 'nurse').all().order_by('-created_at')
+        appointment_id = request.GET.get('appointment_id')
+        patient_id = request.GET.get('patient_id')
+        if appointment_id:
+            queryset = queryset.filter(appointment_id=appointment_id)
+        if patient_id:
+            queryset = queryset.filter(patient_id=patient_id)
+        serializer = NursingNoteSerializer(queryset[:200], many=True)
+        return Response({'count': queryset.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
+
+    serializer = NursingNoteSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    appointment = serializer.validated_data['appointment']
+    patient = serializer.validated_data['patient']
+    if appointment.patient_id != patient.id:
+        return Response({'detail': 'appointment and patient mismatch.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    note = serializer.save(nurse=request.user)
+    return Response(NursingNoteSerializer(note).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'POST', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST", "PATCH"])
+def nursing_tasks_api(request):
+    if request.user.role not in ['NURSE', 'DOCTOR', 'ADMIN']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'GET':
+        queryset = NursingTask.objects.select_related('patient__user', 'assigned_to', 'created_by').all().order_by('status', 'due_at', '-created_at')
+        appointment_id = request.GET.get('appointment_id')
+        patient_id = request.GET.get('patient_id')
+        if appointment_id:
+            queryset = queryset.filter(appointment_id=appointment_id)
+        if patient_id:
+            queryset = queryset.filter(patient_id=patient_id)
+        serializer = NursingTaskSerializer(queryset[:250], many=True)
+        return Response({'count': queryset.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
+
+    if request.method == 'POST':
+        serializer = NursingTaskSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        appointment = serializer.validated_data['appointment']
+        patient = serializer.validated_data['patient']
+        if appointment.patient_id != patient.id:
+            return Response({'detail': 'appointment and patient mismatch.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        task = serializer.save(created_by=request.user)
+        return Response(NursingTaskSerializer(task).data, status=status.HTTP_201_CREATED)
+
+    task_id = request.data.get('id')
+    if not task_id:
+        return Response({'detail': 'id is required for task update.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        task = NursingTask.objects.get(pk=task_id)
+    except NursingTask.DoesNotExist:
+        return Response({'detail': 'Task not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = NursingTaskSerializer(task, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    updated = serializer.save()
+    if updated.status == 'DONE' and not updated.completed_at:
+        updated.completed_at = timezone.now()
+        updated.save(update_fields=['completed_at'])
+    elif updated.status != 'DONE' and updated.completed_at is not None:
+        updated.completed_at = None
+        updated.save(update_fields=['completed_at'])
+
+    return Response(NursingTaskSerializer(updated).data, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["PATCH"])
+def triage_priority_update_api(request, triage_id):
+    """Nurse/doctor/admin can update triage priority with audit trail."""
+    if request.user.role not in ['NURSE', 'DOCTOR', 'ADMIN']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        triage = TriageAssessment.objects.select_related('patient__user').get(pk=triage_id)
+    except TriageAssessment.DoesNotExist:
+        return Response({'detail': 'Triage record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    new_priority = (request.data.get('priority') or '').strip().upper()
+    valid_priority = {'P1', 'P2', 'P3', 'P4'}
+    if new_priority not in valid_priority:
+        return Response({'detail': 'priority must be one of P1, P2, P3, P4.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    old_priority = triage.priority
+    triage.priority = new_priority
+    triage.reviewed_by = request.user
+    triage.reviewed_at = timezone.now()
+    triage.save(update_fields=['priority', 'reviewed_by', 'reviewed_at'])
+
+    log_audit_event(
+        action='UPDATE',
+        request=request,
+        target=triage,
+        description='Triage priority updated by clinical staff.',
+        metadata={
+            'triage_id': triage.id,
+            'patient_id': triage.patient_id,
+            'old_priority': old_priority,
+            'new_priority': new_priority,
+            'updated_by_role': request.user.role,
+        },
+    )
+
+    return Response(TriageAssessmentSerializer(triage).data, status=status.HTTP_200_OK)

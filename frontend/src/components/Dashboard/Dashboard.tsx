@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/hooks';
 
 interface DashboardStats {
   total_patients: number;
@@ -86,16 +87,19 @@ export default function Dashboard() {
   const [revenueSummary, setRevenueSummary] = useState<{ net_revenue: number; total_refunded_amount: number; pending_refund_count: number } | null>(null);
   const [recommendedTests, setRecommendedTests] = useState<LabRecommendationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('patient');
+  const { userRole: authUserRole, isLoading: isAuthLoading } = useAuth();
+  const userRole = (authUserRole || 'patient').toUpperCase();
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
 
-        // Get role from localStorage
-        const role = localStorage.getItem('userRole') || 'patient';
-        setUserRole(role.toUpperCase());
+        const role = userRole.toLowerCase();
 
         // Fetch main stats
         try {
@@ -137,16 +141,6 @@ export default function Dashboard() {
             }),
 
           apiClient
-            .get<{ id: number }>('/rooms/current-assignment/')
-            .then(() => { extraData.room_assignments = 1; })
-            .catch(() => { extraData.room_assignments = 0; }),
-
-          apiClient
-            .get<{ risk_level: string }>('/heart-risk/latest/')
-            .then((d) => { extraData.heart_risk = d.risk_level || 'Not Assessed'; })
-            .catch(() => { extraData.heart_risk = 'Not Assessed'; }),
-
-          apiClient
             .get<{ unread_count: number }>('/notifications/unread-count/')
             .then((d) => { extraData.unread_notifications = d.unread_count || 0; })
             .catch(() => { extraData.unread_notifications = 0; }),
@@ -163,6 +157,28 @@ export default function Dashboard() {
             }),
 
         ];
+
+        if (role.toLowerCase() === 'patient') {
+          requests.push(
+            apiClient
+              .get<{ id: number }>('/rooms/current-assignment/')
+              .then(() => { extraData.room_assignments = 1; })
+              .catch(() => { extraData.room_assignments = 0; })
+          );
+        } else {
+          extraData.room_assignments = 0;
+        }
+
+        if (['patient', 'doctor'].includes(role.toLowerCase())) {
+          requests.push(
+            apiClient
+              .get<{ risk_level: string | null }>('/heart-risk/latest/')
+              .then((d) => { extraData.heart_risk = d.risk_level || 'Not Assessed'; })
+              .catch(() => { extraData.heart_risk = 'Not Assessed'; })
+          );
+        } else {
+          extraData.heart_risk = 'Not Assessed';
+        }
 
         if (role.toLowerCase() !== 'patient') {
           requests.push(
@@ -229,7 +245,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [isAuthLoading, userRole]);
 
   const isAdmin = userRole === 'ADMIN';
   const isReceptionist = userRole === 'RECEPTIONIST';

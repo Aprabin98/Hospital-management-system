@@ -71,7 +71,7 @@ const BillingPageContent = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState(() => (searchParams.get('status') || '').toUpperCase());
+  const [statusFilter, setStatusFilter] = useState(() => (searchParams?.get('status') || '').toUpperCase());
   const [userRole, setUserRole] = useState('');
   const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);

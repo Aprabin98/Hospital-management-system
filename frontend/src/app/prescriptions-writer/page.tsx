@@ -30,8 +30,8 @@ interface Medicine {
 function PrescriptionsWriterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const appointmentId = searchParams.get('appointmentId');
-  const patientIdFromQuery = searchParams.get('patientId');
+  const appointmentId = searchParams?.get('appointmentId');
+  const patientIdFromQuery = searchParams?.get('patientId');
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -242,7 +242,7 @@ function PrescriptionsWriterPageContent() {
                 <p className="mt-2 text-xs text-indigo-700">Loading patient from appointment...</p>
               )}
               <p className="mt-2 text-xs text-gray-600">
-                Search tips: try patient name ("Rahul"), number ("98"), email, or ID ("12").
+                Search tips: try patient name (&quot;Rahul&quot;), number (&quot;98&quot;), email, or ID (&quot;12&quot;).
               </p>
             </div>
 

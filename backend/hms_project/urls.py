@@ -37,6 +37,7 @@ def sitemap_xml(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include('users.api_urls')),
     path('robots.txt', robots_txt, name='robots_txt'),
     path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
     path('users/', include('users.urls', namespace='users')),

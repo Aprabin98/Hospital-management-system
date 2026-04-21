@@ -1,6 +1,6 @@
 """Serializers for user-related API endpoints"""
 from rest_framework import serializers
-from .models import User, PatientProfile, PatientHealthRecord, PatientVitalLog
+from .models import User, PatientProfile, PatientHealthRecord, PatientVitalLog, PatientAllergy
 from clinical.models import Doctor, Specialization
 
 
@@ -74,8 +74,39 @@ class PatientVitalLogSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'recorded_at']
 
 
+class PatientAllergySerializer(serializers.ModelSerializer):
+    recorded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientAllergy
+        fields = [
+            'id',
+            'patient',
+            'allergen',
+            'reaction',
+            'severity',
+            'status',
+            'diagnosed_on',
+            'notes',
+            'recorded_by',
+            'recorded_by_name',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'recorded_by_name', 'created_at', 'updated_at']
+
+    def get_recorded_by_name(self, obj):
+        if not obj.recorded_by:
+            return ''
+        name = f"{obj.recorded_by.first_name} {obj.recorded_by.last_name}".strip()
+        return name or obj.recorded_by.email
+
+
 class DoctorProfileSerializer(serializers.ModelSerializer):
     specialization_name = serializers.CharField(source='specialization.name', read_only=True)
+    doctor_name = serializers.SerializerMethodField()
+    doctor_email = serializers.EmailField(source='user.email', read_only=True)
+    photo_url = serializers.SerializerMethodField()
     specialization = serializers.PrimaryKeyRelatedField(
         queryset=Specialization.objects.filter(is_active=True),
         required=False,
@@ -86,6 +117,8 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
         model = Doctor
         fields = [
             'id',
+            'doctor_name',
+            'doctor_email',
             'specialization',
             'specialization_name',
             'consultation_fee',
@@ -93,6 +126,20 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
             'phone',
             'bio',
             'photo',
+            'photo_url',
             'is_available',
         ]
         read_only_fields = ['id']
+
+    def get_doctor_name(self, obj):
+        full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return full_name or obj.user.username or obj.user.email
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return ''
+
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.photo.url)
+        return obj.photo.url

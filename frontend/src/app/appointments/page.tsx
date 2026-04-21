@@ -37,7 +37,7 @@ function AppointmentsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [isUpdatingId, setIsUpdatingId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterKey>(() => {
-    const initialFilter = (searchParams.get('filter') || '').toUpperCase();
+    const initialFilter = (searchParams?.get('filter') || '').toUpperCase();
     if (initialFilter === 'ALL' || initialFilter === 'COMPLETED' || initialFilter === 'CANCELLED' || initialFilter === 'ACTIVE') {
       return initialFilter;
     }

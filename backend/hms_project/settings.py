@@ -60,6 +60,9 @@ INSTALLED_APPS = [
     'prescriptions',
     'payments',
     'lab',
+    'pharmacy',
+    'inpatient',
+    'quality_compliance',
 ]
 
 MIDDLEWARE = [
@@ -101,16 +104,29 @@ TEMPLATES = [
 WSGI_APPLICATION = 'hms_project.wsgi.application'
 
 # Database
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
-        'NAME': os.getenv('DB_NAME', 'hms_db'),
-        'USER': os.getenv('DB_USER', 'hms_user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'StrongPassword123!'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+default_db_engine = os.getenv('DB_ENGINE', '').strip() or (
+    'django.db.backends.sqlite3' if DEBUG else 'django.db.backends.postgresql'
+)
+
+if default_db_engine == 'django.db.backends.sqlite3':
+    default_db_name = os.getenv('DB_NAME', '').strip() or str(BASE_DIR / 'db.sqlite3')
+    DATABASES = {
+        'default': {
+            'ENGINE': default_db_engine,
+            'NAME': default_db_name,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': default_db_engine,
+            'NAME': os.getenv('DB_NAME', 'hms_db'),
+            'USER': os.getenv('DB_USER', 'hms_user'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'StrongPassword123!'),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
 
@@ -129,7 +145,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('HOSPITAL_TIME_ZONE', 'Asia/Kathmandu')
 USE_I18N = True
 USE_TZ = True
 
@@ -184,10 +200,11 @@ CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS', '')
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -257,14 +274,27 @@ CELERY_RESULT_SERIALIZER = 'json'
 TWO_FACTOR_REQUIRED_ROLES = [
     'ADMIN',
     'DOCTOR',
+    'NURSE',
     'RECEPTIONIST',
     'LAB_TECHNICIAN',
 ]
+DEMO_ACCOUNT_EMAILS = {
+    'admin@hms.test',
+    'doctor@hms.test',
+    'nurse@hms.test',
+    'lab_tech@hms.test',
+    'pharmacist@hms.test',
+    'receptionist@hms.test',
+    'patient@hms.test',
+    'patient2@hms.test',
+}
 TWO_FACTOR_BYPASS_EMAILS = {
     email.strip().lower()
     for email in os.getenv('TWO_FACTOR_BYPASS_EMAILS', '').split(',')
     if email.strip()
 }
+if DEBUG:
+    TWO_FACTOR_BYPASS_EMAILS.update(DEMO_ACCOUNT_EMAILS)
 TWO_FACTOR_OTP_EXPIRY_MINUTES = int(os.getenv('TWO_FACTOR_OTP_EXPIRY_MINUTES', '10'))
 TWO_FACTOR_MAX_ATTEMPTS = int(os.getenv('TWO_FACTOR_MAX_ATTEMPTS', '5'))
 

@@ -127,6 +127,16 @@ export default function ApprovalsCenterPage() {
   const submitReview = async () => {
     if (!reviewTarget) return;
 
+    if (reviewTarget.type === 'leave' && userRole !== 'ADMIN') {
+      toast.error('Only admin can review doctor leave requests');
+      return;
+    }
+
+    if (reviewTarget.type === 'refund' && userRole !== 'ADMIN') {
+      toast.error('Only admin can review refund requests');
+      return;
+    }
+
     try {
       const payload = {
         action: reviewTarget.action,
@@ -305,8 +315,14 @@ export default function ApprovalsCenterPage() {
                           <p className="mt-1 text-sm text-gray-700">{item.reason}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => openReview('refund', item.id, 'APPROVED')} className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700">Approve</button>
-                          <button onClick={() => openReview('refund', item.id, 'REJECTED')} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700">Reject</button>
+                          {userRole === 'ADMIN' ? (
+                            <>
+                              <button onClick={() => openReview('refund', item.id, 'APPROVED')} className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700">Approve</button>
+                              <button onClick={() => openReview('refund', item.id, 'REJECTED')} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700">Reject</button>
+                            </>
+                          ) : (
+                            <span className="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-500">View only</span>
+                          )}
                         </div>
                       </div>
                     </div>

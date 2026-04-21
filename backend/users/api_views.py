@@ -15,6 +15,22 @@ from .security import is_identifier_locked, clear_attempts, register_failed_atte
 from .utils import send_password_reset_email
 
 
+def _parse_page_params(request, default_page=1, default_page_size=20, max_page_size=100):
+    try:
+        page = int(request.query_params.get('page', default_page))
+    except (TypeError, ValueError):
+        page = default_page
+
+    try:
+        page_size = int(request.query_params.get('page_size', default_page_size))
+    except (TypeError, ValueError):
+        page_size = default_page_size
+
+    page = max(1, page)
+    page_size = max(1, min(max_page_size, page_size))
+    return page, page_size
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -599,7 +615,7 @@ def dashboard_stats_api(request):
             appointments_qs = Appointment.objects.filter(doctor=doctor)
             total_patients = appointments_qs.values('patient').distinct().count()
             total_doctors = 1
-        elif role in ['ADMIN', 'RECEPTIONIST']:
+        elif role in ['ADMIN', 'RECEPTIONIST', 'NURSE']:
             appointments_qs = Appointment.objects.all()
             total_patients = PatientProfile.objects.count()
             total_doctors = Doctor.objects.count()
@@ -654,18 +670,12 @@ def patients_list_api(request):
     }
     """
     from .api_serializers import PatientProfileSerializer
-    from rest_framework.pagination import PageNumberPagination
     from .models import PatientProfile
 
-    if request.user.role not in ['ADMIN', 'DOCTOR', 'RECEPTIONIST']:
+    if request.user.role not in ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
     
-    try:
-        page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 10))
-    except (ValueError, TypeError):
-        page = 1
-        page_size = 10
+    page, page_size = _parse_page_params(request, default_page_size=20, max_page_size=100)
     
     patients = PatientProfile.objects.select_related('user').filter(user__role='PATIENT')
 
@@ -712,6 +722,156 @@ def patients_list_api(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_http_methods(["GET"])
+def patient_duplicate_check_api(request):
+    """Detect potential duplicate patients using fuzzy matching."""
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'NURSE']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    full_name = (request.query_params.get('full_name') or '').strip()
+    date_of_birth = (request.query_params.get('date_of_birth') or '').strip()
+    phone = (request.query_params.get('phone') or '').strip()
+    email = (request.query_params.get('email') or '').strip().lower()
+
+    if not full_name or not date_of_birth:
+        return Response(
+            {'detail': 'full_name and date_of_birth are required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from datetime import date
+    from appointments.patient_matcher import PatientMatchingService
+    try:
+        parsed_dob = date.fromisoformat(date_of_birth)
+    except ValueError:
+        return Response({'detail': 'Invalid date_of_birth format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    matches = PatientMatchingService.find_potential_matches(
+        full_name=full_name,
+        date_of_birth=parsed_dob,
+        phone=phone or None,
+        email=email or None,
+    )
+
+    return Response(
+        {
+            'count': len(matches),
+            'results': [
+                {
+                    'patient_id': patient.id,
+                    'patient_name': patient.full_name,
+                    'date_of_birth': patient.date_of_birth,
+                    'phone': patient.phone,
+                    'email': patient.user.email,
+                    'match_type': match_type,
+                    'confidence': float(confidence),
+                }
+                for patient, match_type, confidence in matches
+            ],
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def patient_allergies_api(request, patient_id):
+    """List or create allergies for a patient."""
+    from .models import PatientProfile, PatientAllergy
+    from .api_serializers import PatientAllergySerializer
+
+    try:
+        patient = PatientProfile.objects.get(id=patient_id, user__role='PATIENT')
+    except PatientProfile.DoesNotExist:
+        return Response({'detail': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.role == 'PATIENT':
+        own_profile = PatientProfile.objects.filter(user=request.user).first()
+        if not own_profile or own_profile.id != patient.id:
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+    elif request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'GET':
+        queryset = PatientAllergy.objects.filter(patient=patient).order_by('-updated_at')
+        serializer = PatientAllergySerializer(queryset, many=True)
+        return Response({'count': queryset.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
+
+    # POST
+    if request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST']:
+        return Response({'detail': 'Only clinical/front-desk staff can add allergies.'}, status=status.HTTP_403_FORBIDDEN)
+
+    payload = dict(request.data)
+    payload['patient'] = patient.id
+    serializer = PatientAllergySerializer(data=payload)
+    if not serializer.is_valid():
+        return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    allergy = serializer.save(recorded_by=request.user)
+    log_audit_event(
+        action='CREATE',
+        target=allergy,
+        description='Patient allergy created via API.',
+        metadata={'patient_id': patient.id, 'allergen': allergy.allergen},
+        actor=request.user,
+        request=request,
+    )
+    return Response(PatientAllergySerializer(allergy).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["PATCH", "DELETE"])
+def patient_allergy_detail_api(request, patient_id, allergy_id):
+    """Update or delete a specific allergy for a patient."""
+    from .models import PatientProfile, PatientAllergy
+    from .api_serializers import PatientAllergySerializer
+
+    if request.user.role not in ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        patient = PatientProfile.objects.get(id=patient_id, user__role='PATIENT')
+    except PatientProfile.DoesNotExist:
+        return Response({'detail': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        allergy = PatientAllergy.objects.get(id=allergy_id, patient=patient)
+    except PatientAllergy.DoesNotExist:
+        return Response({'detail': 'Allergy not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        allergy_repr = str(allergy)
+        allergy.delete()
+        log_audit_event(
+            action='DELETE',
+            target={'model_name': 'users.patientallergy', 'object_id': str(allergy_id), 'object_repr': allergy_repr},
+            description='Patient allergy deleted via API.',
+            metadata={'patient_id': patient.id},
+            actor=request.user,
+            request=request,
+        )
+        return Response({'detail': 'Allergy deleted successfully.'}, status=status.HTTP_200_OK)
+
+    serializer = PatientAllergySerializer(allergy, data=request.data, partial=True)
+    if not serializer.is_valid():
+        return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    updated = serializer.save()
+    log_audit_event(
+        action='UPDATE',
+        target=updated,
+        description='Patient allergy updated via API.',
+        metadata={'patient_id': patient.id, 'allergy_id': updated.id},
+        actor=request.user,
+        request=request,
+    )
+    return Response(PatientAllergySerializer(updated).data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
 def patient_detail_api(request, patient_id):
     """
     API endpoint to get patient detail.
@@ -721,7 +881,7 @@ def patient_detail_api(request, patient_id):
     from .api_serializers import PatientProfileSerializer
     from .models import PatientProfile
 
-    if request.user.role not in ['PATIENT', 'ADMIN', 'DOCTOR', 'RECEPTIONIST']:
+    if request.user.role not in ['PATIENT', 'ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
     
     try:
@@ -770,10 +930,15 @@ def profile_edit_api(request):
     except PatientProfile.DoesNotExist:
         patient_profile = None
 
-    try:
-        doctor_profile = Doctor.objects.select_related('user', 'specialization').get(user=user)
-    except Doctor.DoesNotExist:
-        doctor_profile = None
+    doctor_profile = None
+    if user.role == 'DOCTOR':
+        doctor_profile, _ = Doctor.objects.get_or_create(user=user)
+        doctor_profile = Doctor.objects.select_related('user', 'specialization').get(pk=doctor_profile.pk)
+    else:
+        try:
+            doctor_profile = Doctor.objects.select_related('user', 'specialization').get(user=user)
+        except Doctor.DoesNotExist:
+            doctor_profile = None
     
     if request.method == 'GET':
         # Return user profile with patient info if available
@@ -853,6 +1018,9 @@ def profile_edit_api(request):
 
             if 'doctor_photo' in request.FILES:
                 doctor_data['photo'] = request.FILES.get('doctor_photo')
+
+            if doctor_data.get('specialization') == '':
+                doctor_data['specialization'] = None
 
             if doctor_data:
                 serializer = DoctorProfileSerializer(doctor_profile, data=doctor_data, partial=True)

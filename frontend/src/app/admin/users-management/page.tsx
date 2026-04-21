@@ -52,8 +52,27 @@ export default function UsersManagementPage() {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get<PaginatedResponse<User>>('/users/');
-      setUsers(response.results || []);
+      const firstResponse = await apiClient.get<PaginatedResponse<User>>('/users/?page=1&page_size=100');
+      const firstPageUsers = firstResponse.results || [];
+      const totalCount = firstResponse.count || firstPageUsers.length;
+
+      if (firstPageUsers.length >= totalCount) {
+        setUsers(firstPageUsers);
+      } else {
+        const pageSize = 100;
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const remainingPages = Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2);
+
+        const remainingResponses = await Promise.all(
+          remainingPages.map((page) => apiClient.get<PaginatedResponse<User>>(`/users/?page=${page}&page_size=${pageSize}`))
+        );
+
+        const allUsers = [
+          ...firstPageUsers,
+          ...remainingResponses.flatMap((response) => response.results || []),
+        ];
+        setUsers(allUsers);
+      }
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load users');

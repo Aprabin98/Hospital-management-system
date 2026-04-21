@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
+import { PageHeader, SectionCard } from '@/components/UI';
 
 const BACKEND_ORIGIN = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '')
@@ -248,6 +249,8 @@ export default function ProfilePage() {
 
       if (isDoctorMode) {
         const payload = new FormData();
+        payload.append('first_name', formData.first_name);
+        payload.append('last_name', formData.last_name);
         payload.append('username', formData.username);
         payload.append('doctor_specialization', formData.doctor_profile.specialization);
         payload.append('doctor_consultation_fee', formData.doctor_profile.consultation_fee);
@@ -293,6 +296,11 @@ export default function ProfilePage() {
   return (
     <MainLayout>
       <div className="max-w-3xl space-y-6">
+        <PageHeader
+          title="Profile & Account"
+          description={isDoctorMode ? 'Maintain your professional profile and account details.' : 'Maintain your personal and account details.'}
+        />
+
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
@@ -303,7 +311,7 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Profile</p>
-              <h1 className="mt-2 text-3xl font-bold">{isDoctorMode ? 'Doctor Profile' : 'My Profile'}</h1>
+              <h1 className="mt-2 text-3xl font-bold">{isDoctorMode ? 'Doctor Profile & Account' : 'Profile & Account'}</h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-300">
                 {isDoctorMode
                   ? 'Manage your professional details, consultation settings, and availability.'
@@ -333,6 +341,45 @@ export default function ProfilePage() {
               <div className="mb-6 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
                 Update your doctor information below. Fields marked here are what patients and staff will see.
               </div>
+              <SectionCard title="Account Details" subtitle="These details identify your account across the system.">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">First name</label>
+                    <input
+                      type="text"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handlePatientInputChange}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">Last name</label>
+                    <input
+                      type="text"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handlePatientInputChange}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-sm font-semibold text-gray-700">Username</label>
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleDoctorInputChange}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </SectionCard>
+
+              <div className="mt-6" />
+              <SectionCard title="Professional Details" subtitle="Visible to patients and internal care teams.">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-gray-700">Specialization</label>
@@ -435,18 +482,8 @@ export default function ProfilePage() {
                     <span className="text-sm text-gray-700">Accepting appointments</span>
                   </div>
                 </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-700">Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleDoctorInputChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
               </div>
+              </SectionCard>
             </div>
 
             <div className="border-t border-gray-200 px-6 py-4">

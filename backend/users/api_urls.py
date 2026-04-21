@@ -3,7 +3,9 @@ from django.urls import path
 from . import api_views
 from . import admin_api_views
 from appointments import api_views as appointments_api_views
+from appointments import queue_api_views
 from clinical import api_views as clinical_api_views
+from clinical import analytics_views as clinical_analytics_views
 from lab import api_views as lab_api_views
 from prescriptions import api_views as prescriptions_api_views
 from rooms import api_views as rooms_api_views
@@ -11,11 +13,24 @@ from heart_risk import api_views as heart_risk_api_views
 from notifications import api_views as notifications_api_views
 from reviews import api_views as reviews_api_views
 from payments import api_views as payments_api_views
+from payments import phase7_api_views
 from audit import api_views as audit_api_views
 from audit import health_views
 from drug_checker import api_views as drug_checker_api_views
+from pharmacy import api_views as pharmacy_api_views
+from inpatient import api_views as inpatient_api_views
+from quality_compliance import api_views as quality_compliance_api_views
+from rest_framework.routers import DefaultRouter
 
 app_name = 'api'
+
+# ======== Phase 7: Finance & Insurance Router ========
+finance_router = DefaultRouter()
+finance_router.register(r'invoices', phase7_api_views.InvoiceViewSet, basename='invoice')
+finance_router.register(r'claims', phase7_api_views.InsuranceClaimViewSet, basename='claim')
+finance_router.register(r'denial-reworks', phase7_api_views.DenialReworkViewSet, basename='denial_rework')
+finance_router.register(r'pre-auths', phase7_api_views.InsurancePreAuthViewSet, basename='pre_auth')
+
 
 urlpatterns = [
     # Authentication
@@ -43,6 +58,9 @@ urlpatterns = [
     # Patients
     path('patients/', api_views.patients_list_api, name='patients_list'),
     path('patients/<int:patient_id>/', api_views.patient_detail_api, name='patient_detail'),
+    path('patients/<int:patient_id>/allergies/', api_views.patient_allergies_api, name='patient_allergies'),
+    path('patients/<int:patient_id>/allergies/<int:allergy_id>/', api_views.patient_allergy_detail_api, name='patient_allergy_detail'),
+    path('patients/duplicate-check/', api_views.patient_duplicate_check_api, name='patient_duplicate_check'),
     
     # Appointments
     path('appointments/', appointments_api_views.appointments_list_api, name='appointments_list'),
@@ -51,6 +69,12 @@ urlpatterns = [
     path('appointments/<int:appointment_id>/update/', appointments_api_views.appointment_update_api, name='appointment_update'),
     path('appointments/available-slots/', appointments_api_views.appointments_available_slots_api, name='appointments_available_slots'),
     path('appointments/<int:appointment_id>/download-pdf/', appointments_api_views.appointment_download_pdf_api, name='appointment_download_pdf'),
+    
+    # Phase 2: Queue Management APIs
+    path('queue/', queue_api_views.queue_list_api, name='queue_list'),
+    path('queue/<int:queue_id>/status/', queue_api_views.queue_update_status_api, name='queue_status_update'),
+    path('queue/check-duplicate/', queue_api_views.check_duplicate_patient_api, name='queue_check_duplicate'),
+    path('queue/<int:queue_id>/rebook/', queue_api_views.no_show_rebook_api, name='queue_rebook'),
     
     # Medical Records
     path('medical-records/', clinical_api_views.medical_records_list_api, name='medical_records_list'),
@@ -75,6 +99,10 @@ urlpatterns = [
     path('shifts/<int:shift_id>/', clinical_api_views.shift_detail_api, name='shift_detail'),
     path('schedules/', clinical_api_views.schedules_list_create_api, name='schedules_list_create'),
     path('schedules/<int:schedule_id>/', clinical_api_views.schedule_detail_api, name='schedule_detail'),
+
+    # Analytics
+    path('analytics/dashboard/', clinical_analytics_views.hospital_analytics_dashboard, name='analytics_dashboard'),
+    path('analytics/doctor-metrics/', clinical_analytics_views.doctor_performance_metrics, name='analytics_doctor_metrics'),
     
     # Lab Tests
     path('lab/tests/', lab_api_views.lab_tests_list_api, name='lab_tests_list'),
@@ -94,6 +122,13 @@ urlpatterns = [
     path('lab/admin/bookings/', lab_api_views.lab_admin_bookings_api, name='lab_admin_bookings'),
     path('lab/results/<int:result_id>/verify/', lab_api_views.lab_verify_result_api, name='lab_result_verify'),
     path('lab/results/<int:result_id>/release/', lab_api_views.lab_release_result_api, name='lab_result_release'),
+    
+    # Phase 4: Lab Lifecycle APIs
+    path('lab/samples/', lab_api_views.lab_samples_list_api, name='lab_samples_list'),
+    path('lab/samples/<int:sample_id>/', lab_api_views.lab_sample_detail_api, name='lab_sample_detail'),
+    path('lab/qc-logs/', lab_api_views.qc_logs_api, name='qc_logs'),
+    path('lab/critical-values/pending/', lab_api_views.critical_values_pending_api, name='critical_values_pending'),
+    path('lab/critical-values/<int:critical_id>/acknowledge/', lab_api_views.critical_value_acknowledge_api, name='critical_value_acknowledge'),
     
     # Prescriptions
     path('prescriptions/', prescriptions_api_views.prescriptions_list_api, name='prescriptions_list'),
@@ -129,6 +164,7 @@ urlpatterns = [
 
     # Audit Logs
     path('audit/logs/', audit_api_views.audit_logs_list_api, name='audit_logs_list'),
+    path('system/settings/', audit_api_views.system_settings_api, name='system_settings'),
 
     # Drug Interactions (Admin)
     path('drug-interactions/', drug_checker_api_views.drug_interactions_list_create_api, name='drug_interactions_list_create'),
@@ -171,6 +207,32 @@ urlpatterns = [
     path('ai-report-reader/<int:analysis_id>/', appointments_api_views.report_reader_detail_api, name='ai_report_reader_detail'),
     path('ai-triage/', appointments_api_views.ai_triage_api, name='ai_triage'),
 
+    # Phase 3: Nurse workflow
+    path('nurse/dashboard/', appointments_api_views.nurse_dashboard_api, name='nurse_dashboard'),
+    path('nurse/notes/', appointments_api_views.nursing_notes_api, name='nursing_notes'),
+    path('nurse/tasks/', appointments_api_views.nursing_tasks_api, name='nursing_tasks'),
+    path('ai-triage/<int:triage_id>/priority/', appointments_api_views.triage_priority_update_api, name='ai_triage_priority_update'),
+
+    # Phase 5: Pharmacy and Medication Operations
+    path('pharmacy/medications/', pharmacy_api_views.medication_inventory_api, name='pharmacy_medications_list'),
+    path('pharmacy/medications/<int:medication_id>/', pharmacy_api_views.medication_detail_api, name='pharmacy_medication_detail'),
+    path('pharmacy/pending-dispense/', pharmacy_api_views.pending_dispense_queue_api, name='pharmacy_pending_dispense'),
+    path('pharmacy/dispense-transaction/', pharmacy_api_views.dispense_transaction_api, name='pharmacy_dispense_transaction_create'),
+    path('pharmacy/dispense-transaction/<int:transaction_id>/', pharmacy_api_views.dispense_transaction_api, name='pharmacy_dispense_transaction_update'),
+    path('pharmacy/controlled-drugs/', pharmacy_api_views.controlled_drug_log_api, name='pharmacy_controlled_drugs'),
+    path('pharmacy/alerts/', pharmacy_api_views.pharmacy_alerts_api, name='pharmacy_alerts'),
+    path('pharmacy/dashboard/', pharmacy_api_views.pharmacy_dashboard_api, name='pharmacy_dashboard'),
+
+    # Phase 6: Inpatient (IPD) Clinical Workflow
+    path('ipd/stays/', inpatient_api_views.ipd_stays_api, name='ipd_stays'),
+    path('ipd/stays/<int:stay_id>/', inpatient_api_views.ipd_stay_detail_api, name='ipd_stay_detail'),
+    path('ipd/stays/<int:stay_id>/progress-notes/', inpatient_api_views.ipd_progress_notes_api, name='ipd_progress_notes'),
+    path('ipd/stays/<int:stay_id>/rounds/', inpatient_api_views.ipd_rounds_api, name='ipd_rounds'),
+    path('ipd/stays/<int:stay_id>/discharge/', inpatient_api_views.ipd_discharge_api, name='ipd_discharge'),
+    path('ipd/stays/<int:stay_id>/mar/', inpatient_api_views.ipd_mar_api, name='ipd_mar'),
+    path('ipd/stays/<int:stay_id>/procedures/', inpatient_api_views.ipd_procedures_api, name='ipd_procedures'),
+    path('ipd/dashboard/', inpatient_api_views.ipd_dashboard_api, name='ipd_dashboard'),
+
     # System Health Check & Monitoring (Phase 1)
     path('system/health-check/', health_views.system_health_check, name='system_health_check'),
     path('system/health/', health_views.system_health_check, name='system_health'),
@@ -178,4 +240,33 @@ urlpatterns = [
     path('system/api-metrics/', health_views.system_api_metrics, name='system_api_metrics'),
     path('rbac/role-matrix/', health_views.rbac_role_matrix, name='rbac_role_matrix'),
     path('system/security-status/', health_views.system_security_status, name='system_security_status'),
-]
+    
+    # Phase 7: Finance & Insurance Maturity
+    path('finance/dashboard/', phase7_api_views.finance_dashboard_api, name='finance_dashboard'),
+    
+    # Financial Reconciliation Reports
+    path('finance/reconciliation/daily/', phase7_api_views.daily_reconciliation_api, name='finance_reconciliation_daily'),
+    path('finance/reconciliation/monthly/', phase7_api_views.monthly_reconciliation_api, name='finance_reconciliation_monthly'),
+    path('finance/reconciliation/receivables/', phase7_api_views.outstanding_receivables_api, name='finance_outstanding_receivables'),
+    path('finance/reconciliation/claims/', phase7_api_views.claim_status_report_api, name='finance_claim_status_report'),
+    path('finance/reconciliation/provider-performance/', phase7_api_views.provider_performance_api, name='finance_provider_performance'),
+    path('finance/reconciliation/refunds/', phase7_api_views.refund_summary_api, name='finance_refund_summary'),
+
+    # Phase 8: Quality, Compliance & Enterprise Readiness
+    path('compliance/dashboard/', quality_compliance_api_views.compliance_dashboard_api, name='compliance_dashboard'),
+    path('compliance/evidence-export/', quality_compliance_api_views.compliance_evidence_export_api, name='compliance_evidence_export'),
+    path('compliance/incidents/', quality_compliance_api_views.incidents_api, name='compliance_incidents'),
+    path('compliance/incidents/<int:incident_id>/', quality_compliance_api_views.incident_detail_api, name='compliance_incident_detail'),
+    path('compliance/incidents/<int:incident_id>/triage/', quality_compliance_api_views.incident_triage_api, name='compliance_incident_triage'),
+    path('compliance/incidents/<int:incident_id>/resolve/', quality_compliance_api_views.incident_resolve_api, name='compliance_incident_resolve'),
+    path('compliance/sla-breaches/', quality_compliance_api_views.sla_breaches_api, name='compliance_sla_breaches'),
+    path('compliance/sla-breaches/<int:breach_id>/', quality_compliance_api_views.sla_breach_detail_api, name='compliance_sla_breach_detail'),
+    path('compliance/sla-breaches/<int:breach_id>/escalate/', quality_compliance_api_views.sla_breach_escalate_api, name='compliance_sla_breach_escalate'),
+    path('compliance/sla-breaches/<int:breach_id>/resolve/', quality_compliance_api_views.sla_breach_resolve_api, name='compliance_sla_breach_resolve'),
+    path('compliance/backup-drills/', quality_compliance_api_views.backup_drills_api, name='compliance_backup_drills'),
+    path('compliance/backup-drills/<int:drill_id>/', quality_compliance_api_views.backup_drill_detail_api, name='compliance_backup_drill_detail'),
+    path('compliance/backup-drills/<int:drill_id>/verify/', quality_compliance_api_views.backup_drill_verify_api, name='compliance_backup_drill_verify'),
+    path('compliance/retention-policies/', quality_compliance_api_views.retention_policies_api, name='compliance_retention_policies'),
+    path('compliance/retention-policies/<int:policy_id>/', quality_compliance_api_views.retention_policy_detail_api, name='compliance_retention_policy_detail'),
+    path('compliance/retention-policies/<int:policy_id>/execute/', quality_compliance_api_views.retention_policy_execute_api, name='compliance_retention_policy_execute'),
+] + finance_router.urls

@@ -1,6 +1,14 @@
 """Serializers for appointments and clinical-related API endpoints"""
 from rest_framework import serializers
-from appointments.models import Appointment, MedicalReportAnalysis, TriageAssessment
+from appointments.models import (
+    Appointment,
+    MedicalReportAnalysis,
+    TriageAssessment,
+    PatientMatch,
+    Queue,
+    NursingNote,
+    NursingTask,
+)
 from clinical.models import Doctor, Specialization
 
 
@@ -125,13 +133,147 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             'recommended_action',
             'created_at',
         ]
+
+
+class PatientMatchSerializer(serializers.ModelSerializer):
+    new_patient_name = serializers.CharField(source='new_patient.full_name', read_only=True)
+    existing_patient_name = serializers.CharField(source='existing_patient.full_name', read_only=True)
+    
+    class Meta:
+        model = PatientMatch
+        fields = [
+            'id',
+            'new_patient',
+            'new_patient_name',
+            'existing_patient',
+            'existing_patient_name',
+            'match_type',
+            'confidence_score',
+            'reviewed_by',
+            'reviewed_at',
+            'is_duplicate',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'new_patient_name', 'existing_patient_name', 'created_at']
+
+
+class QueueSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    doctor_name = serializers.SerializerMethodField()
+    wait_time_minutes = serializers.IntegerField(read_only=True)
+    consultation_duration_minutes = serializers.IntegerField(read_only=True)
+    triage_priority = serializers.CharField(source='triage_assessment.priority', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = Queue
+        fields = [
+            'id',
+            'patient',
+            'patient_name',
+            'doctor',
+            'doctor_name',
+            'appointment',
+            'status',
+            'source',
+            'priority',
+            'queued_at',
+            'called_at',
+            'consultation_start',
+            'consultation_end',
+            'wait_time_minutes',
+            'consultation_duration_minutes',
+            'triage_assessment',
+            'triage_priority',
+            'notes',
+            'no_show_reason',
+            'rebooking_attempted',
+            'rebooking_contact_date',
+            'created_at',
+            'updated_at',
+        ]
         read_only_fields = [
             'id',
             'patient_name',
-            'report_type',
-            'risk_level',
-            'ai_summary',
-            'abnormal_flags',
-            'recommendations',
+            'doctor_name',
+            'wait_time_minutes',
+            'consultation_duration_minutes',
+            'triage_priority',
             'created_at',
         ]
+    
+    def get_doctor_name(self, obj):
+        return f"Dr. {obj.doctor.user.first_name} {obj.doctor.user.last_name}"
+
+
+class NursingNoteSerializer(serializers.ModelSerializer):
+    nurse_name = serializers.SerializerMethodField()
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+
+    class Meta:
+        model = NursingNote
+        fields = [
+            'id',
+            'appointment',
+            'patient',
+            'patient_name',
+            'nurse',
+            'nurse_name',
+            'triage_tag',
+            'note',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'patient_name', 'nurse_name', 'created_at', 'updated_at']
+
+    def get_nurse_name(self, obj):
+        if not obj.nurse:
+            return None
+        full_name = f"{obj.nurse.first_name} {obj.nurse.last_name}".strip()
+        return full_name or obj.nurse.username or obj.nurse.email
+
+
+class NursingTaskSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = NursingTask
+        fields = [
+            'id',
+            'appointment',
+            'patient',
+            'patient_name',
+            'title',
+            'details',
+            'status',
+            'due_at',
+            'completed_at',
+            'assigned_to',
+            'assigned_to_name',
+            'created_by',
+            'created_by_name',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'patient_name',
+            'assigned_to_name',
+            'created_by_name',
+            'completed_at',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_assigned_to_name(self, obj):
+        if not obj.assigned_to:
+            return None
+        full_name = f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip()
+        return full_name or obj.assigned_to.username or obj.assigned_to.email
+
+    def get_created_by_name(self, obj):
+        if not obj.created_by:
+            return None
+        full_name = f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return full_name or obj.created_by.username or obj.created_by.email

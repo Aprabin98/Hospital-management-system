@@ -8,8 +8,8 @@ import { apiClient } from '@/lib/api';
 function ResetPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userId = searchParams.get('user_id');
-  const token = searchParams.get('token');
+  const userId = searchParams?.get('user_id');
+  const token = searchParams?.get('token');
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

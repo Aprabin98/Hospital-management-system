@@ -28,7 +28,8 @@ interface AnalysisDetail {
 }
 
 export default function ReportReaderDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id?: string | string[] }>();
+  const id = typeof params?.id === 'string' ? params.id : '';
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReading, setIsReading] = useState(false);

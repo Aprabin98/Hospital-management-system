@@ -34,6 +34,7 @@ export default function LoginForm() {
 
       // Store auth token and user info
       if (typeof window !== 'undefined') {
+        localStorage.setItem('token', response.token);
         localStorage.setItem('authToken', response.token);
         if (response.refresh) {
           localStorage.setItem('refreshToken', response.refresh);
@@ -65,6 +66,7 @@ export default function LoginForm() {
       });
 
       if (typeof window !== 'undefined') {
+        localStorage.setItem('token', response.token);
         localStorage.setItem('authToken', response.token);
         if (response.refresh) {
           localStorage.setItem('refreshToken', response.refresh);
@@ -204,6 +206,69 @@ export default function LoginForm() {
             Register here
           </button>
         </p>
+      </div>
+
+      {/* Demo Credentials Card */}
+      <div className="w-full max-w-md rounded-2xl bg-amber-50 p-6 shadow-md border border-amber-200">
+        <div className="mb-4">
+          <h3 className="font-semibold text-amber-900 flex items-center gap-2">
+            <span>🔑</span>
+            Demo Credentials (Testing)
+          </h3>
+          <p className="text-xs text-amber-700 mt-1">Use these accounts to test the system</p>
+        </div>
+
+        <div className="space-y-2 max-h-64 overflow-y-auto text-xs">
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>ADMIN</strong></p>
+            <p className="text-amber-700">admin@hms.test</p>
+            <p className="font-mono text-amber-600">Admin@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>DOCTOR</strong></p>
+            <p className="text-amber-700">doctor@hms.test</p>
+            <p className="font-mono text-amber-600">Doctor@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>NURSE</strong></p>
+            <p className="text-amber-700">nurse@hms.test</p>
+            <p className="font-mono text-amber-600">Nurse@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>LAB TECHNICIAN</strong></p>
+            <p className="text-amber-700">lab_tech@hms.test</p>
+            <p className="font-mono text-amber-600">LabTech@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>PHARMACIST</strong></p>
+            <p className="text-amber-700">pharmacist@hms.test</p>
+            <p className="font-mono text-amber-600">Pharmacist@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>RECEPTIONIST</strong></p>
+            <p className="text-amber-700">receptionist@hms.test</p>
+            <p className="font-mono text-amber-600">Receptionist@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>PATIENT</strong></p>
+            <p className="text-amber-700">patient@hms.test</p>
+            <p className="font-mono text-amber-600">Patient@123456</p>
+          </div>
+
+          <div className="bg-white rounded p-2 border border-amber-100">
+            <p className="font-mono text-amber-900"><strong>PATIENT 2</strong></p>
+            <p className="text-amber-700">patient2@hms.test</p>
+            <p className="font-mono text-amber-600">Patient@123456</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-amber-600 mt-3 italic">💡 Tip: Click on any credential to copy it</p>
       </div>
     </div>
   );

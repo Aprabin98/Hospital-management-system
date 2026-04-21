@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, PatientProfile, LoginAttempt
 from .models import TwoFactorCode
 from .models import PatientHealthRecord, PatientVitalLog
+from .models import PatientAllergy
 
 
 @admin.register(User)
@@ -58,3 +59,11 @@ class PatientVitalLogAdmin(admin.ModelAdmin):
     list_display = ['patient', 'blood_pressure', 'pulse', 'temperature_c', 'recorded_by', 'recorded_at']
     search_fields = ['patient__full_name', 'patient__user__email']
     ordering = ['-recorded_at']
+
+
+@admin.register(PatientAllergy)
+class PatientAllergyAdmin(admin.ModelAdmin):
+    list_display = ['patient', 'allergen', 'severity', 'status', 'recorded_by', 'updated_at']
+    search_fields = ['patient__full_name', 'patient__user__email', 'allergen', 'reaction']
+    list_filter = ['severity', 'status', 'updated_at']
+    ordering = ['-updated_at']

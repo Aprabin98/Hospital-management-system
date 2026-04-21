@@ -20,6 +20,7 @@ interface DrugInteraction {
 export default function DrugInteractionsPage() {
   const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRoleLoading, setIsRoleLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,10 +37,15 @@ export default function DrugInteractionsPage() {
   const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
+    const role = (localStorage.getItem('userRole') || '').toUpperCase();
+    setUserRole(role);
+    setIsRoleLoading(false);
+
+    if (role === 'ADMIN') {
+      fetchInteractions();
+    } else {
+      setIsLoading(false);
     }
-    fetchInteractions();
   }, []);
 
   const fetchInteractions = async () => {
@@ -110,6 +116,16 @@ export default function DrugInteractionsPage() {
       toast.error('Failed to delete interaction');
     }
   };
+
+  if (isRoleLoading) {
+    return (
+      <MainLayout>
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!isAdmin) {
     return (

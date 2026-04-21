@@ -9,7 +9,8 @@ import { useAuth } from '@/hooks';
 import toast from 'react-hot-toast';
 
 export default function PatientDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id?: string | string[] }>();
+  const id = typeof params?.id === 'string' ? params.id : '';
   const [patient, setPatient] = useState<any>(null);
   const { userRole } = useAuth();
   const [tests, setTests] = useState<any[]>([]);

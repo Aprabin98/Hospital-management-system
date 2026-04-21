@@ -117,10 +117,13 @@ class Payment(models.Model):
 
 
 class Refund(models.Model):
+    """Enhanced refund model with approval traceability"""
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
+        ('PENDING_APPROVAL', 'Pending Approval'),
         ('APPROVED', 'Approved'),
         ('REJECTED', 'Rejected'),
+        ('PROCESSING', 'Processing'),
+        ('COMPLETED', 'Refund Completed'),
     ]
 
     payment = models.OneToOneField(
@@ -129,14 +132,25 @@ class Refund(models.Model):
         related_name='refund'
     )
     reason = models.TextField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=STATUS_CHOICES,
-        default='PENDING'
+        default='PENDING_APPROVAL'
     )
+    
+    # Approval tracking
+    requested_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='refunds_requested')
+    approved_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='refunds_approved')
+    approval_notes = models.TextField(blank=True)
+    
     refunded_at = models.DateTimeField(null=True, blank=True)
+    refund_method = models.CharField(max_length=50, blank=True, help_text="Method used for refund (CASH, CARD, BANK_TRANSFER)")
+    refund_reference = models.CharField(max_length=100, blank=True, help_text="Transaction ID for refund")
+    
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Refund for Payment #{self.payment.id} - {self.status}"
@@ -339,3 +353,180 @@ class InsuranceVerification(models.Model):
         if self.valid_until and self.valid_until < timezone.now().date() and self.status == 'VERIFIED':
             self.status = 'EXPIRED'
             self.save(update_fields=['status', 'updated_at'])
+
+
+# ===============================================
+# PHASE 7: FINANCE & INSURANCE MATURITY
+# ===============================================
+
+class InsurancePreAuth(models.Model):
+    """Insurance pre-authorization for treatments"""
+    STATUS_CHOICES = [
+        ('REQUESTED', 'Pre-Auth Requested'),
+        ('APPROVED', 'Pre-Auth Approved'),
+        ('REJECTED', 'Pre-Auth Rejected'),
+        ('PARTIAL', 'Partially Approved'),
+        ('EXPIRED', 'Pre-Auth Expired'),
+    ]
+
+    patient = models.ForeignKey('users.PatientProfile', on_delete=models.CASCADE)
+    insurance_verification = models.ForeignKey(InsuranceVerification, on_delete=models.CASCADE)
+    appointment = models.ForeignKey('appointments.Appointment', on_delete=models.CASCADE, null=True, blank=True)
+    treatment_code = models.CharField(max_length=50, help_text="Medical code for procedure/treatment")
+    estimated_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    approved_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='REQUESTED')
+    pre_auth_number = models.CharField(max_length=80, unique=True, null=True, blank=True)
+    valid_from = models.DateField()
+    valid_until = models.DateField()
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"PreAuth #{self.pre_auth_number} - {self.patient.full_name} - {self.status}"
+
+
+class Invoice(models.Model):
+    """Invoice lifecycle: Proforma → Final Invoice"""
+    TYPE_CHOICES = [
+        ('PROFORMA', 'Proforma Invoice'),
+        ('FINAL', 'Final Invoice'),
+    ]
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('ISSUED', 'Issued'),
+        ('PAID', 'Fully Paid'),
+        ('PARTIALLY_PAID', 'Partially Paid'),
+        ('OVERDUE', 'Overdue'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
+    invoice_number = models.CharField(max_length=50, unique=True)
+    invoice_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='PROFORMA')
+    patient = models.ForeignKey('users.PatientProfile', on_delete=models.CASCADE, related_name='invoices')
+    appointment = models.ForeignKey('appointments.Appointment', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Line items & totals
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Payment tracking
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    due_date = models.DateField(null=True, blank=True)
+    issued_date = models.DateField(null=True, blank=True)
+    
+    # Insurance info
+    insurance_verification = models.ForeignKey(InsuranceVerification, on_delete=models.SET_NULL, null=True, blank=True)
+    insurance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    patient_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Audit
+    created_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='invoices_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.invoice_number} - {self.patient.full_name} - Rs.{self.total_amount}"
+
+
+class InvoiceLineItem(models.Model):
+    """Line items within an invoice"""
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='line_items')
+    description = models.CharField(max_length=255)
+    quantity = models.IntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Link to original service
+    appointment = models.ForeignKey('appointments.Appointment', on_delete=models.SET_NULL, null=True, blank=True)
+    lab_booking = models.ForeignKey('lab.TestBooking', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.description} x{self.quantity} - Rs.{self.total}"
+
+
+class InsuranceClaim(models.Model):
+    """Insurance claim lifecycle with aging tracking"""
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('SUBMITTED', 'Submitted to Insurer'),
+        ('RECEIVED', 'Received by Insurer'),
+        ('PROCESSING', 'Under Processing'),
+        ('APPROVED', 'Claim Approved'),
+        ('REJECTED', 'Claim Rejected'),
+        ('DENIED', 'Claim Denied'),
+        ('APPROVED_WITH_REDUCTION', 'Approved with Reduction'),
+        ('PENDING_MORE_INFO', 'Pending More Information'),
+        ('REWORK_NEEDED', 'Rework Needed'),
+    ]
+
+    claim_number = models.CharField(max_length=80, unique=True)
+    invoice = models.OneToOneField(Invoice, on_delete=models.CASCADE, related_name='claim')
+    patient = models.ForeignKey('users.PatientProfile', on_delete=models.CASCADE)
+    insurance_verification = models.ForeignKey(InsuranceVerification, on_delete=models.CASCADE)
+    
+    # Amount tracking
+    claimed_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    approved_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    reduction_reason = models.TextField(blank=True)
+    
+    # Status & timeline
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='DRAFT')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    days_pending = models.IntegerField(default=0, help_text="Days since claim submission")
+    
+    # Submission details
+    submitted_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='claims_submitted')
+    submission_reference = models.CharField(max_length=120, blank=True)
+    submission_notes = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Claim #{self.claim_number} - {self.patient.full_name} - {self.status}"
+
+
+class ClaimAuditLog(models.Model):
+    """Audit trail for all claim status changes"""
+    claim = models.ForeignKey(InsuranceClaim, on_delete=models.CASCADE, related_name='audit_logs')
+    old_status = models.CharField(max_length=30)
+    new_status = models.CharField(max_length=30)
+    changed_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)
+    change_reason = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.claim.claim_number}: {self.old_status} → {self.new_status}"
+
+
+class DenialRework(models.Model):
+    """Queue for denied claims requiring rework"""
+    STATUS_CHOICES = [
+        ('PENDING_REVIEW', 'Pending Review'),
+        ('UNDER_CORRECTION', 'Under Correction'),
+        ('RESUBMITTED', 'Resubmitted'),
+        ('RESOLVED', 'Resolved'),
+        ('ABANDONED', 'Abandoned'),
+    ]
+
+    claim = models.OneToOneField(InsuranceClaim, on_delete=models.CASCADE, related_name='denial_rework')
+    original_denial_reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING_REVIEW')
+    assigned_to = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='denial_reworks')
+    correction_notes = models.TextField(blank=True)
+    resubmit_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Rework for Claim #{self.claim.claim_number} - {self.status}"

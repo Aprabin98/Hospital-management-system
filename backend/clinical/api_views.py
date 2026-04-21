@@ -352,7 +352,7 @@ def medical_record_create_api(request):
         "emergency_notes": "..."
     }
     """
-    if request.user.role not in ['DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+    if request.user.role not in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -379,7 +379,7 @@ def medical_record_update_api(request, record_id):
     """
     API endpoint to update medical record.
     """
-    if request.user.role not in ['DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+    if request.user.role not in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -406,45 +406,56 @@ def medical_record_update_api(request, record_id):
         )
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def vital_logs_list_api(request):
     """
-    API endpoint to get vital logs list with pagination.
-    
-    Query parameters:
+    API endpoint to get or create vital logs.
+
+    GET query parameters:
     - page: Page number (default: 1)
     - page_size: Number of results per page (default: 10)
     - patient: Filter by patient ID (optional)
     """
+    if request.method == 'POST':
+        if request.user.role not in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = PatientVitalLogSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        log = serializer.save(recorded_by=request.user)
+        return Response(PatientVitalLogSerializer(log).data, status=status.HTTP_201_CREATED)
+
     try:
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 10))
     except (ValueError, TypeError):
         page = 1
         page_size = 10
-    
+
     logs = PatientVitalLog.objects.select_related('patient__user', 'recorded_by').all()
 
     if request.user.role == 'PATIENT':
         logs = logs.filter(patient__user=request.user)
-    elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST']:
+    elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
         patient_id = request.GET.get('patient', '')
         if patient_id:
             logs = logs.filter(patient_id=patient_id)
     else:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-    
+
     total_count = logs.count()
-    
+
     # Simple pagination
     start_idx = (page - 1) * page_size
     end_idx = start_idx + page_size
     paginated_logs = logs[start_idx:end_idx]
-    
+
     serializer = PatientVitalLogSerializer(paginated_logs, many=True)
-    
+
     return Response(
         {
             'count': total_count,
@@ -454,7 +465,6 @@ def vital_logs_list_api(request):
         },
         status=status.HTTP_200_OK
     )
-
 
 # ================== DOCTOR ENDPOINTS ==================
 

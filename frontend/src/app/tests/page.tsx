@@ -37,7 +37,7 @@ export default function TestsPage() {
   const fetchTests = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get<PaginatedResponse<LabTest>>('/lab-tests/');
+      const response = await apiClient.get<PaginatedResponse<LabTest>>('/lab/tests/');
       setTests(response.results || []);
       setError(null);
     } catch (err) {
