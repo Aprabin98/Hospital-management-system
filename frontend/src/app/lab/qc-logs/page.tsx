@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface QCLog {
@@ -57,13 +59,9 @@ export default function QCLogsPage() {
     deviation: '',
   });
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
+  const { userRole } = useAuth();
   const role = (userRole || '').toUpperCase();
-  const canCreateLogs = ['ADMIN', 'LAB_TECHNICIAN'].includes(role);
+  const canCreateLogs = ACCESS_MATRIX.labOperations.includes(role as (typeof ACCESS_MATRIX.labOperations)[number]);
 
   useEffect(() => {
     const run = async () => {
@@ -128,8 +126,12 @@ export default function QCLogsPage() {
   const conditionalCount = logs.filter(log => log.result === 'CONDITIONAL').length;
 
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.labOperations}
+      title="QC logs"
+      description="Quality-control logs are restricted to laboratory operations roles."
+    >
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Quality Control Logs</h1>
           <p className="mt-2 text-gray-600">Track calibration, maintenance, and QC checks</p>
@@ -358,6 +360,6 @@ export default function QCLogsPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

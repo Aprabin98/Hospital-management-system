@@ -30,7 +30,6 @@ function getErrorMessage(err: unknown, fallback: string) {
 }
 
 export default function InsuranceVerificationPage() {
-  const [userRole, setUserRole] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<InsuranceItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<InsuranceFilter>('ALL');
@@ -40,12 +39,7 @@ export default function InsuranceVerificationPage() {
   const [verifyNotes, setVerifyNotes] = useState('');
   const [verifyRef, setVerifyRef] = useState('');
 
-  const canManage = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchInsurance();
   }, []);
 
@@ -88,19 +82,6 @@ export default function InsuranceVerificationPage() {
       toast.error(getErrorMessage(err, 'Failed to update insurance status'));
     }
   };
-
-  if (!canManage) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

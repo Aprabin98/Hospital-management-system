@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
@@ -15,30 +15,7 @@ export default function RoomsPage() {
   const [userRole, setUserRole] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
-    fetchRoomData();
-  }, [activeTab]);
-
-  const isPatient = userRole === 'PATIENT';
-
-  const handleBookRoom = async (roomId: number) => {
-    try {
-      setIsBookingRoomId(roomId);
-      await apiClient.post('/rooms/book-request/', { room: roomId });
-      toast.success('Room booking request submitted. Reception will process it.');
-      setActiveTab('current');
-      await fetchRoomData();
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to submit room booking request');
-    } finally {
-      setIsBookingRoomId(null);
-    }
-  };
-
-  const fetchRoomData = async () => {
+  const fetchRoomData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -61,6 +38,29 @@ export default function RoomsPage() {
       toast.error('Failed to load room data');
     } finally {
       setIsLoading(false);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
+    }
+    void fetchRoomData();
+  }, [fetchRoomData]);
+
+  const isPatient = userRole === 'PATIENT';
+
+  const handleBookRoom = async (roomId: number) => {
+    try {
+      setIsBookingRoomId(roomId);
+      await apiClient.post('/rooms/book-request/', { room: roomId });
+      toast.success('Room booking request submitted. Reception will process it.');
+      setActiveTab('current');
+      await fetchRoomData();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to submit room booking request');
+    } finally {
+      setIsBookingRoomId(null);
     }
   };
 

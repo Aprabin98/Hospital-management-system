@@ -33,19 +33,13 @@ function getErrorMessage(err: unknown, fallback: string) {
 }
 
 export default function QueueOpsPage() {
-  const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [waitingList, setWaitingList] = useState<WaitingEntry[]>([]);
   const [predictions, setPredictions] = useState<NoShowPrediction[]>([]);
   const [selectedWaitingId, setSelectedWaitingId] = useState<number | null>(null);
   const [priority, setPriority] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('HIGH');
 
-  const canManage = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     loadData();
   }, []);
 
@@ -108,19 +102,6 @@ export default function QueueOpsPage() {
       toast.error(getErrorMessage(err, 'Failed to update no-show outcome'));
     }
   };
-
-  if (!canManage) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

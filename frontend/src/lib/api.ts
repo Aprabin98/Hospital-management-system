@@ -1,4 +1,5 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { clearStoredAuthState, getStoredAuthState, setStoredAuthState } from '@/lib/auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -14,8 +15,13 @@ interface ApiErrorResponse {
   error?: string;
 }
 
+interface RetriableRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
 class APIClient {
   private client: AxiosInstance;
+  private refreshPromise: Promise<string | null> | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -29,11 +35,9 @@ class APIClient {
     // Request interceptor to add authentication token
     this.client.interceptors.request.use(
       (config) => {
-        if (typeof window !== 'undefined') {
-          const token = localStorage.getItem('authToken');
-          if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-          }
+        const { token } = getStoredAuthState();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -45,18 +49,83 @@ class APIClient {
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          // Handle unauthorized access
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userRole');
-            window.location.href = '/login';
+      async (error: AxiosError) => {
+        const originalRequest = error.config as RetriableRequestConfig | undefined;
+        const isUnauthorized = error.response?.status === 401;
+        const requestUrl = originalRequest?.url || '';
+        const isAuthRequest =
+          requestUrl.includes('/auth/login/') ||
+          requestUrl.includes('/auth/2fa-verify/') ||
+          requestUrl.includes('/auth/refresh/');
+
+        if (isUnauthorized && originalRequest && !originalRequest._retry && !isAuthRequest) {
+          originalRequest._retry = true;
+          const refreshedToken = await this.refreshAccessToken();
+
+          if (refreshedToken) {
+            originalRequest.headers.Authorization = `Bearer ${refreshedToken}`;
+            return this.client(originalRequest);
           }
         }
+
+        if (isUnauthorized) {
+          this.handleExpiredSession();
+        }
+
         return Promise.reject(this.formatError(error));
       }
     );
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      const { refreshToken, userRole, user } = getStoredAuthState();
+      if (!refreshToken) {
+        return null;
+      }
+
+      try {
+        const response = await axios.post<{ access: string; refresh?: string }>(
+          `${API_BASE_URL}/auth/refresh/`,
+          { refresh: refreshToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+          }
+        );
+
+        const nextToken = response.data.access;
+        const nextRefreshToken = response.data.refresh || refreshToken;
+        setStoredAuthState({
+          token: nextToken,
+          refreshToken: nextRefreshToken,
+          role: userRole,
+          user,
+        });
+
+        return nextToken;
+      } catch {
+        this.handleExpiredSession();
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  private handleExpiredSession() {
+    clearStoredAuthState();
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
 
   private formatError(error: AxiosError): ApiError {

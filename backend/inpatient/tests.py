@@ -79,3 +79,66 @@ class InpatientModelAndApiTests(APITestCase):
         self.assertEqual(stay.admitted_by_id, self.admin_user.id)
         self.assertEqual(stay.status, 'ADMITTED')
 
+    def test_discharge_finalize_requires_medication_reconciliation(self):
+        stay = InpatientStay.objects.create(
+            patient=self.patient_profile,
+            admitted_by=self.admin_user,
+            primary_diagnosis='Dengue fever',
+        )
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(f'/api/ipd/stays/{stay.id}/discharge/', {
+            'discharge_summary': 'Improved and stable vitals.',
+            'discharge_instructions': 'Hydration and review after 3 days.',
+            'follow_up_date': str(timezone.localdate() + timedelta(days=3)),
+            'nursing_clearance': True,
+            'pharmacy_clearance': True,
+            'billing_clearance': True,
+            'doctor_signoff': True,
+            'finalize': True,
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['final_approved'])
+
+        stay.refresh_from_db()
+        self.assertEqual(stay.status, 'ADMITTED')
+
+    def test_reconciliation_allows_discharge_finalize(self):
+        stay = InpatientStay.objects.create(
+            patient=self.patient_profile,
+            admitted_by=self.admin_user,
+            primary_diagnosis='Post-op recovery',
+        )
+
+        self.client.force_authenticate(user=self.pharmacist_user)
+        rec_response = self.client.post(f'/api/ipd/stays/{stay.id}/medication-reconciliation/', {
+            'home_medications': 'Metformin 500 mg OD',
+            'discharge_medications': 'Metformin 500 mg OD, Paracetamol SOS',
+            'reconciliation_notes': 'No interaction concerns.',
+            'interactions_checked': True,
+            'allergies_reviewed': True,
+            'patient_counseled': True,
+            'mark_reconciled': True,
+        }, format='json')
+        self.assertEqual(rec_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(rec_response.data['is_complete'])
+
+        self.client.force_authenticate(user=self.admin_user)
+        discharge_response = self.client.post(f'/api/ipd/stays/{stay.id}/discharge/', {
+            'discharge_summary': 'Recovered from surgery.',
+            'discharge_instructions': 'Wound care and physiotherapy.',
+            'follow_up_date': str(timezone.localdate() + timedelta(days=7)),
+            'nursing_clearance': True,
+            'pharmacy_clearance': True,
+            'billing_clearance': True,
+            'doctor_signoff': True,
+            'finalize': True,
+        }, format='json')
+
+        self.assertEqual(discharge_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(discharge_response.data['final_approved'])
+
+        stay.refresh_from_db()
+        self.assertEqual(stay.status, 'DISCHARGED')
+

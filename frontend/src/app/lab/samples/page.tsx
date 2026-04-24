@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface LabSample {
@@ -47,13 +49,11 @@ export default function LabSamplesPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [recollectReason, setRecollectReason] = useState('');
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
-  const role = (userRole || '').toUpperCase();
-  const canManageSamples = ['ADMIN', 'LAB_TECHNICIAN'].includes(role);
+  const { userRole } = useAuth();
+  const canManageSamples = useMemo(
+    () => ACCESS_MATRIX.labOperations.includes((userRole || '').toUpperCase() as (typeof ACCESS_MATRIX.labOperations)[number]),
+    [userRole]
+  );
 
   useEffect(() => {
     const run = async () => {
@@ -100,8 +100,12 @@ export default function LabSamplesPage() {
   };
 
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.labOperations}
+      title="lab sample tracking"
+      description="Sample handling is restricted to laboratory operations roles."
+    >
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Lab Sample Tracking</h1>
@@ -259,6 +263,6 @@ export default function LabSamplesPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

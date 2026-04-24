@@ -1,18 +1,20 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 :root {
   color-scheme: light;
-  --background: #f5f8fc;
+  --background: #f3f6fb;
   --foreground: #102133;
-  --muted: #5d6b7c;
-  --surface: rgba(255, 255, 255, 0.88);
+  --muted: #5f7082;
+  --surface: rgba(255, 255, 255, 0.9);
   --surface-solid: #ffffff;
   --border: rgba(16, 33, 51, 0.12);
   --accent: #0f766e;
   --accent-strong: #0b5f59;
   --accent-soft: rgba(15, 118, 110, 0.12);
-  --shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.12);
-  --shadow-md: 0 12px 34px rgba(15, 23, 42, 0.08);
+  --accent-gold: #c58b2a;
+  --shadow-lg: 0 28px 80px rgba(15, 23, 42, 0.14);
+  --shadow-md: 0 18px 44px rgba(15, 23, 42, 0.08);
 }
 
 * {
@@ -39,10 +41,10 @@ body {
   position: relative;
   color: var(--foreground);
   background:
-    radial-gradient(circle at 20% 10%, rgba(15, 118, 110, 0.08), transparent 22%),
-    radial-gradient(circle at 85% 0%, rgba(14, 165, 233, 0.08), transparent 20%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(245, 248, 252, 0.96) 100%);
-  font-family: var(--font-geist-sans), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    radial-gradient(circle at 12% 8%, rgba(15, 118, 110, 0.12), transparent 24%),
+    radial-gradient(circle at 88% 2%, rgba(197, 139, 42, 0.1), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(243, 246, 251, 0.98) 100%);
+  font-family: "Plus Jakarta Sans", var(--font-geist-sans), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
@@ -124,6 +126,11 @@ button:focus-visible {
 
 button {
   cursor: pointer;
+}
+
+code,
+pre {
+  font-family: "IBM Plex Mono", var(--font-geist-mono), monospace;
 }
 
 /* Better scrollbar treatment for content-heavy dashboards. */

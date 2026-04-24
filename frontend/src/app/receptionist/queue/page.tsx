@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FormEvent, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { MainLayout } from '@/components/Layout';
@@ -112,17 +112,7 @@ export default function ReceptionQueuePage() {
     setRoleLoading(false);
   }, []);
 
-  useEffect(() => {
-    if (!canManage) return;
-    loadDoctors();
-  }, [canManage]);
-
-  useEffect(() => {
-    if (!canManage) return;
-    loadQueue();
-  }, [canManage, selectedDoctorId, statusFilter]);
-
-  const loadDoctors = async () => {
+  const loadDoctors = useCallback(async () => {
     try {
       const response = await apiClient.get<{ results: DoctorItem[] }>('/doctors/?page_size=100');
       const doctorResults = response.results || [];
@@ -133,9 +123,9 @@ export default function ReceptionQueuePage() {
     } catch (error) {
       toast.error(extractApiErrorMessage(error, 'Failed to load doctors'));
     }
-  };
+  }, [selectedDoctorId]);
 
-  const loadQueue = async () => {
+  const loadQueue = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
@@ -157,7 +147,17 @@ export default function ReceptionQueuePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedDoctorId, statusFilter]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    void loadDoctors();
+  }, [canManage, loadDoctors]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    void loadQueue();
+  }, [canManage, loadQueue]);
 
   const searchPatients = async () => {
     if (!patientQuery.trim()) {

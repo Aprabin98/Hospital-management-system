@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
@@ -34,11 +34,7 @@ export default function LabReportsPage() {
     setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
   }, []);
 
-  useEffect(() => {
-    fetchLabData();
-  }, [activeTab]);
-
-  const fetchLabData = async () => {
+  const fetchLabData = useCallback(async () => {
     try {
       setIsLoading(true);
       if (activeTab === 'tests') {
@@ -68,7 +64,11 @@ export default function LabReportsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab]);
+
+  useEffect(() => {
+    void fetchLabData();
+  }, [fetchLabData]);
 
   const handleBookTest = async (test: any) => {
     const selectedDate = selectedBookingDate[test.id];

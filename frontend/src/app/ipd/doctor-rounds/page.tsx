@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface Stay {
@@ -18,12 +20,11 @@ export default function DoctorRoundsPage() {
   const [stays, setStays] = useState<Stay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
-  const canAccess = ['ADMIN', 'DOCTOR'].includes((userRole || '').toUpperCase());
+  const { userRole } = useAuth();
+  const canAccess = useMemo(
+    () => ACCESS_MATRIX.ipdRounds.includes((userRole || '').toUpperCase() as (typeof ACCESS_MATRIX.ipdRounds)[number]),
+    [userRole]
+  );
 
   useEffect(() => {
     if (!canAccess) return;
@@ -44,19 +45,13 @@ export default function DoctorRoundsPage() {
     load();
   }, [canAccess]);
 
-  if (!canAccess) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="font-semibold text-red-600">Access Denied. Doctor role required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-5 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.ipdRounds}
+      title="doctor rounds"
+      description="Doctor rounds are restricted to physicians and administrators."
+    >
+      <div className="space-y-5">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Doctor IPD Rounds</h1>
           <p className="text-sm text-gray-600">Open a stay to add today&apos;s round and progress notes.</p>
@@ -85,6 +80,6 @@ export default function DoctorRoundsPage() {
           )}
         </div>
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

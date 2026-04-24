@@ -55,7 +55,6 @@ export default function DoctorsManagementPage() {
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAvailability, setFilterAvailability] = useState<'ALL' | 'AVAILABLE' | 'UNAVAILABLE'>('ALL');
 
@@ -79,12 +78,7 @@ export default function DoctorsManagementPage() {
   const [pageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const isAdmin = userRole === 'ADMIN';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchDoctors();
     fetchSpecializations();
   }, []);
@@ -254,22 +248,6 @@ export default function DoctorsManagementPage() {
   }, [filteredDoctors, currentPage, pageSize]);
 
   const totalPages = Math.ceil(filteredDoctors.length / pageSize);
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-gray-500">You do not have permission to access this page.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

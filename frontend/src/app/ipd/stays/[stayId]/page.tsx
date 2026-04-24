@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useRoleAccess } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface StayPayload {
@@ -97,17 +99,12 @@ export default function StayDetailPage() {
   const [isMarSaving, setIsMarSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
+  const { canAccess, userRole } = useRoleAccess(ACCESS_MATRIX.ipd);
   const role = (userRole || '').toUpperCase();
-  const canAccess = ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(role);
   const canWriteNotes = ['ADMIN', 'DOCTOR', 'NURSE'].includes(role);
   const canWriteRounds = ['ADMIN', 'DOCTOR'].includes(role);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!stayId) return;
     try {
       setIsLoading(true);
@@ -130,14 +127,12 @@ export default function StayDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [stayId]);
 
   useEffect(() => {
-    if (canAccess) {
-      loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stayId, canAccess]);
+    if (!canAccess) return;
+    void loadData();
+  }, [canAccess, loadData]);
 
   const addProgressNote = async () => {
     if (!stayId || !newAssessment.trim()) return;
@@ -212,19 +207,13 @@ export default function StayDetailPage() {
     }
   };
 
-  if (!canAccess) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="font-semibold text-red-600">Access Denied. IPD roles required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.ipd}
+      title="inpatient stay"
+      description="Inpatient stay access is restricted to IPD-authorized roles."
+    >
+      <div className="space-y-6">
         {isLoading ? (
           <div className="py-10 text-center text-gray-500">Loading stay details...</div>
         ) : payload?.stay ? (
@@ -371,6 +360,6 @@ export default function StayDetailPage() {
           <div className="py-10 text-center text-gray-500">Stay not found.</div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

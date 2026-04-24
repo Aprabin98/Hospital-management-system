@@ -52,6 +52,10 @@ urlpatterns = [
     path('prescriptions/', include('prescriptions.urls', namespace='prescriptions')),
     path('payments/', include('payments.urls', namespace='payments')),
     path('lab/', include('lab.urls', namespace='lab')),
+    path('api/emergency/', include('emergency.urls', namespace='emergency')),
+    path('api/radiology/', include('radiology.urls', namespace='radiology')),
+    path('api/surgery/', include('surgery.urls', namespace='surgery')),
+    path('api/inventory/', include('inventory.urls', namespace='inventory')),
     path('', user_views.login_view, name='home'),
 ]
 

@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface CriticalValue {
@@ -52,11 +54,7 @@ export default function CriticalValuesPage() {
   const [acknowledgmentNotes, setAcknowledgmentNotes] = useState('');
   const [isAcknowledging, setIsAcknowledging] = useState(false);
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
+  const { userRole } = useAuth();
   const role = (userRole || '').toUpperCase();
   const isDoctor = role === 'DOCTOR';
 
@@ -101,8 +99,12 @@ export default function CriticalValuesPage() {
   const immediateCount = criticalValues.filter(cv => cv.urgency === 'IMMEDIATE' && !cv.acknowledged_at).length;
 
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.criticalLabValues}
+      title="critical lab values"
+      description="Critical lab values are restricted to clinical and laboratory escalation roles."
+    >
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Critical Lab Values</h1>
           <p className="mt-2 text-gray-600">Track critical values requiring immediate doctor acknowledgment</p>
@@ -248,6 +250,6 @@ export default function CriticalValuesPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

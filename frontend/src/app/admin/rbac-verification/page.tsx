@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MainLayout } from '@/components/Layout';
 import { apiClient } from '@/lib/api';
@@ -28,7 +27,6 @@ interface SystemStatus {
 }
 
 export default function RBACVerificationPage() {
-  const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState('ADMIN');
@@ -37,14 +35,7 @@ export default function RBACVerificationPage() {
   const [allRoles] = useState(['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'PATIENT']);
   const [searchFilter, setSearchFilter] = useState('');
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
-    loadData();
-  }, [activeRole]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -66,21 +57,11 @@ export default function RBACVerificationPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeRole]);
 
-  if (userRole !== 'ADMIN') {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="mt-2 text-gray-600">Only ADMIN users can access RBAC verification.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const filteredEndpoints = roleData?.endpoints.filter(
     (ep) =>

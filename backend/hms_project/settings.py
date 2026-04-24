@@ -2,9 +2,8 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
 
@@ -19,8 +18,15 @@ def _env_list(name, default=''):
 
 
 DEBUG = _env_bool('DEBUG', 'true')
+DEFAULT_SECRET_KEY = 'your-secret-key-change-this-in-production'
 
-ALLOWED_HOSTS = _env_list('ALLOWED_HOSTS', '*' if DEBUG else '')
+if not DEBUG and SECRET_KEY == DEFAULT_SECRET_KEY:
+    raise RuntimeError('SECRET_KEY must be set in production.')
+
+ALLOWED_HOSTS = _env_list(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1' if DEBUG else '',
+)
 
 SECURE_PROXY_SSL_HEADER = None
 _proxy_ssl_header_name = os.getenv('SECURE_PROXY_SSL_HEADER_NAME', '').strip()
@@ -63,6 +69,10 @@ INSTALLED_APPS = [
     'pharmacy',
     'inpatient',
     'quality_compliance',
+    'emergency',
+    'radiology',
+    'surgery',
+    'inventory',
 ]
 
 MIDDLEWARE = [
@@ -125,6 +135,8 @@ else:
             'PASSWORD': os.getenv('DB_PASSWORD', 'StrongPassword123!'),
             'HOST': os.getenv('DB_HOST', 'localhost'),
             'PORT': os.getenv('DB_PORT', '5432'),
+            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+            'CONN_HEALTH_CHECKS': _env_bool('DB_CONN_HEALTH_CHECKS', 'true'),
         }
     }
 # Custom User Model
@@ -182,7 +194,10 @@ LOGIN_REDIRECT_URL = '/users/dashboard/'
 LOGOUT_REDIRECT_URL = '/users/login/'
 
 # Email Configuration (Gmail SMTP)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = os.getenv(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend',
+)
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -195,7 +210,11 @@ CORS_ALLOWED_ORIGINS = _env_list(
     'CORS_ALLOWED_ORIGINS',
     'http://localhost:3000,http://127.0.0.1:3000',
 )
-CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS', '')
+CORS_ALLOW_CREDENTIALS = _env_bool('CORS_ALLOW_CREDENTIALS', 'true')
+CSRF_TRUSTED_ORIGINS = _env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000',
+)
 
 # Django REST Framework
 REST_FRAMEWORK = {
@@ -224,7 +243,7 @@ REST_FRAMEWORK = {
 }
 
 # Site domain (used in activation emails)
-SITE_DOMAIN = 'http://127.0.0.1:8000'
+SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'http://127.0.0.1:8000')
 SITE_NAME = 'MediMind'
 HOSPITAL_NAME = os.getenv('HOSPITAL_NAME', SITE_NAME)
 HOSPITAL_ADDRESS = os.getenv('HOSPITAL_ADDRESS', 'Bhairahawa, Nepal')
@@ -350,3 +369,4 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'true')
     SECURE_HSTS_PRELOAD = _env_bool('SECURE_HSTS_PRELOAD', 'true')
+    SECURE_PROXY_SSL_HEADER = SECURE_PROXY_SSL_HEADER or ('HTTP_X_FORWARDED_PROTO', 'https')

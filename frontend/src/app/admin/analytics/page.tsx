@@ -52,17 +52,12 @@ const DEFAULT_ANALYTICS: AnalyticsData = {
 };
 
 export default function AnalyticsPage() {
-  const [userRole, setUserRole] = useState('PATIENT');
   const [analytics, setAnalytics] = useState<AnalyticsData>(DEFAULT_ANALYTICS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'quarter'>('month');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || 'PATIENT').toUpperCase());
-    }
-
     const loadAnalytics = async () => {
       try {
         setIsLoading(true);
@@ -88,28 +83,10 @@ export default function AnalyticsPage() {
     loadAnalytics();
   }, []);
 
-  const isAdminOpsRole = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-
   const appointmentCompletionRate = useMemo(() => {
     const total = analytics.total_appointments_month;
     return total > 0 ? ((analytics.completed_appointments_month / total) * 100).toFixed(1) : 0;
   }, [analytics]);
-
-  if (!isAdminOpsRole) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-gray-500">You do not have permission to access this page.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

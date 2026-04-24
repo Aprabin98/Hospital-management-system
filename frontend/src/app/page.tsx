@@ -2,20 +2,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getStoredAuthState } from '@/lib/auth';
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user has auth token
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        router.push('/dashboard');
-      } else {
-        router.push('/login');
-      }
-    }
+    const { token } = getStoredAuthState();
+    router.push(token ? '/dashboard' : '/login');
   }, [router]);
 
   return (

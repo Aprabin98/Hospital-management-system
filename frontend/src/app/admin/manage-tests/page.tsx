@@ -57,7 +57,6 @@ export default function ManageTestsPage() {
   const [tests, setTests] = useState<TestTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -99,12 +98,8 @@ export default function ManageTestsPage() {
   });
 
   const pageSize = 12;
-  const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchTemplates();
   }, []);
 
@@ -273,22 +268,6 @@ export default function ManageTestsPage() {
       toast.error('Failed to delete schedule');
     }
   };
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-gray-500">Only admins can manage test templates.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

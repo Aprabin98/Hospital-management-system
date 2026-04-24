@@ -1,23 +1,22 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import axios from 'axios';
+import Link from 'next/link';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
+import { apiClient } from '@/lib/api';
 
 interface DashboardData {
   incident_summary: {
     total_incidents: number;
     open_incidents: number;
     overdue_incidents: number;
-    by_status: Array<{ status: string; count: number }>;
-    by_severity: Array<{ severity: string; count: number }>;
-    by_type: Array<{ incident_type: string; count: number }>;
   };
   sla_summary: {
     total_breaches: number;
     open_breaches: number;
     escalated_breaches: number;
     overdue_breaches: number;
-    by_status: Array<{ status: string; count: number }>;
   };
   drill_summary: {
     total_drills: number;
@@ -29,13 +28,12 @@ interface DashboardData {
   retention_summary: {
     active_policies: number;
     policies_due_review: number;
-    by_module: Array<{ module_name: string; count: number }>;
   };
   compliance_score: number;
-  recent_incidents: Array<any>;
-  recent_breaches: Array<any>;
-  recent_drills: Array<any>;
-  recent_policies: Array<any>;
+  recent_incidents: Array<Record<string, any>>;
+  recent_breaches: Array<Record<string, any>>;
+  recent_drills: Array<Record<string, any>>;
+  recent_policies: Array<Record<string, any>>;
 }
 
 interface IncidentFormState {
@@ -112,7 +110,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 export default function ComplianceCenter() {
-  const router = useRouter();
+  const { userRole } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -122,45 +120,38 @@ export default function ComplianceCenter() {
   const [policyForm, setPolicyForm] = useState<PolicyFormState>(emptyPolicy);
   const [busyAction, setBusyAction] = useState('');
 
+  const hasAccess = ACCESS_MATRIX.compliance.includes((userRole || 'PATIENT').toUpperCase() as (typeof ACCESS_MATRIX.compliance)[number]);
+
   const loadDashboard = async () => {
     setError('');
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-
-    if (!['QUALITY_COMPLIANCE_OFFICER', 'ADMIN'].includes(userRole || '')) {
-      router.push('/');
-      return;
-    }
-
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/compliance/dashboard/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    setData(response.data);
+    const response = await apiClient.get<DashboardData>('/compliance/dashboard/');
+    setData(response);
   };
 
   useEffect(() => {
+    if (!hasAccess) {
+      setLoading(false);
+      return;
+    }
+
     const bootstrap = async () => {
       try {
+        setLoading(true);
         await loadDashboard();
       } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to load compliance dashboard');
+        setError(err?.message || 'Failed to load compliance dashboard');
       } finally {
         setLoading(false);
       }
     };
 
-    bootstrap();
-  }, [router]);
+    void bootstrap();
+  }, [hasAccess]);
 
-  const api = async (path: string, method: 'post' | 'patch' | 'put' = 'post', payload?: any) => {
-    const token = localStorage.getItem('token');
-    return axios({
-      url: `${process.env.NEXT_PUBLIC_API_URL}${path}`,
-      method,
-      data: payload,
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  const callApi = async (path: string, method: 'post' | 'patch' | 'put' = 'post', payload?: unknown) => {
+    if (method === 'post') return apiClient.post(path, payload);
+    if (method === 'put') return apiClient.put(path, payload);
+    return apiClient.patch(path, payload);
   };
 
   const reload = async () => {
@@ -168,6 +159,8 @@ export default function ComplianceCenter() {
     try {
       await loadDashboard();
       setError('');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to reload compliance dashboard');
     } finally {
       setLoading(false);
     }
@@ -176,12 +169,11 @@ export default function ComplianceCenter() {
   const createIncident = async () => {
     setBusyAction('incident');
     try {
-      setError('');
-      await api('/compliance/incidents/', 'post', incidentForm);
+      await callApi('/compliance/incidents/', 'post', incidentForm);
       setIncidentForm(emptyIncident);
       await reload();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create incident');
+      setError(err?.message || 'Failed to create incident');
     } finally {
       setBusyAction('');
     }
@@ -190,12 +182,11 @@ export default function ComplianceCenter() {
   const createBreach = async () => {
     setBusyAction('breach');
     try {
-      setError('');
-      await api('/compliance/sla-breaches/', 'post', breachForm);
+      await callApi('/compliance/sla-breaches/', 'post', breachForm);
       setBreachForm(emptyBreach);
       await reload();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create SLA breach');
+      setError(err?.message || 'Failed to create SLA breach');
     } finally {
       setBusyAction('');
     }
@@ -204,12 +195,11 @@ export default function ComplianceCenter() {
   const createDrill = async () => {
     setBusyAction('drill');
     try {
-      setError('');
-      await api('/compliance/backup-drills/', 'post', drillForm);
+      await callApi('/compliance/backup-drills/', 'post', drillForm);
       setDrillForm(emptyDrill);
       await reload();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to record drill');
+      setError(err?.message || 'Failed to record drill');
     } finally {
       setBusyAction('');
     }
@@ -218,12 +208,11 @@ export default function ComplianceCenter() {
   const createPolicy = async () => {
     setBusyAction('policy');
     try {
-      setError('');
-      await api('/compliance/retention-policies/', 'post', policyForm);
+      await callApi('/compliance/retention-policies/', 'post', policyForm);
       setPolicyForm(emptyPolicy);
       await reload();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create retention policy');
+      setError(err?.message || 'Failed to create retention policy');
     } finally {
       setBusyAction('');
     }
@@ -232,13 +221,15 @@ export default function ComplianceCenter() {
   const resolveIncident = async (id: number) => {
     setBusyAction(`incident-${id}`);
     try {
-      await api(`/compliance/incidents/${id}/resolve/`, 'post', {
+      await callApi(`/compliance/incidents/${id}/resolve/`, 'post', {
         closure_notes: 'Resolved from compliance dashboard',
         root_cause: 'Documented during review',
         corrective_action: 'Updated workflow and monitoring',
         preventive_action: 'Added routine compliance check',
       });
       await reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to resolve incident');
     } finally {
       setBusyAction('');
     }
@@ -247,8 +238,10 @@ export default function ComplianceCenter() {
   const escalateBreach = async (id: number) => {
     setBusyAction(`breach-${id}`);
     try {
-      await api(`/compliance/sla-breaches/${id}/escalate/`, 'post', {});
+      await callApi(`/compliance/sla-breaches/${id}/escalate/`, 'post', {});
       await reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to escalate breach');
     } finally {
       setBusyAction('');
     }
@@ -257,10 +250,12 @@ export default function ComplianceCenter() {
   const resolveBreach = async (id: number) => {
     setBusyAction(`breach-resolve-${id}`);
     try {
-      await api(`/compliance/sla-breaches/${id}/resolve/`, 'post', {
+      await callApi(`/compliance/sla-breaches/${id}/resolve/`, 'post', {
         resolution_summary: 'Breach reviewed and closed from dashboard',
       });
       await reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to resolve breach');
     } finally {
       setBusyAction('');
     }
@@ -269,8 +264,10 @@ export default function ComplianceCenter() {
   const verifyDrill = async (id: number) => {
     setBusyAction(`drill-${id}`);
     try {
-      await api(`/compliance/backup-drills/${id}/verify/`, 'post', { success: true });
+      await callApi(`/compliance/backup-drills/${id}/verify/`, 'post', { success: true });
       await reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to verify drill');
     } finally {
       setBusyAction('');
     }
@@ -279,32 +276,60 @@ export default function ComplianceCenter() {
   const executePolicy = async (id: number) => {
     setBusyAction(`policy-${id}`);
     try {
-      await api(`/compliance/retention-policies/${id}/execute/`, 'post', {});
+      await callApi(`/compliance/retention-policies/${id}/execute/`, 'post', {});
       await reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to execute retention policy');
     } finally {
       setBusyAction('');
     }
   };
 
-  if (loading && !data) return <div className="p-8 text-center">Loading compliance center...</div>;
-  if (error && !data) return <div className="p-8 bg-red-50 text-red-700">{error}</div>;
-  if (!data) return null;
+  if (!hasAccess) {
+    return (
+      <ProtectedPage
+        allowedRoles={ACCESS_MATRIX.compliance}
+        title="compliance center"
+        description="This area is available only to admin and quality compliance roles."
+      >
+        <div />
+      </ProtectedPage>
+    );
+  }
+
+  if (loading && !data) {
+    return (
+      <ProtectedPage allowedRoles={ACCESS_MATRIX.compliance} title="compliance center">
+        <div className="p-8 text-center text-slate-600">Loading compliance center...</div>
+      </ProtectedPage>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <ProtectedPage allowedRoles={ACCESS_MATRIX.compliance} title="compliance center">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">{error}</div>
+      </ProtectedPage>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_45%,_#f8fafc)] p-6 md:p-10">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <div className="rounded-3xl border border-slate-200/80 bg-white/85 p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+    <ProtectedPage allowedRoles={ACCESS_MATRIX.compliance} title="compliance center" contentClassName="space-y-8">
+      <div className="space-y-8">
+        <div className="rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(255,255,255,0.92)_45%,rgba(99,102,241,0.10))] p-8 shadow-[0_22px_70px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Phase 8</p>
-              <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 md:text-5xl">
-                Quality & Compliance Center
-              </h1>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Quality & Compliance</p>
+              <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900">Compliance Command Center</h1>
               <p className="mt-3 max-w-2xl text-slate-600">
-                Incident reporting, SLA governance, backup drill checks, and retention execution in one place.
+                Manage incidents, SLA breaches, drill verification, and retention policy execution from one admin workspace.
               </p>
             </div>
-            <div className="rounded-2xl bg-slate-900 px-6 py-5 text-white shadow-lg">
+            <div className="rounded-2xl bg-slate-950 px-6 py-5 text-white shadow-lg">
               <p className="text-sm uppercase tracking-[0.2em] text-slate-300">Compliance Score</p>
               <p className="mt-2 text-5xl font-black text-emerald-400">{data.compliance_score}</p>
             </div>
@@ -321,7 +346,7 @@ export default function ComplianceCenter() {
         {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div> : null}
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <Panel title="Incident Reporting" subtitle="Log quality, safety, or operational issues and close the loop.">
+          <Panel title="Incident Reporting" subtitle="Capture quality, safety, and operational events.">
             <div className="grid gap-3 md:grid-cols-2">
               <input className="rounded-xl border border-slate-200 px-4 py-3" placeholder="Title" value={incidentForm.title} onChange={(e) => setIncidentForm({ ...incidentForm, title: e.target.value })} />
               <select className="rounded-xl border border-slate-200 px-4 py-3" value={incidentForm.incident_type} onChange={(e) => setIncidentForm({ ...incidentForm, incident_type: e.target.value })}>
@@ -343,7 +368,6 @@ export default function ComplianceCenter() {
             <button disabled={busyAction === 'incident'} onClick={createIncident} className="mt-3 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
               {busyAction === 'incident' ? 'Saving...' : 'Create Incident'}
             </button>
-
             <div className="mt-6 space-y-3">
               {data.recent_incidents.map((incident) => (
                 <div key={incident.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -351,7 +375,7 @@ export default function ComplianceCenter() {
                     <div>
                       <p className="font-semibold text-slate-900">{incident.title}</p>
                       <p className="text-sm text-slate-600">{incident.incident_type} • {incident.severity} • {incident.status}</p>
-                      <p className="mt-2 text-sm text-slate-600 line-clamp-2">{incident.description}</p>
+                      <p className="mt-2 text-sm text-slate-600">{incident.description}</p>
                     </div>
                     <button disabled={busyAction === `incident-${incident.id}`} onClick={() => resolveIncident(incident.id)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50">
                       Resolve
@@ -362,7 +386,7 @@ export default function ComplianceCenter() {
             </div>
           </Panel>
 
-          <Panel title="SLA Monitoring" subtitle="Track service breaches and escalation actions.">
+          <Panel title="SLA Monitoring" subtitle="Track service-level misses and escalation actions.">
             <div className="grid gap-3 md:grid-cols-2">
               <input className="rounded-xl border border-slate-200 px-4 py-3" placeholder="Process name" value={breachForm.process_name} onChange={(e) => setBreachForm({ ...breachForm, process_name: e.target.value })} />
               <select className="rounded-xl border border-slate-200 px-4 py-3" value={breachForm.category} onChange={(e) => setBreachForm({ ...breachForm, category: e.target.value })}>
@@ -385,7 +409,6 @@ export default function ComplianceCenter() {
             <button disabled={busyAction === 'breach'} onClick={createBreach} className="mt-3 rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
               {busyAction === 'breach' ? 'Saving...' : 'Log Breach'}
             </button>
-
             <div className="mt-6 space-y-3">
               {data.recent_breaches.map((breach) => (
                 <div key={breach.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -393,7 +416,7 @@ export default function ComplianceCenter() {
                     <div>
                       <p className="font-semibold text-slate-900">{breach.process_name}</p>
                       <p className="text-sm text-slate-600">{breach.category} • {breach.severity} • {breach.status}</p>
-                      <p className="mt-2 text-sm text-slate-600 line-clamp-2">{breach.description}</p>
+                      <p className="mt-2 text-sm text-slate-600">{breach.description}</p>
                     </div>
                     <div className="flex gap-2">
                       <button disabled={busyAction === `breach-${breach.id}`} onClick={() => escalateBreach(breach.id)} className="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50">
@@ -409,7 +432,7 @@ export default function ComplianceCenter() {
             </div>
           </Panel>
 
-          <Panel title="Backup / Restore Drills" subtitle="Capture evidence for disaster recovery testing.">
+          <Panel title="Backup / Restore Drills" subtitle="Store evidence for resilience and disaster recovery checks.">
             <div className="grid gap-3 md:grid-cols-2">
               <select className="rounded-xl border border-slate-200 px-4 py-3" value={drillForm.drill_type} onChange={(e) => setDrillForm({ ...drillForm, drill_type: e.target.value })}>
                 <option value="BACKUP">Backup</option>
@@ -424,7 +447,6 @@ export default function ComplianceCenter() {
             <button disabled={busyAction === 'drill'} onClick={createDrill} className="mt-3 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
               {busyAction === 'drill' ? 'Saving...' : 'Record Drill'}
             </button>
-
             <div className="mt-6 space-y-3">
               {data.recent_drills.map((drill) => (
                 <div key={drill.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -442,7 +464,7 @@ export default function ComplianceCenter() {
             </div>
           </Panel>
 
-          <Panel title="Retention & Archival" subtitle="Maintain policy execution and evidence for audits.">
+          <Panel title="Retention & Archival" subtitle="Execute and review policy-driven data retention.">
             <div className="grid gap-3 md:grid-cols-2">
               <input className="rounded-xl border border-slate-200 px-4 py-3" placeholder="Module name" value={policyForm.module_name} onChange={(e) => setPolicyForm({ ...policyForm, module_name: e.target.value })} />
               <input className="rounded-xl border border-slate-200 px-4 py-3" placeholder="Policy name" value={policyForm.policy_name} onChange={(e) => setPolicyForm({ ...policyForm, policy_name: e.target.value })} />
@@ -453,7 +475,6 @@ export default function ComplianceCenter() {
             <button disabled={busyAction === 'policy'} onClick={createPolicy} className="mt-3 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
               {busyAction === 'policy' ? 'Saving...' : 'Save Policy'}
             </button>
-
             <div className="mt-6 space-y-3">
               {data.recent_policies.map((policy) => (
                 <div key={policy.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -472,7 +493,7 @@ export default function ComplianceCenter() {
           </Panel>
         </div>
       </div>
-    </div>
+    </ProtectedPage>
   );
 }
 
@@ -490,7 +511,7 @@ function MetricCard({ title, value, accent }: { title: string; value: number; ac
 
 function Panel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
         <p className="mt-1 text-sm text-slate-500">{subtitle}</p>

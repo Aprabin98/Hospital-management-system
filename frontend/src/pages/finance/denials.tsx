@@ -1,11 +1,9 @@
-/**
- * Denial Rework Queue - Phase 7
- * Path: frontend/src/pages/finance/denials.tsx
- * Features: Manage denied claims and rework process
- */
-
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useMemo, useState } from 'react';
+import { ProtectedPage } from '@/components/Auth';
+import { EmptyState, PageHeader, SectionCard, StatCard, StatusBadge } from '@/components/UI';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
+import { apiClient } from '@/lib/api';
 
 interface DenialRework {
   id: number;
@@ -15,148 +13,123 @@ interface DenialRework {
   status: string;
   assigned_to_name: string | null;
   correction_notes: string;
-  resubmit_date: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export default function DenialReworksPage() {
+  const { userRole } = useAuth();
   const [reworks, setReworks] = useState<DenialRework[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('PENDING_REVIEW');
-  const [selectedRework, setSelectedRework] = useState<DenialRework | null>(null);
-  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    fetchReworks();
+    const fetchReworks = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const params =
+          filterStatus && filterStatus !== 'PENDING'
+            ? { status: filterStatus }
+            : {};
+        const path =
+          filterStatus === 'PENDING'
+            ? '/denial-reworks/pending/'
+            : '/denial-reworks/';
+
+        const response = await apiClient.get<{ results?: DenialRework[] }>(path, { params });
+        setReworks(response.results || []);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load denial reworks');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void fetchReworks();
   }, [filterStatus]);
 
-  const fetchReworks = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/denial-reworks/`;
-      if (filterStatus === 'PENDING') {
-        url += 'pending/';
-      } else if (filterStatus) {
-        url += `?status=${filterStatus}`;
-      }
+  const summary = useMemo(
+    () => ({
+      pending: reworks.filter((item) => item.status === 'PENDING_REVIEW').length,
+      correction: reworks.filter((item) => item.status === 'UNDER_CORRECTION').length,
+      total: reworks.length,
+    }),
+    [reworks]
+  );
 
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setReworks(response.data.results || response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load denial reworks');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const statusColors: Record<string, string> = {
-    PENDING_REVIEW: 'bg-red-100 text-red-700',
-    UNDER_CORRECTION: 'bg-yellow-100 text-yellow-700',
-    RESUBMITTED: 'bg-blue-100 text-blue-700',
-    RESOLVED: 'bg-green-100 text-green-700',
-    ABANDONED: 'bg-gray-100 text-gray-700',
-  };
+  const role = (userRole || '').toUpperCase();
+  const canAssign = role === 'ADMIN' || role === 'INSURANCE_COORDINATOR';
+  const canResubmit = role === 'ADMIN' || role === 'BILLING_OFFICER';
 
   const handleAssign = async (reworkId: number) => {
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'INSURANCE_COORDINATOR' && userRole !== 'ADMIN') {
-      alert('Only Insurance Coordinators can assign reworks');
-      return;
-    }
+    if (!canAssign) return;
+
+    const billingOfficerId = window.prompt('Enter billing officer ID for assignment');
+    if (!billingOfficerId) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const billingOfficerId = prompt('Enter Billing Officer ID:');
-      if (!billingOfficerId) return;
-
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/denial-reworks/${reworkId}/assign/`,
-        { assigned_to_id: billingOfficerId },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await apiClient.post(`/denial-reworks/${reworkId}/assign/`, {
+        assigned_to_id: billingOfficerId,
+      });
+      setReworks((current) =>
+        current.map((item) =>
+          item.id === reworkId
+            ? { ...item, status: 'UNDER_CORRECTION' }
+            : item
+        )
       );
-
-      alert('Rework assigned successfully');
-      fetchReworks();
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to assign rework');
+      setError(err?.message || 'Failed to assign rework');
     }
   };
 
   const handleResubmit = async (reworkId: number) => {
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'BILLING_OFFICER' && userRole !== 'ADMIN') {
-      alert('Only Billing Officers can resubmit reworks');
-      return;
-    }
+    if (!canResubmit) return;
 
-    const correctionNotes = prompt('Enter correction notes:');
+    const correctionNotes = window.prompt('Enter correction notes for resubmission');
     if (!correctionNotes) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/denial-reworks/${reworkId}/resubmit/`,
-        { correction_notes: correctionNotes, submission_notes: correctionNotes },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await apiClient.post(`/denial-reworks/${reworkId}/resubmit/`, {
+        correction_notes: correctionNotes,
+        submission_notes: correctionNotes,
+      });
+      setReworks((current) =>
+        current.map((item) =>
+          item.id === reworkId
+            ? { ...item, status: 'RESUBMITTED', correction_notes: correctionNotes }
+            : item
+        )
       );
-
-      alert('Claim resubmitted successfully');
-      fetchReworks();
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to resubmit claim');
+      setError(err?.message || 'Failed to resubmit denial');
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading denial reworks...</div>;
-
-  const pendingCount = reworks.filter((r) => r.status === 'PENDING_REVIEW').length;
-  const underCorrectionCount = reworks.filter((r) => r.status === 'UNDER_CORRECTION').length;
-
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Denial Rework Queue</h1>
-          <p className="text-gray-600">Manage rejected and denied insurance claims</p>
-        </div>
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.finance}
+      title="denial reworks"
+      description="Denial reworks are restricted to finance and insurance roles."
+    >
+      <PageHeader
+        title="Denial Rework Queue"
+        description="Prioritize denied claims, route assignments, and resubmit corrections from one secure queue."
+      />
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
-            {error}
-          </div>
-        )}
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Pending Review" value={summary.pending} tone="red" />
+        <StatCard label="Under Correction" value={summary.correction} tone="amber" />
+        <StatCard label="Total Reworks" value={summary.total} tone="blue" />
+      </div>
 
-        {/* Alert Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
-            <p className="text-red-700 font-semibold text-lg">🔴 Pending Review</p>
-            <p className="text-3xl font-bold text-red-600 mt-2">{pendingCount}</p>
-            <p className="text-sm text-red-600 mt-1">Awaiting coordinator review</p>
-          </div>
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6">
-            <p className="text-yellow-700 font-semibold text-lg">🔧 Under Correction</p>
-            <p className="text-3xl font-bold text-yellow-600 mt-2">{underCorrectionCount}</p>
-            <p className="text-sm text-yellow-600 mt-1">Being corrected by billing officer</p>
-          </div>
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-            <p className="text-blue-700 font-semibold text-lg">📋 Total Reworks</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{reworks.length}</p>
-            <p className="text-sm text-blue-600 mt-1">In rework queue</p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <label className="text-sm font-semibold text-gray-700">Filter by Status:</label>
+      <SectionCard title="Rework Queue" subtitle="Focus the queue by rework state and take the next safe action.">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="mt-2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            onChange={(event) => setFilterStatus(event.target.value)}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm"
           >
             <option value="PENDING_REVIEW">Pending Review</option>
             <option value="UNDER_CORRECTION">Under Correction</option>
@@ -166,145 +139,57 @@ export default function DenialReworksPage() {
           </select>
         </div>
 
-        {/* Reworks Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {reworks.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No denial reworks found</div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Claim #
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Patient
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Denial Reason
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Assigned To
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {reworks.map((rework) => (
-                  <tr key={rework.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <span className="font-semibold text-gray-900">{rework.claim_number}</span>
-                    </td>
-                    <td className="px-6 py-4 text-sm">{rework.patient_name}</td>
-                    <td className="px-6 py-4 text-sm max-w-md">
-                      <p className="truncate text-gray-700">{rework.original_denial_reason}</p>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {rework.assigned_to_name ? (
-                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
-                          {rework.assigned_to_name}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          statusColors[rework.status] || statusColors.PENDING_REVIEW
-                        }`}
-                      >
-                        {rework.status.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        {rework.status === 'PENDING_REVIEW' && (
-                          <button
-                            onClick={() => handleAssign(rework.id)}
-                            className="text-orange-600 hover:text-orange-700 text-sm font-semibold"
-                          >
-                            Assign
-                          </button>
-                        )}
-                        {rework.status === 'UNDER_CORRECTION' && (
-                          <button
-                            onClick={() => handleResubmit(rework.id)}
-                            className="text-green-600 hover:text-green-700 text-sm font-semibold"
-                          >
-                            Resubmit
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setSelectedRework(rework);
-                            setShowModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-semibold"
-                        >
-                          Details
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        {loading ? <EmptyState title="Loading denial queue" description="Refreshing denial assignments and rework status." /> : null}
+        {!loading && error ? <EmptyState title="Denial queue unavailable" description={error} /> : null}
+        {!loading && !error && reworks.length === 0 ? <EmptyState title="No denial reworks found" description="The selected filter currently has no records." /> : null}
 
-        {/* Details Modal */}
-        {showModal && selectedRework && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-96 overflow-y-auto">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {selectedRework.claim_number} - {selectedRework.patient_name}
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700">Denial Reason:</p>
-                  <p className="text-gray-900 mt-1">{selectedRework.original_denial_reason}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-700">Status:</p>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-semibold inline-block mt-1 ${
-                      statusColors[selectedRework.status]
-                    }`}
-                  >
-                    {selectedRework.status.replace(/_/g, ' ')}
-                  </span>
-                </div>
-                {selectedRework.correction_notes && (
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700">Correction Notes:</p>
-                    <p className="text-gray-900 mt-1">{selectedRework.correction_notes}</p>
+        {!loading && !error && reworks.length > 0 ? (
+          <div className="space-y-3">
+            {reworks.map((rework) => (
+              <div key={rework.id} className="rounded-lg border border-gray-200 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-gray-900">{rework.claim_number}</p>
+                      <StatusBadge value={rework.status.replaceAll('_', ' ')} />
+                    </div>
+                    <p className="text-sm text-gray-700">{rework.patient_name}</p>
+                    <p className="text-sm text-gray-600">{rework.original_denial_reason}</p>
+                    <p className="text-xs text-gray-500">
+                      Assigned to: {rework.assigned_to_name || 'Unassigned'}
+                    </p>
+                    {rework.correction_notes ? (
+                      <p className="text-xs text-gray-500">Latest notes: {rework.correction_notes}</p>
+                    ) : null}
                   </div>
-                )}
-                {selectedRework.assigned_to_name && (
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700">Assigned To:</p>
-                    <p className="text-gray-900 mt-1">{selectedRework.assigned_to_name}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {rework.status === 'PENDING_REVIEW' ? (
+                      <button
+                        type="button"
+                        disabled={!canAssign}
+                        onClick={() => handleAssign(rework.id)}
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Assign
+                      </button>
+                    ) : null}
+                    {rework.status === 'UNDER_CORRECTION' ? (
+                      <button
+                        type="button"
+                        disabled={!canResubmit}
+                        onClick={() => handleResubmit(rework.id)}
+                        className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Resubmit
+                      </button>
+                    ) : null}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        )}
-      </div>
-    </div>
+        ) : null}
+      </SectionCard>
+    </ProtectedPage>
   );
 }

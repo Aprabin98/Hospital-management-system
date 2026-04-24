@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { apiClient } from '@/lib/api';
 import { useAuth } from '@/hooks';
+import { AppIcon } from '@/components/UI/AppIcon';
 
 interface DashboardStats {
   total_patients: number;
@@ -42,24 +43,35 @@ interface AppointmentSummaryItem {
 }
 
 interface PaymentStats {
-  total_amount: number;
   total_paid: number;
   total_unpaid: number;
-  total_refunded: number;
-  payment_count: number;
   paid_count: number;
   unpaid_count: number;
   overdue_count: number;
 }
 
-interface AdminKpiCard {
+interface RevenueSummary {
+  net_revenue: number;
+  total_refunded_amount: number;
+}
+
+interface MetricCard {
   title: string;
   value: string | number;
   description: string;
-  icon: string;
   href: string;
-  tone: 'blue' | 'green' | 'amber' | 'violet' | 'rose' | 'slate';
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+  tone: string;
 }
+
+const toneClasses: Record<string, string> = {
+  teal: 'border-teal-200 bg-teal-50/90 text-teal-900',
+  cyan: 'border-cyan-200 bg-cyan-50/90 text-cyan-900',
+  amber: 'border-amber-200 bg-amber-50/90 text-amber-900',
+  rose: 'border-rose-200 bg-rose-50/90 text-rose-900',
+  indigo: 'border-indigo-200 bg-indigo-50/90 text-indigo-900',
+  slate: 'border-slate-200 bg-slate-50/90 text-slate-900',
+};
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -84,7 +96,7 @@ export default function Dashboard() {
     my_lab_bookings: 0,
   });
   const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
-  const [revenueSummary, setRevenueSummary] = useState<{ net_revenue: number; total_refunded_amount: number; pending_refund_count: number } | null>(null);
+  const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null);
   const [recommendedTests, setRecommendedTests] = useState<LabRecommendationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { userRole: authUserRole, isLoading: isAuthLoading } = useAuth();
@@ -98,18 +110,7 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
-
         const role = userRole.toLowerCase();
-
-        // Fetch main stats
-        try {
-          const statsData = await apiClient.get<DashboardStats>('/dashboard/stats/');
-          setStats(statsData);
-        } catch (e) {
-          console.error('Failed to fetch stats:', e);
-        }
-
-        // Collect extra data in parallel
         const extraData: DashboardExtra = {
           lab_tests: 0,
           prescriptions: 0,
@@ -120,121 +121,60 @@ export default function Dashboard() {
           unread_notifications: 0,
         };
 
+        await apiClient.get<DashboardStats>('/dashboard/stats/').then(setStats).catch(() => undefined);
+
         const requests: Promise<unknown>[] = [
-          apiClient
-            .get<{ count: number }>('/lab/bookings/')
-            .then((d) => { extraData.lab_tests = d.count || 0; })
-            .catch(() => {}),
-
-          apiClient
-            .get<{ count: number }>('/prescriptions/')
-            .then((d) => { extraData.prescriptions = d.count || 0; })
-            .catch(() => {}),
-
-          apiClient
-            .get<PaymentStats>('/payments/stats/')
-            .then((d) => {
-              setPaymentStats(d);
-            })
-            .catch(() => {
-              setPaymentStats(null);
-            }),
-
-          apiClient
-            .get<{ unread_count: number }>('/notifications/unread-count/')
-            .then((d) => { extraData.unread_notifications = d.unread_count || 0; })
-            .catch(() => { extraData.unread_notifications = 0; }),
-
-          apiClient
-            .get<{ results?: LabRecommendationItem[] }>('/lab/recommendations/?page_size=5')
-            .then((d) => {
-              const recs = d.results || [];
-              setRecommendedTests(recs);
-              extraData.recommended_tests = recs.length;
-            })
-            .catch(() => {
-              setRecommendedTests([]);
-            }),
-
+          apiClient.get<{ count: number }>('/lab/bookings/').then((d) => { extraData.lab_tests = d.count || 0; }).catch(() => undefined),
+          apiClient.get<{ count: number }>('/prescriptions/').then((d) => { extraData.prescriptions = d.count || 0; }).catch(() => undefined),
+          apiClient.get<PaymentStats>('/payments/stats/').then(setPaymentStats).catch(() => setPaymentStats(null)),
+          apiClient.get<{ unread_count: number }>('/notifications/unread-count/').then((d) => { extraData.unread_notifications = d.unread_count || 0; }).catch(() => undefined),
+          apiClient.get<{ results?: LabRecommendationItem[] }>('/lab/recommendations/?page_size=5').then((d) => {
+            const items = d.results || [];
+            setRecommendedTests(items);
+            extraData.recommended_tests = items.length;
+          }).catch(() => setRecommendedTests([])),
         ];
 
-        if (role.toLowerCase() === 'patient') {
+        if (role === 'patient') {
           requests.push(
-            apiClient
-              .get<{ id: number }>('/rooms/current-assignment/')
-              .then(() => { extraData.room_assignments = 1; })
-              .catch(() => { extraData.room_assignments = 0; })
+            apiClient.get<{ id: number }>('/rooms/current-assignment/').then(() => { extraData.room_assignments = 1; }).catch(() => undefined),
+            apiClient.get<{ count: number; results?: AppointmentSummaryItem[] }>('/appointments/?page_size=200').then((d) => {
+              const items = d.results || [];
+              const upcoming = items.filter((item) => ['PENDING', 'CONFIRMED'].includes((item.status || '').toUpperCase())).length;
+              setRoleStats((prev) => ({ ...prev, my_appointments: d.count || items.length, upcoming_appointments: upcoming }));
+            }).catch(() => undefined),
+            apiClient.get<{ count: number }>('/prescriptions/').then((d) => {
+              setRoleStats((prev) => ({ ...prev, my_prescriptions: d.count || 0 }));
+            }).catch(() => undefined),
+            apiClient.get<{ count: number }>('/lab/bookings/').then((d) => {
+              setRoleStats((prev) => ({ ...prev, my_lab_bookings: d.count || 0 }));
+            }).catch(() => undefined)
           );
         } else {
-          extraData.room_assignments = 0;
-        }
-
-        if (['patient', 'doctor'].includes(role.toLowerCase())) {
           requests.push(
-            apiClient
-              .get<{ risk_level: string | null }>('/heart-risk/latest/')
-              .then((d) => { extraData.heart_risk = d.risk_level || 'Not Assessed'; })
-              .catch(() => { extraData.heart_risk = 'Not Assessed'; })
-          );
-        } else {
-          extraData.heart_risk = 'Not Assessed';
-        }
-
-        if (role.toLowerCase() !== 'patient') {
-          requests.push(
-            apiClient
-              .get<{ results?: AppointmentSummaryItem[] }>('/rooms/admission-requests/?page_size=5')
-              .then((d) => {
-                extraData.room_recommendations = (d.results || []).length;
-              })
-              .catch(() => {
-                extraData.room_recommendations = 0;
-              })
+            apiClient.get<{ results?: AppointmentSummaryItem[] }>('/rooms/admission-requests/?page_size=5').then((d) => {
+              extraData.room_recommendations = (d.results || []).length;
+            }).catch(() => undefined)
           );
         }
 
-        if (role.toLowerCase() === 'admin') {
+        if (['patient', 'doctor'].includes(role)) {
           requests.push(
-            apiClient
-              .get<{ net_revenue: number; total_refunded_amount: number; pending_refund_count: number }>('/payments/revenue/')
-              .then((d) => {
-                setRevenueSummary(d);
-              })
-              .catch(() => {
-                setRevenueSummary(null);
-              })
+            apiClient.get<{ risk_level: string | null }>('/heart-risk/latest/').then((d) => {
+              extraData.heart_risk = d.risk_level || 'Not Assessed';
+            }).catch(() => undefined)
+          );
+        }
+
+        if (role === 'admin') {
+          requests.push(
+            apiClient.get<RevenueSummary>('/payments/revenue/').then(setRevenueSummary).catch(() => setRevenueSummary(null))
           );
         } else {
           setRevenueSummary(null);
         }
 
-        if (role.toLowerCase() === 'patient') {
-          requests.push(
-            apiClient
-              .get<{ count: number; results?: AppointmentSummaryItem[] }>('/appointments/?page_size=200')
-              .then((d) => {
-                const items = d.results || [];
-                const upcoming = items.filter((item) => ['PENDING', 'CONFIRMED'].includes((item.status || '').toUpperCase())).length;
-                setRoleStats((prev) => ({ ...prev, my_appointments: d.count || items.length, upcoming_appointments: upcoming }));
-              })
-              .catch(() => {}),
-            apiClient
-              .get<{ count: number }>('/prescriptions/')
-              .then((d) => {
-                setRoleStats((prev) => ({ ...prev, my_prescriptions: d.count || 0 }));
-              })
-              .catch(() => {}),
-            apiClient
-              .get<{ count: number }>('/lab/bookings/')
-              .then((d) => {
-                setRoleStats((prev) => ({ ...prev, my_lab_bookings: d.count || 0 }));
-              })
-              .catch(() => {})
-          );
-        }
-
         await Promise.allSettled(requests);
-
         setExtra({ ...extraData });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -244,102 +184,81 @@ export default function Dashboard() {
       }
     };
 
-    fetchDashboardData();
+    void fetchDashboardData();
   }, [isAuthLoading, userRole]);
 
   const isAdmin = userRole === 'ADMIN';
   const isReceptionist = userRole === 'RECEPTIONIST';
   const isAdminOpsRole = isAdmin || isReceptionist;
 
-  const adminKpis = useMemo<AdminKpiCard[]>(() => {
+  const spotlightCards = useMemo<MetricCard[]>(() => {
+    if (userRole === 'PATIENT') {
+      return [
+        { title: 'My Appointments', value: roleStats.my_appointments, description: 'All care visits on record', href: '/appointments', icon: 'appointments', tone: 'teal' },
+        { title: 'Upcoming Visits', value: roleStats.upcoming_appointments, description: 'Pending or confirmed visits', href: '/appointments', icon: 'dashboard', tone: 'amber' },
+        { title: 'My Prescriptions', value: roleStats.my_prescriptions, description: 'Active medication plans', href: '/prescriptions', icon: 'prescriptions', tone: 'indigo' },
+        { title: 'Unread Alerts', value: extra.unread_notifications, description: 'Messages requiring attention', href: '/notifications', icon: 'notifications', tone: 'rose' },
+      ];
+    }
+
+    return [
+      { title: 'Patients', value: stats.total_patients, description: 'Profiles currently managed', href: '/patients', icon: 'patients', tone: 'teal' },
+      { title: 'Appointments', value: stats.total_appointments, description: 'Scheduled care activity', href: '/appointments', icon: 'appointments', tone: 'cyan' },
+      { title: 'Pending Workload', value: stats.pending_appointments, description: 'Pending plus confirmed visits', href: '/appointments?filter=ACTIVE', icon: 'dashboard', tone: 'amber' },
+      { title: 'Doctors', value: stats.total_doctors, description: 'Active doctor profiles', href: '/doctors', icon: 'doctors', tone: 'indigo' },
+    ];
+  }, [extra.unread_notifications, roleStats, stats, userRole]);
+
+  const operationsCards = useMemo<MetricCard[]>(() => {
+    const cards: MetricCard[] = [
+      { title: 'Lab Volume', value: extra.lab_tests, description: 'Bookings and result workflow', href: '/lab-reports', icon: 'lab', tone: 'rose' },
+      { title: 'Prescriptions', value: extra.prescriptions, description: 'Medication orders in system', href: '/prescriptions', icon: 'prescriptions', tone: 'amber' },
+      { title: userRole === 'PATIENT' ? 'My Lab Bookings' : 'Room Allocation', value: userRole === 'PATIENT' ? roleStats.my_lab_bookings : extra.room_assignments, description: userRole === 'PATIENT' ? 'Track tests and reports' : 'Current patient placement', href: userRole === 'PATIENT' ? '/lab-reports' : '/rooms', icon: userRole === 'PATIENT' ? 'lab' : 'rooms', tone: 'indigo' },
+      { title: 'Heart Risk', value: extra.heart_risk, description: 'Latest risk classification', href: '/ai-health/heart-risk', icon: 'heart', tone: 'teal' },
+    ];
+
+    if (isAdminOpsRole) {
+      cards.push({ title: 'Room Requests', value: extra.room_recommendations, description: 'Admissions and transfer queue', href: '/admin/approvals-center', icon: 'rooms', tone: 'slate' });
+    }
+
+    return cards;
+  }, [extra, isAdminOpsRole, roleStats.my_lab_bookings, userRole]);
+
+  const adminKpis = useMemo<MetricCard[]>(() => {
     if (!isAdminOpsRole) {
       return [];
     }
 
-    const kpis: AdminKpiCard[] = [
-      {
-        title: 'Total Patients',
-        value: stats.total_patients,
-        description: 'Active patient profiles in the system',
-        icon: '👥',
-        href: '/patients',
-        tone: 'blue',
-      },
-      {
-        title: 'Total Doctors',
-        value: stats.total_doctors,
-        description: 'Doctors available for appointments',
-        icon: '👨‍⚕️',
-        href: '/doctors',
-        tone: 'violet',
-      },
-      {
-        title: 'Appointments',
-        value: stats.total_appointments,
-        description: 'All scheduled appointments',
-        icon: '📅',
-        href: '/appointments?filter=ALL',
-        tone: 'green',
-      },
-      {
-        title: 'Pending Workload',
-        value: stats.pending_appointments,
-        description: 'PENDING + CONFIRMED appointments',
-        icon: '⏳',
-        href: '/appointments?filter=ACTIVE',
-        tone: 'amber',
-      },
-    ];
+    const cards: MetricCard[] = [];
 
     if (paymentStats) {
-      kpis.push(
-        {
-          title: 'Paid Bills',
-          value: paymentStats.paid_count,
-          description: `Rs. ${Number(paymentStats.total_paid).toFixed(2)} collected`,
-          icon: '💸',
-          href: '/billing?status=PAID',
-          tone: 'green',
-        },
-        {
-          title: 'Unpaid Bills',
-          value: paymentStats.unpaid_count,
-          description: `Rs. ${Number(paymentStats.total_unpaid).toFixed(2)} pending`,
-          icon: '🧾',
-          href: '/billing?status=UNPAID',
-          tone: 'rose',
-        },
-        {
-          title: 'Overdue Bills',
-          value: paymentStats.overdue_count,
-          description: 'Payments past due date',
-          icon: '⚠️',
-          href: '/billing?status=OVERDUE',
-          tone: 'amber',
-        }
+      cards.push(
+        { title: 'Paid Bills', value: paymentStats.paid_count, description: `Rs. ${Number(paymentStats.total_paid).toFixed(2)} collected`, href: '/billing?status=PAID', icon: 'billing', tone: 'teal' },
+        { title: 'Unpaid Bills', value: paymentStats.unpaid_count, description: `Rs. ${Number(paymentStats.total_unpaid).toFixed(2)} pending`, href: '/billing?status=UNPAID', icon: 'finance', tone: 'rose' },
+        { title: 'Overdue Bills', value: paymentStats.overdue_count, description: 'Accounts needing follow-up', href: '/billing?status=OVERDUE', icon: 'security', tone: 'amber' }
       );
     }
 
     if (revenueSummary) {
-      kpis.push({
+      cards.push({
         title: 'Net Revenue',
         value: `Rs. ${Number(revenueSummary.net_revenue).toFixed(2)}`,
-        description: `Refunded: Rs. ${Number(revenueSummary.total_refunded_amount).toFixed(2)}`,
-        icon: '💰',
+        description: `Refunded Rs. ${Number(revenueSummary.total_refunded_amount).toFixed(2)}`,
         href: '/billing',
+        icon: 'finance',
         tone: 'slate',
       });
     }
 
-    return kpis;
-  }, [isAdminOpsRole, paymentStats, revenueSummary, stats]);
+    return cards;
+  }, [isAdminOpsRole, paymentStats, revenueSummary]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-600 text-sm">Loading dashboard...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-700/20 border-t-teal-700" />
+          <p className="text-sm font-medium text-slate-600">Loading operational dashboard...</p>
         </div>
       </div>
     );
@@ -347,308 +266,221 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className={isAdminOpsRole ? 'rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-blue-50 to-white p-6' : 'flex justify-between items-center'}>
-        <div className={isAdminOpsRole ? 'flex justify-between items-center gap-4' : 'flex justify-between items-center'}>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {isAdmin ? 'Admin Command Center' : 'Dashboard'}
-          </h1>
-          <p className="mt-2 text-gray-600">
-            {isAdminOpsRole
-              ? 'Monitor patient flow, billing, appointments, and operations from one place.'
-              : 'Welcome to Hospital Management System'}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/profile"
-            className="inline-block rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700"
-          >
-            My Profile
-          </Link>
-          {isAdminOpsRole && (
-            <Link
-              href="/reports"
-              className="inline-block rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              Open Reports
-            </Link>
-          )}
-        </div>
-        </div>
-      </div>
-
-      {/* Main Stats Grid */}
-      {userRole === 'PATIENT' ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="My Appointments" value={roleStats.my_appointments} icon="📅" color="green" />
-          <StatCard title="Upcoming" value={roleStats.upcoming_appointments} icon="⏳" color="yellow" />
-          <StatCard title="My Prescriptions" value={roleStats.my_prescriptions} icon="💊" color="blue" />
-          <StatCard title="Unread Alerts" value={extra.unread_notifications} icon="🔔" color="purple" />
-        </div>
-      ) : isAdminOpsRole ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Patients" value={stats.total_patients} icon="👥" color="blue" />
-          <StatCard title="Appointments" value={stats.total_appointments} icon="📅" color="green" />
-          <StatCard title="Pending" value={stats.pending_appointments} icon="⏳" color="yellow" />
-          <StatCard title="Doctors" value={stats.total_doctors} icon="👨‍⚕️" color="purple" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Patients" value={stats.total_patients} icon="👥" color="blue" />
-          <StatCard title="Appointments" value={stats.total_appointments} icon="📅" color="green" />
-          <StatCard title="Pending" value={stats.pending_appointments} icon="⏳" color="yellow" />
-          <StatCard title="Doctors" value={stats.total_doctors} icon="👨‍⚕️" color="purple" />
-        </div>
-      )}
-
-      {isAdminOpsRole && adminKpis.length > 0 && (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Admin KPIs</h2>
-              <p className="text-sm text-gray-600">Live operational metrics pulled from appointments and billing.</p>
+      <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(255,255,255,0.9)_42%,rgba(197,139,42,0.12))] p-8 shadow-[0_22px_70px_rgba(15,23,42,0.08)]">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
+              <AppIcon name="spark" className="h-4 w-4" />
+              Production Workspace
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-950">
+              {isAdmin ? 'Hospital Command Center' : userRole === 'PATIENT' ? 'Your Care Dashboard' : 'Operations Dashboard'}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              {isAdminOpsRole
+                ? 'Monitor patient flow, diagnostics, billing, and approvals from one polished control surface.'
+                : userRole === 'PATIENT'
+                  ? 'Track appointments, prescriptions, tests, and notifications in one calm patient workspace.'
+                  : 'Stay on top of appointments, records, diagnostics, and care coordination without jumping between modules.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/profile" className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5">
+              <AppIcon name="profile" className="h-4 w-4" />
+              My Profile
+            </Link>
+            <Link href={isAdminOpsRole ? '/reports' : '/appointments'} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700">
+              <AppIcon name={isAdminOpsRole ? 'reports' : 'appointments'} className="h-4 w-4" />
+              {isAdminOpsRole ? 'Open Reports' : 'Open Appointments'}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {spotlightCards.map((card) => (
+          <MetricLinkCard key={card.title} card={card} />
+        ))}
+      </section>
+
+      {adminKpis.length > 0 && (
+        <section className="rounded-[2rem] border border-slate-200 bg-white/88 p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Financial Snapshot</h2>
+              <p className="text-sm text-slate-600">Realtime billing and revenue signals for operations leadership.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
               {isAdmin ? 'Admin' : 'Operations'}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {adminKpis.map((card) => (
-              <Link
-                key={card.title}
-                href={card.href}
-                className="group rounded-2xl border border-gray-200 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className={
-                  {
-                    blue: 'bg-blue-50 border-blue-200',
-                    green: 'bg-green-50 border-green-200',
-                    amber: 'bg-amber-50 border-amber-200',
-                    violet: 'bg-violet-50 border-violet-200',
-                    rose: 'bg-rose-50 border-rose-200',
-                    slate: 'bg-slate-50 border-slate-200',
-                  }[card.tone]
-                + ' rounded-2xl border p-4'}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-900">{card.value}</p>
-                      <p className="mt-1 text-xs text-gray-500">{card.description}</p>
-                    </div>
-                    <span className="text-3xl">{card.icon}</span>
-                  </div>
-                </div>
-              </Link>
+              <MetricLinkCard key={card.title} card={card} compact />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Secondary Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <DashboardLink title="Lab Tests/Reports" icon="🧪" href="/lab-reports" count={extra.lab_tests} color="red" />
-        <DashboardLink title="Prescriptions" icon="💊" href="/prescriptions" count={extra.prescriptions} color="orange" />
-        <DashboardLink title={userRole === 'PATIENT' ? 'My Lab Bookings' : 'Room Allocation'} icon={userRole === 'PATIENT' ? '🧾' : '🏥'} href={userRole === 'PATIENT' ? '/lab-reports' : '/rooms'} count={userRole === 'PATIENT' ? roleStats.my_lab_bookings : extra.room_assignments} color="indigo" />
-        <DashboardLink title="Heart Risk Assessment" icon="❤️" href="/ai-health/heart-risk" status={extra.heart_risk} color="pink" />
-      </div>
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {operationsCards.map((card) => (
+          <MetricLinkCard key={card.title} card={card} />
+        ))}
+      </section>
 
       {isAdminOpsRole && (
-        <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Admin Hub</h2>
-            <p className="text-sm text-gray-600">Use these few actions to get to the right place quickly.</p>
+        <section className="rounded-[2rem] border border-slate-200 bg-white/88 p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900">Admin Hub</h2>
+          <p className="mt-1 text-sm text-slate-600">The highest-value actions for daily hospital operations.</p>
+          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <QuickActionCard title="Add Doctor" description="Create a new doctor profile." href="/admin/doctors-management?create=1" icon="doctors" />
+            <QuickActionCard title="Manage Doctors" description="Review staffing and availability." href="/admin/doctors-management" icon="doctors" />
+            <QuickActionCard title="Manage Rooms" description="Track room inventory and occupancy." href="/admin/rooms-management" icon="rooms" />
+            <QuickActionCard title="Patient Operations" description="Search, export, and review patient activity." href="/admin/patient-operations" icon="patients" />
+            <QuickActionCard title="Approvals Center" description="Resolve admissions, transfers, and refunds." href="/admin/approvals-center" icon="security" />
+            <QuickActionCard title="Revenue Summary" description="View collection and refunds." href="/admin/revenue-summary" icon="finance" />
+            <QuickActionCard title="Emergency Queue" description="Open the triage board and urgent cases." href="/emergency" icon="emergency" />
+            <QuickActionCard title="Security Monitoring" description="Review logins, lockouts, and access events." href="/admin/security-monitoring" icon="security" />
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <QuickActionCard title="Add Doctor" description="Create a doctor profile" href="/admin/doctors-management?create=1" icon="➕" />
-            <QuickActionCard title="Manage Doctors" description="Review and update doctor profiles" href="/admin/doctors-management" icon="👨‍⚕️" />
-            <QuickActionCard title="Add Room" description="Create a new room and beds" href="/admin/rooms-management" icon="🏨" />
-            <QuickActionCard title="Manage Rooms" description="Review current room inventory" href="/admin/rooms-management" icon="🛏️" />
-            <QuickActionCard title="Patient Operations" description="Search, review, and export patient records" href="/admin/patient-operations" icon="👥" />
-            <QuickActionCard title="Approvals Center" description="Review admissions, transfers, leaves, and refunds" href="/admin/approvals-center" icon="✅" />
-            <QuickActionCard title="Revenue Summary" description="View billing totals and financial summary" href="/admin/revenue-summary" icon="💰" />
-            <QuickActionCard title="Security Monitoring" description="Track logins, lockouts, and failed attempts" href="/admin/security-monitoring" icon="🛡️" />
-            <QuickActionCard title="Users Management" description="Manage roles and access control" href="/admin/users-management" icon="🔐" />
-            <QuickActionCard title="System Settings" description="Configure hospital settings" href="/admin/system-settings" icon="⚙️" />
-            <QuickActionCard title="Analytics" description="Review operational analytics" href="/admin/analytics" icon="📊" />
-          </div>
-        </div>
+        </section>
       )}
 
       {userRole === 'PATIENT' && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Recommended Tests</h2>
-              <Link href="/lab-reports" className="text-sm font-medium text-blue-600 hover:text-blue-700">View All</Link>
-            </div>
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ContentPanel title="Recommended Tests" actionHref="/lab-reports" actionLabel="View all">
             {recommendedTests.length === 0 ? (
-              <p className="text-sm text-gray-600">No recommended tests yet.</p>
+              <p className="text-sm text-slate-600">No recommended tests right now.</p>
             ) : (
               <div className="space-y-3">
                 {recommendedTests.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                    <p className="font-semibold text-gray-900">{item.test_name}</p>
-                    <p className="text-sm text-gray-600">Priority: {item.priority} • Status: {item.status}</p>
+                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+                        <AppIcon name="lab" className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="font-semibold text-slate-900">{item.test_name}</p>
+                        <p className="text-sm text-slate-600">Priority: {item.priority} • Status: {item.status}</p>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </ContentPanel>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Care Alerts</h2>
-              <Link href="/notifications" className="text-sm font-medium text-blue-600 hover:text-blue-700">View All</Link>
-            </div>
+          <ContentPanel title="Care Alerts" actionHref="/notifications" actionLabel="Open alerts">
             {extra.unread_notifications === 0 ? (
-              <p className="text-sm text-gray-600">No new alerts. You are all caught up.</p>
+              <p className="text-sm text-slate-600">No new alerts. You are all caught up.</p>
             ) : (
-              <div className="space-y-3">
-                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                  <p className="font-semibold text-gray-900">Unread Notifications</p>
-                  <p className="text-sm text-gray-600">You have {extra.unread_notifications} unread notification(s).</p>
-                </div>
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4">
+                <p className="font-semibold text-rose-900">Unread notifications</p>
+                <p className="mt-1 text-sm text-rose-700">You have {extra.unread_notifications} unread update(s).</p>
               </div>
             )}
-          </div>
-        </div>
+          </ContentPanel>
+        </section>
       )}
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section>
+        <h2 className="text-xl font-bold text-slate-900">Quick Actions</h2>
+        <p className="mt-1 text-sm text-slate-600">Jump directly into the workflows that matter most for your role.</p>
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {userRole === 'PATIENT' ? (
             <>
-              <QuickActionCard title="Appointments" description="Schedule or manage your appointments" href="/appointments" icon="📅" />
-              <QuickActionCard title="Medical Records" description="View your health records" href="/medical-records" icon="📋" />
-              <QuickActionCard title="Lab Reports" description="Check bookings and results" href="/lab-reports" icon="🧪" />
-              <QuickActionCard title="Prescriptions" description="View your prescriptions" href="/prescriptions" icon="💊" />
-              <QuickActionCard title="Rooms" description="View room assignment and availability" href="/rooms" icon="🛏️" />
-              <QuickActionCard title="Reviews" description="Rate completed appointments" href="/reviews" icon="⭐" />
-              <QuickActionCard title="Notifications" description="Open your alerts" href="/notifications" icon="🔔" />
-              <QuickActionCard title="Doctors" description="View available doctors" href="/doctors" icon="👨‍⚕️" />
-              <QuickActionCard title="Heart Risk" description="Heart risk assessment" href="/ai-health/heart-risk" icon="❤️" />
-              <QuickActionCard title="AI Report Reader" description="Analyze uploaded reports" href="/ai-health/report-reader" icon="📄" />
-              <QuickActionCard title="AI Triage" description="Check symptom urgency" href="/ai-health/triage" icon="🩺" />
-              <QuickActionCard title="My Profile" description="Edit profile information" href="/profile" icon="👤" />
-            </>
-          ) : isAdmin ? (
-            <>
-              <QuickActionCard title="Manage Doctors" description="Doctor profiles and availability" href="/admin/doctors-management" icon="👨‍⚕️" />
-              <QuickActionCard title="Add Doctor" description="Create a doctor profile" href="/admin/doctors-management?create=1" icon="➕" />
-              <QuickActionCard title="Manage Rooms" description="Room inventory and bed creation" href="/admin/rooms-management" icon="🏨" />
-              <QuickActionCard title="Add Room" description="Create rooms from the admin UI" href="/admin/rooms-management" icon="🛏️" />
-              <QuickActionCard title="Patient Operations" description="Search and export patient operations data" href="/admin/patient-operations" icon="👥" />
-              <QuickActionCard title="Approvals Center" description="Handle admissions, transfers, leaves, and refunds" href="/admin/approvals-center" icon="✅" />
-              <QuickActionCard title="Revenue Summary" description="Open financial summary" href="/admin/revenue-summary" icon="💰" />
-              <QuickActionCard title="Security Monitoring" description="Review login lockouts and security events" href="/admin/security-monitoring" icon="🛡️" />
-              <QuickActionCard title="Users Management" description="Manage roles and system access" href="/admin/users-management" icon="🔐" />
-              <QuickActionCard title="System Settings" description="Configure hospital policies" href="/admin/system-settings" icon="⚙️" />
-              <QuickActionCard title="Analytics" description="View hospital performance metrics" href="/admin/analytics" icon="📊" />
-              <QuickActionCard title="Appointments" description="Schedule or manage appointments" href="/appointments" icon="📅" />
-              <QuickActionCard title="Billing" description="Review payments and dues" href="/billing" icon="💳" />
-              <QuickActionCard title="Reports" description="Open operational reporting" href="/reports" icon="📑" />
-              <QuickActionCard title="My Profile" description="Edit profile information" href="/profile" icon="👤" />
+              <QuickActionCard title="Appointments" description="Schedule or manage your visits." href="/appointments" icon="appointments" />
+              <QuickActionCard title="Medical Records" description="Review your health records." href="/medical-records" icon="reports" />
+              <QuickActionCard title="Lab Reports" description="Track bookings and results." href="/lab-reports" icon="lab" />
+              <QuickActionCard title="Prescriptions" description="See active medication plans." href="/prescriptions" icon="prescriptions" />
+              <QuickActionCard title="Rooms" description="View current room and bed details." href="/rooms" icon="rooms" />
+              <QuickActionCard title="Notifications" description="Open all care alerts." href="/notifications" icon="notifications" />
+              <QuickActionCard title="Doctors" description="Browse available doctors." href="/doctors" icon="doctors" />
+              <QuickActionCard title="Heart Risk" description="Run or review your heart risk assessment." href="/ai-health/heart-risk" icon="heart" />
             </>
           ) : (
             <>
-              <QuickActionCard title="Appointments" description="Schedule or manage appointments" href="/appointments" icon="📅" />
-              <QuickActionCard title="Medical Records" description="View health records and history" href="/medical-records" icon="📋" />
-              <QuickActionCard title="Lab Reports" description="Check lab test results" href="/lab-reports" icon="🧪" />
-              <QuickActionCard title="Doctors" description="View available doctors" href="/doctors" icon="👨‍⚕️" />
-              <QuickActionCard title="Prescriptions" description="Manage prescriptions" href="/prescriptions" icon="💊" />
-              <QuickActionCard title="Health Report" description="Heart risk assessment" href="/ai-health/heart-risk" icon="❤️" />
-              <QuickActionCard title="AI Triage" description="Check symptom urgency" href="/ai-health/triage" icon="🩺" />
-              <QuickActionCard title="My Profile" description="Edit profile information" href="/profile" icon="👤" />
+              <QuickActionCard title="Appointments" description="Schedule and manage visit flow." href="/appointments" icon="appointments" />
+              <QuickActionCard title="Medical Records" description="Review health records and notes." href="/medical-records" icon="reports" />
+              <QuickActionCard title="Lab Reports" description="Open tests and diagnostic reports." href="/lab-reports" icon="lab" />
+              <QuickActionCard title="Prescriptions" description="Manage medication orders." href="/prescriptions" icon="prescriptions" />
+              <QuickActionCard title="Emergency Queue" description="Open urgent triage workflow." href="/emergency" icon="emergency" />
+              <QuickActionCard title="Doctors" description="View doctor roster and availability." href="/doctors" icon="doctors" />
+              <QuickActionCard title="AI Triage" description="Check symptom urgency quickly." href="/ai-health/triage" icon="spark" />
+              <QuickActionCard title="My Profile" description="Edit your account details." href="/profile" icon="profile" />
             </>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-interface StatCardProps {
-  title: string;
-  value: number;
-  icon: string;
-  color: 'blue' | 'green' | 'yellow' | 'purple';
-}
-
-function StatCard({ title, value, icon, color }: StatCardProps) {
-  const colorClasses = {
-    blue: 'bg-blue-50 border-blue-200',
-    green: 'bg-green-50 border-green-200',
-    yellow: 'bg-yellow-50 border-yellow-200',
-    purple: 'bg-purple-50 border-purple-200',
-  };
-
+function MetricLinkCard({ card, compact = false }: { card: MetricCard; compact?: boolean }) {
   return (
-    <div className={`rounded-xl border p-6 ${colorClasses[color]} shadow-sm`}>
-      <div className="flex items-center justify-between">
+    <Link
+      href={card.href}
+      className={`group rounded-[1.75rem] border ${compact ? 'p-5' : 'p-6'} shadow-sm transition hover:-translate-y-1 hover:shadow-md ${toneClasses[card.tone] || toneClasses.slate}`}
+    >
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
+          <p className="text-sm font-semibold">{card.title}</p>
+          <p className="mt-3 text-3xl font-extrabold tracking-tight">{card.value}</p>
+          <p className="mt-2 text-sm opacity-80">{card.description}</p>
         </div>
-        <span className="text-4xl">{icon}</span>
-      </div>
-    </div>
-  );
-}
-
-interface DashboardLinkProps {
-  title: string;
-  icon: string;
-  href: string;
-  count?: number;
-  status?: string;
-  color: 'red' | 'orange' | 'indigo' | 'pink';
-}
-
-function DashboardLink({ title, icon, href, count, status, color }: DashboardLinkProps) {
-  const colorClasses = {
-    red: 'bg-red-50 border-red-200 text-red-900 hover:bg-red-100',
-    orange: 'bg-orange-50 border-orange-200 text-orange-900 hover:bg-orange-100',
-    indigo: 'bg-indigo-50 border-indigo-200 text-indigo-900 hover:bg-indigo-100',
-    pink: 'bg-pink-50 border-pink-200 text-pink-900 hover:bg-pink-100',
-  };
-
-  return (
-    <Link href={href}>
-      <div className={`rounded-xl border p-6 ${colorClasses[color]} shadow-sm transition-all cursor-pointer`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">{title}</p>
-            <p className="mt-2 text-2xl font-bold">{count !== undefined ? count : status}</p>
-          </div>
-          <span className="text-4xl">{icon}</span>
-        </div>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
+          <AppIcon name={card.icon} className="h-5 w-5" />
+        </span>
       </div>
     </Link>
   );
 }
 
-interface QuickActionCardProps {
+function QuickActionCard({
+  title,
+  description,
+  href,
+  icon,
+}: {
   title: string;
   description: string;
   href: string;
-  icon: string;
-}
-
-function QuickActionCard({ title, description, href, icon }: QuickActionCardProps) {
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+}) {
   return (
-    <Link href={href}>
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">{title}</p>
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
-          </div>
-          <span className="text-2xl">{icon}</span>
+    <Link href={href} className="group rounded-[1.75rem] border border-slate-200 bg-white/88 p-5 shadow-sm transition hover:-translate-y-1 hover:border-teal-200 hover:shadow-md">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-semibold text-slate-900 transition group-hover:text-teal-700">{title}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
         </div>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 transition group-hover:bg-teal-50 group-hover:text-teal-700">
+          <AppIcon name={icon} className="h-5 w-5" />
+        </span>
       </div>
     </Link>
+  );
+}
+
+function ContentPanel({
+  title,
+  actionHref,
+  actionLabel,
+  children,
+}: {
+  title: string;
+  actionHref: string;
+  actionLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-slate-200 bg-white/88 p-6 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <Link href={actionHref} className="text-sm font-semibold text-teal-700 transition hover:text-teal-800">
+          {actionLabel}
+        </Link>
+      </div>
+      {children}
+    </div>
   );
 }

@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface LabBookingWorkflowItem {
@@ -29,7 +31,7 @@ function getErrorMessage(err: unknown, fallback: string) {
 }
 
 export default function LabWorkflowPage() {
-  const [userRole, setUserRole] = useState('');
+  const { userRole } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [bookings, setBookings] = useState<LabBookingWorkflowItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<WorkflowFilter>('ALL');
@@ -37,9 +39,6 @@ export default function LabWorkflowPage() {
   const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchWorkflow();
   }, []);
 
@@ -88,22 +87,13 @@ export default function LabWorkflowPage() {
     }
   };
 
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.labWorkflow}
+      title="lab workflow"
+      description="Verification and release workflow is restricted to administrators."
+    >
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Lab Verification & Release Workflow</h1>
@@ -168,6 +158,6 @@ export default function LabWorkflowPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

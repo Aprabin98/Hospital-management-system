@@ -21,6 +21,7 @@ from pharmacy import api_views as pharmacy_api_views
 from inpatient import api_views as inpatient_api_views
 from quality_compliance import api_views as quality_compliance_api_views
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'api'
 
@@ -38,6 +39,7 @@ urlpatterns = [
     path('auth/2fa-verify/', api_views.two_factor_verify_api, name='two_factor_verify'),
     path('auth/2fa-resend/', api_views.two_factor_resend_api, name='two_factor_resend'),
     path('auth/logout/', api_views.logout_api, name='logout'),
+    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/register/', api_views.register_api, name='register'),
     path('auth/password-reset/request/', api_views.password_reset_request_api, name='password_reset_request'),
     path('auth/password-reset/confirm/', api_views.password_reset_confirm_api, name='password_reset_confirm'),
@@ -229,6 +231,7 @@ urlpatterns = [
     path('ipd/stays/<int:stay_id>/progress-notes/', inpatient_api_views.ipd_progress_notes_api, name='ipd_progress_notes'),
     path('ipd/stays/<int:stay_id>/rounds/', inpatient_api_views.ipd_rounds_api, name='ipd_rounds'),
     path('ipd/stays/<int:stay_id>/discharge/', inpatient_api_views.ipd_discharge_api, name='ipd_discharge'),
+    path('ipd/stays/<int:stay_id>/medication-reconciliation/', inpatient_api_views.ipd_medication_reconciliation_api, name='ipd_medication_reconciliation'),
     path('ipd/stays/<int:stay_id>/mar/', inpatient_api_views.ipd_mar_api, name='ipd_mar'),
     path('ipd/stays/<int:stay_id>/procedures/', inpatient_api_views.ipd_procedures_api, name='ipd_procedures'),
     path('ipd/dashboard/', inpatient_api_views.ipd_dashboard_api, name='ipd_dashboard'),

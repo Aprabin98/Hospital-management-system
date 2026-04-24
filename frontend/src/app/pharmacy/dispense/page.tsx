@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface Medication {
@@ -52,13 +54,9 @@ export default function PendingDispenseQueuePage() {
     contraindication_notes: '',
   });
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
+  const { userRole } = useAuth();
   const role = (userRole || '').toUpperCase();
-  const canDispense = ['ADMIN', 'PHARMACIST'].includes(role);
+  const canDispense = ACCESS_MATRIX.pharmacy.includes(role as (typeof ACCESS_MATRIX.pharmacy)[number]);
 
   useEffect(() => {
     if (!canDispense) return;
@@ -154,22 +152,16 @@ export default function PendingDispenseQueuePage() {
     }
   };
 
-  if (!canDispense) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="text-red-600 font-semibold">Access Denied. Pharmacist role required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   const pendingCount = queue.filter(t => t.status === 'PENDING').length;
   const approvedCount = queue.filter(t => t.status === 'APPROVED').length;
 
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.pharmacy}
+      title="dispense queue"
+      description="Medication dispensing is restricted to pharmacy-authorized roles."
+    >
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Pending Dispense Queue</h1>
           <p className="mt-2 text-gray-600">Prescriptions awaiting medication selection and dispensing</p>
@@ -410,6 +402,6 @@ export default function PendingDispenseQueuePage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

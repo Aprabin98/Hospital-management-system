@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import { apiClient } from '@/lib/api';
@@ -125,7 +125,7 @@ export default function ReportsPage() {
     URL.revokeObjectURL(objectUrl);
   };
 
-  const downloadCsv = async (path: string, fileName: string) => {
+  const downloadCsv = useCallback(async (path: string, fileName: string) => {
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
     if (!token) {
       throw new Error('Authentication token not found. Please sign in again.');
@@ -145,13 +145,13 @@ export default function ReportsPage() {
 
     const blob = await response.blob();
     saveBlob(blob, fileName);
-  };
+  }, []);
 
-  const downloadJson = async (path: string, fileName: string) => {
+  const downloadJson = useCallback(async (path: string, fileName: string) => {
     const payload = await apiClient.get(path);
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     saveBlob(blob, fileName);
-  };
+  }, []);
 
   const runExport = async (actionId: string, run: () => Promise<void>) => {
     try {
@@ -191,7 +191,7 @@ export default function ReportsPage() {
       allowedRoles: ['ADMIN', 'QUALITY_COMPLIANCE_OFFICER'],
       run: () => downloadJson('/compliance/evidence-export/', `compliance-evidence-${new Date().toISOString().slice(0, 10)}.json`),
     },
-  ], []);
+  ], [downloadCsv, downloadJson]);
 
   const visibleExportActions = exportActions.filter((action) => action.allowedRoles.includes(role));
 

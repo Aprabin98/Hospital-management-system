@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useRoleAccess } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface DischargePackage {
@@ -39,15 +41,9 @@ export default function DischargePage() {
   const [current, setCurrent] = useState<DischargePackage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
+  const { canAccess } = useRoleAccess(ACCESS_MATRIX.ipdRounds);
 
-  const role = (userRole || '').toUpperCase();
-  const canAccess = ['ADMIN', 'DOCTOR'].includes(role);
-
-  const loadCurrent = async () => {
+  const loadCurrent = useCallback(async () => {
     if (!stayId) return;
     try {
       const pkg = await apiClient.get<DischargePackage>(`/ipd/stays/${stayId}/discharge/`);
@@ -66,13 +62,12 @@ export default function DischargePage() {
     } catch {
       setCurrent(null);
     }
-  };
+  }, [stayId]);
 
   useEffect(() => {
     if (!canAccess) return;
-    loadCurrent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stayId, canAccess]);
+    void loadCurrent();
+  }, [canAccess, loadCurrent]);
 
   const savePackage = async (finalize = false) => {
     if (!stayId) return;
@@ -100,19 +95,13 @@ export default function DischargePage() {
     }
   };
 
-  if (!canAccess) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="font-semibold text-red-600">Access Denied. Doctor/Admin role required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-5 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.ipdRounds}
+      title="discharge package"
+      description="Discharge package access is restricted to physician and administrator roles."
+    >
+      <div className="space-y-5">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Discharge Package - Stay #{stayId}</h1>
           <p className="text-sm text-gray-600">Complete all mandatory fields and clearances before final approval.</p>
@@ -218,6 +207,6 @@ export default function DischargePage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

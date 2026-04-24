@@ -4,6 +4,7 @@ import React, { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
+import { setStoredAuthState } from '@/lib/auth';
 import { AuthResponse } from '@/types';
 
 export default function LoginForm() {
@@ -32,16 +33,12 @@ export default function LoginForm() {
         return;
       }
 
-      // Store auth token and user info
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('authToken', response.token);
-        if (response.refresh) {
-          localStorage.setItem('refreshToken', response.refresh);
-        }
-        localStorage.setItem('userRole', response.role);
-        localStorage.setItem('user', JSON.stringify(response.user));
-      }
+      setStoredAuthState({
+        token: response.token,
+        refreshToken: response.refresh || null,
+        role: response.role,
+        user: response.user,
+      });
 
       toast.success('Login successful!');
       router.push('/dashboard');
@@ -65,15 +62,12 @@ export default function LoginForm() {
         otp: otpCode,
       });
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('authToken', response.token);
-        if (response.refresh) {
-          localStorage.setItem('refreshToken', response.refresh);
-        }
-        localStorage.setItem('userRole', response.role);
-        localStorage.setItem('user', JSON.stringify(response.user));
-      }
+      setStoredAuthState({
+        token: response.token,
+        refreshToken: response.refresh || null,
+        role: response.role,
+        user: response.user,
+      });
 
       toast.success('Login successful!');
       router.push('/dashboard');

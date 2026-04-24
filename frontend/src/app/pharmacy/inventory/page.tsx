@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface MedicationInventory {
@@ -50,13 +52,9 @@ export default function InventoryManagementPage() {
     is_controlled_drug: false,
   });
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
+  const { userRole } = useAuth();
   const role = (userRole || '').toUpperCase();
-  const canManageInventory = ['ADMIN', 'PHARMACIST'].includes(role);
+  const canManageInventory = ACCESS_MATRIX.pharmacy.includes(role as (typeof ACCESS_MATRIX.pharmacy)[number]);
 
   useEffect(() => {
     if (!canManageInventory) return;
@@ -146,19 +144,13 @@ export default function InventoryManagementPage() {
     total_value: inventory.reduce((sum, m) => sum + m.total_value, 0),
   };
 
-  if (!canManageInventory) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="text-red-600 font-semibold">Access Denied. Pharmacist role required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.pharmacy}
+      title="inventory management"
+      description="Pharmacy inventory is restricted to pharmacy-authorized roles."
+    >
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Medication Inventory</h1>
           <p className="mt-2 text-gray-600">Track stock levels, expiry dates, and batch management</p>
@@ -441,6 +433,6 @@ export default function InventoryManagementPage() {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

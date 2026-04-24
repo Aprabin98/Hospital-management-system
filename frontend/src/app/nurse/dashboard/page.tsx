@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FormEvent, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { MainLayout } from '@/components/Layout';
@@ -320,7 +320,7 @@ export default function NurseDashboardPage() {
     }
   };
 
-  const loadNursingHistory = async () => {
+  const loadNursingHistory = useCallback(async () => {
     if (!appointmentId) {
       setNotesHistory([]);
       return;
@@ -332,11 +332,11 @@ export default function NurseDashboardPage() {
     } catch {
       setNotesHistory([]);
     }
-  };
+  }, [appointmentId]);
 
   useEffect(() => {
-    loadNursingHistory();
-  }, [appointmentId]);
+    void loadNursingHistory();
+  }, [loadNursingHistory]);
 
   const refreshPatientSafetySnapshot = async () => {
     if (!selectedPatientId) {

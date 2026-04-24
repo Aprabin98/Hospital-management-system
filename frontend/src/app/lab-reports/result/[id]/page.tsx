@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
@@ -14,16 +14,13 @@ export default function ResultDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchResultDetails = useCallback(async () => {
     if (!resultId) {
       setError('Invalid result id');
       setIsLoading(false);
       return;
     }
-    fetchResultDetails();
-  }, [resultId]);
 
-  const fetchResultDetails = async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get(`/lab/results/${resultId}/`);
@@ -34,7 +31,11 @@ export default function ResultDetailsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [resultId]);
+
+  useEffect(() => {
+    void fetchResultDetails();
+  }, [fetchResultDetails]);
 
   if (isLoading) {
     return (

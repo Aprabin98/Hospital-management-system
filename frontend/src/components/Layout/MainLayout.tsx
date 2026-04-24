@@ -23,27 +23,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.12),transparent_28%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-600 text-sm">Loading...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-700/20 border-t-teal-700" />
+          <p className="text-sm font-medium text-slate-600">Preparing your workspace...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-transparent">
       <Sidebar isOpen={sidebarOpen} />
-
-      {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
         <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto bg-gray-100">
+        <main className="flex-1 overflow-auto bg-transparent">
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             {children}
           </div>

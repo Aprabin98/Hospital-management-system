@@ -1,0 +1,6 @@
+# Automated DB Backup (Docker Cron)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Every day at 2am UTC
+0 2 * * * pg_dump -h db -U $DB_USER -d $DB_NAME -F c -f /backups/hms_db_$(date +\%Y\%m\%d).dump

@@ -16,7 +16,7 @@ django.setup()
 import requests
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
-from users.models import PatientProfile, DoctorProfile
+from users.models import PatientProfile
 
 User = get_user_model()
 BASE_URL = "http://localhost:8000/api"

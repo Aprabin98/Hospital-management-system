@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 import { PaginatedResponse } from '@/types';
@@ -37,7 +39,7 @@ export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState('');
+  const { userRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState<string>('ALL');
   const [filterModel, setFilterModel] = useState<string>('ALL');
@@ -50,9 +52,6 @@ export default function AuditLogsPage() {
   const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchAuditLogs();
   }, []);
 
@@ -147,25 +146,13 @@ export default function AuditLogsPage() {
     return colors[color] || colors.gray;
   };
 
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-gray-500">You do not have permission to access this page.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.audit}
+      title="audit logs"
+      description="Audit logs are restricted to administrators."
+    >
+      <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>
@@ -463,6 +450,6 @@ export default function AuditLogsPage() {
           </div>
         </div>
       )}
-    </MainLayout>
+    </ProtectedPage>
   );
 }

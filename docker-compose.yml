@@ -1,0 +1,155 @@
+    backup:
+      image: postgres:16
+      container_name: hms_backup
+      entrypoint: ["/bin/bash", "-c", "cron && tail -f /dev/null"]
+      environment:
+        POSTGRES_DB: ${DB_NAME:-hms_db}
+        POSTGRES_USER: ${DB_USER:-hms_user}
+        POSTGRES_PASSWORD: ${DB_PASSWORD:-StrongPassword123!}
+      volumes:
+        - ./backend/backup_cron:/etc/cron.d/backup_cron
+        - db_backups:/backups
+      depends_on:
+        db:
+          condition: service_healthy
+  netdata:
+    image: netdata/netdata:latest
+    container_name: hms_netdata
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DO_NOT_TRACK=1
+    restart: unless-stopped
+services:
+  db:
+    image: postgres:16
+    container_name: hms_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hms_db}
+      POSTGRES_USER: ${DB_USER:-hms_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-StrongPassword123!}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hms_user} -d ${DB_NAME:-hms_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hms_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hms_backend
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DEBUG: "false"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_HOST: db
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    ports:
+      # Expose only to internal network; Caddy handles public TLS
+      - "8000:8000"
+    volumes:
+      - ./backend/media:/app/media
+      # Optionally mount logs for aggregation
+      - ./backend/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hms_celery_worker
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DEBUG: "false"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_HOST: db
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: ["celery", "-A", "hms_project", "worker", "-l", "info"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hms_celery_beat
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DEBUG: "false"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_HOST: db
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: ["celery", "-A", "hms_project", "beat", "-l", "info"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: hms_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - EMAIL=${ADMIN_EMAIL:-admin@example.com}
+
+volumes:
+  postgres_data:
+  redis_data:
+  db_backups:
+  caddy_data:
+  caddy_config:

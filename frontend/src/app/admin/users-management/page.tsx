@@ -30,7 +30,6 @@ export default function UsersManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -40,12 +39,7 @@ export default function UsersManagementPage() {
   const [editingRole, setEditingRole] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
-  const isAdmin = userRole === 'ADMIN';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchUsers();
   }, []);
 
@@ -180,22 +174,6 @@ export default function UsersManagementPage() {
     };
     return colors[color] || colors.gray;
   };
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-gray-500">You do not have permission to access this page.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

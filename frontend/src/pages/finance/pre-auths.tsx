@@ -1,12 +1,8 @@
-/**
- * Insurance Pre-Authorization Management - Phase 7
- * Path: frontend/src/pages/finance/pre-auths.tsx
- * Features: Request and track pre-authorizations for treatments
- */
-
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { ProtectedPage } from '@/components/Auth';
+import { EmptyState, PageHeader, SectionCard, StatCard, StatusBadge } from '@/components/UI';
+import { ACCESS_MATRIX } from '@/lib/access';
+import { apiClient } from '@/lib/api';
 
 interface PreAuth {
   id: number;
@@ -17,9 +13,7 @@ interface PreAuth {
   approved_amount: number | null;
   status: string;
   pre_auth_number: string | null;
-  valid_from: string | null;
   valid_until: string | null;
-  created_at: string;
 }
 
 export default function PreAuthsPage() {
@@ -35,129 +29,110 @@ export default function PreAuthsPage() {
   });
 
   useEffect(() => {
-    fetchPreAuths();
+    const fetchPreAuths = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const response = await apiClient.get<{ results?: PreAuth[] }>('/pre-auths/', {
+          params: filterStatus ? { status: filterStatus } : {},
+        });
+        setPreAuths(response.results || []);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load pre-authorizations');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void fetchPreAuths();
   }, [filterStatus]);
 
-  const fetchPreAuths = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/pre-auths/`;
-      if (filterStatus) url += `?status=${filterStatus}`;
+  const summary = useMemo(
+    () => ({
+      approved: preAuths.filter((item) => item.status === 'APPROVED').length,
+      pending: preAuths.filter((item) => item.status === 'REQUESTED').length,
+      total: preAuths.length,
+    }),
+    [preAuths]
+  );
 
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
+  const handleCreatePreAuth = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await apiClient.post('/pre-auths/', {
+        treatment_code: formData.treatment_code,
+        estimated_amount: formData.estimated_amount,
+        insurance_provider: formData.insurance_provider,
       });
 
-      setPreAuths(response.data.results || response.data);
+      setShowCreateModal(false);
+      setFormData({ treatment_code: '', estimated_amount: '', insurance_provider: '' });
+      setFilterStatus('');
+      setLoading(true);
+      const response = await apiClient.get<{ results?: PreAuth[] }>('/pre-auths/');
+      setPreAuths(response.results || []);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load pre-authorizations');
+      setError(err?.message || 'Failed to create pre-authorization');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreatePreAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/pre-auths/`,
-        {
-          treatment_code: formData.treatment_code,
-          estimated_amount: formData.estimated_amount,
-          insurance_provider: formData.insurance_provider,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  const handleApprovePreAuth = async (preAuthId: number) => {
+    const approvedAmount = window.prompt('Enter approved amount');
+    if (!approvedAmount) return;
 
-      alert('Pre-authorization request created successfully');
-      setFormData({ treatment_code: '', estimated_amount: '', insurance_provider: '' });
-      setShowCreateModal(false);
-      fetchPreAuths();
+    try {
+      await apiClient.post(`/pre-auths/${preAuthId}/approve/`, {
+        approved_amount: approvedAmount,
+      });
+
+      setPreAuths((current) =>
+        current.map((item) =>
+          item.id === preAuthId
+            ? { ...item, status: 'APPROVED', approved_amount: Number(approvedAmount) }
+            : item
+        )
+      );
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to create pre-authorization');
+      setError(err?.message || 'Failed to approve pre-authorization');
     }
   };
-
-  const handleApprovePreAuth = async (preAuthId: number, approvedAmount: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/pre-auths/${preAuthId}/approve/`,
-        { approved_amount: approvedAmount },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      alert('Pre-authorization approved');
-      fetchPreAuths();
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to approve pre-authorization');
-    }
-  };
-
-  const statusColors: Record<string, string> = {
-    REQUESTED: 'bg-blue-100 text-blue-700',
-    APPROVED: 'bg-green-100 text-green-700',
-    REJECTED: 'bg-red-100 text-red-700',
-    PARTIAL: 'bg-yellow-100 text-yellow-700',
-    EXPIRED: 'bg-gray-100 text-gray-700',
-  };
-
-  if (loading) return <div className="p-8 text-center">Loading pre-authorizations...</div>;
-
-  const approvedCount = preAuths.filter((p) => p.status === 'APPROVED').length;
-  const pendingCount = preAuths.filter((p) => p.status === 'REQUESTED').length;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Pre-Authorization</h1>
-            <p className="text-gray-600">Treatment pre-authorization requests and approvals</p>
-          </div>
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.finance}
+      title="pre-authorizations"
+      description="Pre-authorization workflows are restricted to finance and insurance roles."
+    >
+      <PageHeader
+        title="Insurance Pre-Authorization"
+        description="Track treatment approvals, insurer limits, and validity windows from the finance shell."
+        actions={
           <button
+            type="button"
             onClick={() => setShowCreateModal(true)}
-            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
           >
-            + Request Pre-Auth
+            Request Pre-Auth
           </button>
-        </div>
+        }
+      />
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
-            {error}
-          </div>
-        )}
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Approved" value={summary.approved} tone="green" />
+        <StatCard label="Pending" value={summary.pending} tone="blue" />
+        <StatCard label="Total Requests" value={summary.total} tone="violet" />
+      </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <p className="text-green-700 font-semibold text-lg">✅ Approved</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">{approvedCount}</p>
-            <p className="text-sm text-green-600 mt-1">Ready for treatment</p>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <p className="text-blue-700 font-semibold text-lg">⏳ Pending</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{pendingCount}</p>
-            <p className="text-sm text-blue-600 mt-1">Awaiting insurer approval</p>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-            <p className="text-purple-700 font-semibold text-lg">📋 Total Requests</p>
-            <p className="text-3xl font-bold text-purple-600 mt-2">{preAuths.length}</p>
-            <p className="text-sm text-purple-600 mt-1">In the system</p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <label className="text-sm font-semibold text-gray-700">Filter by Status:</label>
+      <SectionCard title="Pre-Authorization Queue" subtitle="Review status, approved amounts, and remaining validity windows.">
+        <div className="mb-4">
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="mt-2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            onChange={(event) => setFilterStatus(event.target.value)}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm"
           >
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             <option value="REQUESTED">Requested</option>
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
@@ -166,180 +141,94 @@ export default function PreAuthsPage() {
           </select>
         </div>
 
-        {/* Pre-Auths Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {preAuths.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No pre-authorizations found</div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Pre-Auth #
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Patient
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Insurer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Treatment
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700">
-                    Estimated
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700">
-                    Approved
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Valid Until
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {preAuths.map((preAuth) => (
-                  <tr key={preAuth.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <span className="font-semibold text-gray-900">
-                        {preAuth.pre_auth_number || '—'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm">{preAuth.patient_name}</td>
-                    <td className="px-6 py-4 text-sm">{preAuth.insurance_provider}</td>
-                    <td className="px-6 py-4 text-sm">{preAuth.treatment_code}</td>
-                    <td className="px-6 py-4 text-right font-semibold">
-                      Rs.{preAuth.estimated_amount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {preAuth.approved_amount ? (
-                        <span className="text-green-600 font-semibold">
-                          Rs.{preAuth.approved_amount.toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          statusColors[preAuth.status] || statusColors.REQUESTED
-                        }`}
-                      >
-                        {preAuth.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {preAuth.valid_until
-                        ? new Date(preAuth.valid_until).toLocaleDateString()
-                        : '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      {preAuth.status === 'REQUESTED' && (
-                        <button
-                          onClick={() => {
-                            const amount = prompt('Enter approved amount:');
-                            if (amount) handleApprovePreAuth(preAuth.id, amount);
-                          }}
-                          className="text-green-600 hover:text-green-700 text-sm font-semibold"
-                        >
-                          Approve
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        {loading ? <EmptyState title="Loading pre-authorizations" description="Refreshing payer approvals and expiry windows." /> : null}
+        {!loading && error ? <EmptyState title="Pre-authorizations unavailable" description={error} /> : null}
+        {!loading && !error && preAuths.length === 0 ? <EmptyState title="No pre-authorizations found" description="Create a request to start the pre-auth workflow." /> : null}
 
-        {/* Create Pre-Auth Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Request Pre-Authorization</h2>
+        {!loading && !error && preAuths.length > 0 ? (
+          <div className="space-y-3">
+            {preAuths.map((preAuth) => (
+              <div key={preAuth.id} className="rounded-lg border border-gray-200 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-gray-900">{preAuth.pre_auth_number || `PRE-${preAuth.id}`}</p>
+                      <StatusBadge value={preAuth.status} />
+                    </div>
+                    <p className="text-sm text-gray-700">{preAuth.patient_name}</p>
+                    <p className="text-sm text-gray-600">
+                      {preAuth.insurance_provider} | {preAuth.treatment_code}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Estimated: Rs. {preAuth.estimated_amount.toLocaleString()}
+                      {preAuth.approved_amount ? ` | Approved: Rs. ${preAuth.approved_amount.toLocaleString()}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Valid until: {preAuth.valid_until ? new Date(preAuth.valid_until).toLocaleDateString() : 'Pending insurer decision'}
+                    </p>
+                  </div>
+                  {preAuth.status === 'REQUESTED' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleApprovePreAuth(preAuth.id)}
+                      className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+                    >
+                      Approve
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </SectionCard>
+
+      {showCreateModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-gray-900">Request Pre-Authorization</h2>
+            <form onSubmit={handleCreatePreAuth} className="mt-4 space-y-4">
+              <input
+                type="text"
+                required
+                value={formData.treatment_code}
+                onChange={(event) => setFormData((current) => ({ ...current, treatment_code: event.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+                placeholder="Treatment code"
+              />
+              <input
+                type="text"
+                required
+                value={formData.insurance_provider}
+                onChange={(event) => setFormData((current) => ({ ...current, insurance_provider: event.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+                placeholder="Insurance provider"
+              />
+              <input
+                type="number"
+                required
+                step="0.01"
+                value={formData.estimated_amount}
+                onChange={(event) => setFormData((current) => ({ ...current, estimated_amount: event.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+                placeholder="Estimated amount"
+              />
+              <div className="flex justify-end gap-2">
                 <button
+                  type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
                 >
-                  ×
+                  Cancel
+                </button>
+                <button type="submit" className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">
+                  Submit
                 </button>
               </div>
-              <form onSubmit={handleCreatePreAuth} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Treatment Code
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.treatment_code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, treatment_code: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="e.g., CARDIAC_BYPASS"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Insurance Provider
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.insurance_provider}
-                    onChange={(e) =>
-                      setFormData({ ...formData, insurance_provider: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="e.g., Aetna, UnitedHealth"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Estimated Cost (Rs.)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.estimated_amount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, estimated_amount: e.target.value })
-                    }
-                    required
-                    step="0.01"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="flex gap-3 justify-end pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    Submit Request
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      ) : null}
+    </ProtectedPage>
   );
 }

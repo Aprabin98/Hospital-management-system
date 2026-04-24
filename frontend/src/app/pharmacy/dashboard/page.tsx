@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface DashboardMetrics {
@@ -31,13 +33,11 @@ export default function PharmacyDashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
-  const role = (userRole || '').toUpperCase();
-  const canAccessPharmacy = ['ADMIN', 'PHARMACIST'].includes(role);
+  const { userRole } = useAuth();
+  const canAccessPharmacy = useMemo(
+    () => ACCESS_MATRIX.pharmacy.includes((userRole || '').toUpperCase() as (typeof ACCESS_MATRIX.pharmacy)[number]),
+    [userRole]
+  );
 
   useEffect(() => {
     if (!canAccessPharmacy) return;
@@ -58,19 +58,13 @@ export default function PharmacyDashboardPage() {
     loadMetrics();
   }, [canAccessPharmacy]);
 
-  if (!canAccessPharmacy) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="text-red-600 font-semibold">Access Denied. Pharmacist role required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.pharmacy}
+      title="pharmacy dashboard"
+      description="Pharmacy operations are restricted to pharmacy-authorized roles."
+    >
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Pharmacy Dashboard</h1>
           <p className="mt-2 text-gray-600">Medication management, dispensing queue, and inventory overview</p>
@@ -181,6 +175,6 @@ export default function PharmacyDashboardPage() {
           <div className="text-center text-gray-500">Failed to load metrics</div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

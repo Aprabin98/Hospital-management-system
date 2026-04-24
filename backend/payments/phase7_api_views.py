@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.db.models import Q, Sum, Count
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from .models import (
     Invoice, InvoiceLineItem, InsuranceClaim, ClaimAuditLog,
@@ -93,14 +94,28 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if request.user.role not in ['BILLING_OFFICER', 'ADMIN']:
             return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
         
-        amount_paid = request.data.get('amount_paid')
-        if not amount_paid:
+        amount_paid_raw = request.data.get('amount_paid')
+        if amount_paid_raw in [None, '']:
             return Response(
                 {'detail': 'amount_paid is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        invoice.amount_paid += float(amount_paid)
+
+        try:
+            amount_paid = Decimal(str(amount_paid_raw))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response(
+                {'detail': 'amount_paid must be a valid number'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if amount_paid <= 0:
+            return Response(
+                {'detail': 'amount_paid must be greater than 0'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        invoice.amount_paid += amount_paid
         
         if invoice.amount_paid >= invoice.total_amount:
             invoice.status = 'PAID'
@@ -115,7 +130,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             request=request,
             target=invoice,
             description=f'Invoice {invoice.invoice_number} payment recorded',
-            metadata={'invoice_id': invoice.id, 'amount_paid': amount_paid}
+            metadata={'invoice_id': invoice.id, 'amount_paid': str(amount_paid)}
         )
         
         return Response(InvoiceSerializer(invoice).data)

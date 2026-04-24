@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { apiClient, ApiError } from '@/lib/api';
 import { AuthResponse } from '@/types';
+import {
+  clearStoredAuthState,
+  getStoredAuthState,
+  hasAllowedRole,
+  normalizeRole,
+  onAuthStateChange,
+  setStoredAuthState,
+} from '@/lib/auth';
 
 interface UseApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -49,25 +57,34 @@ export function useApi<T>(
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthResponse['user'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('authToken');
-      const role = localStorage.getItem('userRole');
-      setIsAuthenticated(!!token);
-      setUserRole(role);
+    const syncAuthState = () => {
+      const state = getStoredAuthState();
+      setIsAuthenticated(!!state.token);
+      setUserRole(state.userRole);
+      setUser(state.user);
       setIsLoading(false);
-    }
+    };
+
+    syncAuthState();
+    return onAuthStateChange(syncAuthState);
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResponse> => {
     try {
       const response = await apiClient.post<AuthResponse>('/auth/login/', { email, password });
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userRole', response.role);
+      setStoredAuthState({
+        token: response.token,
+        refreshToken: response.refresh || null,
+        role: response.role,
+        user: response.user,
+      });
       setIsAuthenticated(true);
-      setUserRole(response.role);
+      setUserRole(normalizeRole(response.role));
+      setUser(response.user);
       return response;
     } catch (error) {
       throw error;
@@ -80,19 +97,29 @@ export function useAuth() {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userRole');
+      clearStoredAuthState();
       setIsAuthenticated(false);
       setUserRole(null);
+      setUser(null);
     }
   }, []);
 
   return {
     isAuthenticated,
     userRole,
+    user,
     isLoading,
     login,
     logout,
+  };
+}
+
+export function useRoleAccess(allowedRoles: readonly string[]) {
+  const auth = useAuth();
+
+  return {
+    ...auth,
+    canAccess: auth.isAuthenticated && hasAllowedRole(auth.userRole, allowedRoles),
   };
 }
 

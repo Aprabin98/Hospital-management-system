@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { MainLayout } from '@/components/Layout';
 import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -49,7 +49,7 @@ function ReviewsPageContent() {
     [eligible, selectedAppointmentId]
   );
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await apiClient.get<ReviewsPayload>('/reviews/');
@@ -74,14 +74,14 @@ function ReviewsPageContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [appointmentFromQuery]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
     }
-    fetchData();
-  }, [appointmentFromQuery]);
+    void fetchData();
+  }, [fetchData]);
 
   const submitReview = async (e: React.FormEvent) => {
     e.preventDefault();

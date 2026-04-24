@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hospital Management System",
-  description: "A modern hospital management system with patient records, appointments, and medical history",
+  title: "MediMind HMS",
+  description: "Production-ready hospital operations workspace for appointments, records, diagnostics, billing, and care coordination.",
 };
 
 export default function RootLayout({

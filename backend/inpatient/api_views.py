@@ -13,6 +13,7 @@ from users.models import PatientProfile
 from .api_serializers import (
     DailyRoundSerializer,
     DischargePackageSerializer,
+    DischargeMedicationReconciliationSerializer,
     InpatientStaySerializer,
     MedicationAdministrationRecordSerializer,
     ProcedureScheduleSerializer,
@@ -21,6 +22,7 @@ from .api_serializers import (
 from .models import (
     DailyRound,
     DischargePackage,
+    DischargeMedicationReconciliation,
     InpatientStay,
     MedicationAdministrationRecord,
     ProcedureSchedule,
@@ -147,6 +149,10 @@ def ipd_stay_detail_api(request, stay_id):
             'latest_round': DailyRoundSerializer(stay.daily_rounds.first()).data if stay.daily_rounds.exists() else None,
             'latest_progress_note': ProgressNoteSerializer(stay.progress_notes.first()).data if stay.progress_notes.exists() else None,
             'discharge_package': DischargePackageSerializer(stay.discharge_package).data if hasattr(stay, 'discharge_package') else None,
+            'medication_reconciliation': (
+                DischargeMedicationReconciliationSerializer(stay.medication_reconciliation).data
+                if hasattr(stay, 'medication_reconciliation') else None
+            ),
         }
         return Response(payload)
 
@@ -325,8 +331,11 @@ def ipd_discharge_api(request, stay_id):
             package.doctor_signed_off_by = request.user
             package.doctor_signed_off_at = timezone.now()
 
+        med_reconciliation = DischargeMedicationReconciliation.objects.filter(inpatient_stay=stay).first()
+        med_reconciliation_complete = bool(med_reconciliation and med_reconciliation.is_complete)
+
         finalize = bool(data.get('finalize'))
-        package.final_approved = finalize and package.checklist_complete
+        package.final_approved = finalize and package.checklist_complete and med_reconciliation_complete
         package.save()
 
         if package.final_approved:
@@ -369,6 +378,55 @@ def ipd_discharge_api(request, stay_id):
         return Response(DischargePackageSerializer(package).data)
 
     return Response({'detail': 'Only doctor/admin can create discharge package.'}, status=status.HTTP_403_FORBIDDEN)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def ipd_medication_reconciliation_api(request, stay_id):
+    if not _has_any_role(request.user, ['ADMIN', 'DOCTOR', 'PHARMACIST', 'NURSE']):
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    stay = _get_stay_or_404(stay_id)
+    if not stay:
+        return Response({'detail': 'Inpatient stay not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    reconciliation = DischargeMedicationReconciliation.objects.filter(inpatient_stay=stay).first()
+
+    if request.method == 'GET':
+        if not reconciliation:
+            return Response({'detail': 'Medication reconciliation not created yet.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(DischargeMedicationReconciliationSerializer(reconciliation).data)
+
+    data = request.data
+    if not reconciliation:
+        reconciliation = DischargeMedicationReconciliation.objects.create(inpatient_stay=stay)
+
+    reconciliation.home_medications = (data.get('home_medications', reconciliation.home_medications) or '').strip()
+    reconciliation.discharge_medications = (data.get('discharge_medications', reconciliation.discharge_medications) or '').strip()
+    reconciliation.reconciliation_notes = (data.get('reconciliation_notes', reconciliation.reconciliation_notes) or '').strip()
+    reconciliation.interactions_checked = bool(data.get('interactions_checked', reconciliation.interactions_checked))
+    reconciliation.allergies_reviewed = bool(data.get('allergies_reviewed', reconciliation.allergies_reviewed))
+    reconciliation.patient_counseled = bool(data.get('patient_counseled', reconciliation.patient_counseled))
+
+    if data.get('mark_reconciled'):
+        reconciliation.reconciled_by = request.user
+        reconciliation.reconciled_at = timezone.now()
+
+    reconciliation.save()
+
+    log_audit_event(
+        action='IPD_MEDICATION_RECONCILIATION_UPDATED',
+        target=reconciliation,
+        description='Medication reconciliation created/updated',
+        metadata={
+            'stay_id': stay.id,
+            'is_complete': reconciliation.is_complete,
+        },
+        actor=request.user,
+        request=request,
+    )
+
+    return Response(DischargeMedicationReconciliationSerializer(reconciliation).data)
 
 
 @api_view(['GET', 'POST'])

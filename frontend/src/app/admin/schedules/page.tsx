@@ -44,7 +44,6 @@ const DAY_LABELS: Record<Schedule['day'], string> = {
 
 
 export default function ManageSchedulesPage() {
-  const [userRole, setUserRole] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -61,9 +60,6 @@ export default function ManageSchedulesPage() {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchData();
   }, []);
 
@@ -154,28 +150,11 @@ export default function ManageSchedulesPage() {
     }
   };
 
-  const isAdmin = userRole === 'ADMIN';
-
   const filteredSchedules = schedules.filter((item) => {
     if (selectedDay !== 'ALL' && item.day !== selectedDay) return false;
     if (selectedDoctor !== 'ALL' && item.doctor !== selectedDoctor) return false;
     return true;
   });
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

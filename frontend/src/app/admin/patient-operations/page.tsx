@@ -48,21 +48,12 @@ function downloadCsv(filename: string, rows: string[][]) {
 }
 
 export default function PatientOperationsPage() {
-  const [userRole] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('userRole') || '').toUpperCase();
-    }
-    return '';
-  });
-
   const [loading, setLoading] = useState(true);
   const [queryInput, setQueryInput] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-
-  const canView = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
 
   const loadPatients = async (targetPage: number, targetQuery: string) => {
     try {
@@ -121,21 +112,6 @@ export default function PatientOperationsPage() {
     downloadCsv(`patient-ops-page-${page}.csv`, rows);
     toast.success('CSV exported');
   };
-
-  if (!canView) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

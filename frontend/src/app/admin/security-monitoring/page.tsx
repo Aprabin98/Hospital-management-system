@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface LoginAttemptItem {
@@ -44,19 +46,14 @@ const SECURITY_TONES: Record<LoginAttemptItem['status'], string> = {
 };
 
 export default function SecurityMonitoringPage() {
-  const [userRole] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('userRole') || '').toUpperCase();
-    }
-    return '';
-  });
+  const { userRole } = useAuth();
   const [loading, setLoading] = useState(true);
   const [loginAttempts, setLoginAttempts] = useState<LoginAttemptItem[]>([]);
   const [loginFailures, setLoginFailures] = useState<AuditLogItem[]>([]);
   const [securityEvents, setSecurityEvents] = useState<AuditLogItem[]>([]);
   const [summary, setSummary] = useState({ locked: 0, failed: 0, totalAttempts: 0 });
 
-  const isAdmin = userRole === 'ADMIN';
+  const isAdmin = (userRole || '').toUpperCase() === 'ADMIN';
 
   useEffect(() => {
     loadSecurityData();
@@ -88,24 +85,13 @@ export default function SecurityMonitoringPage() {
 
   const recentIssues = useMemo(() => loginAttempts.filter((item) => item.status !== 'CLEAR').slice(0, 8), [loginAttempts]);
 
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.security}
+      title="security monitoring"
+      description="Security monitoring is restricted to administrators."
+    >
+      <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Security Monitoring</h1>
@@ -207,6 +193,6 @@ export default function SecurityMonitoringPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

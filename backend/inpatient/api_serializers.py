@@ -5,6 +5,7 @@ from .models import (
     ProgressNote,
     DailyRound,
     DischargePackage,
+    DischargeMedicationReconciliation,
     MedicationAdministrationRecord,
     ProcedureSchedule,
 )
@@ -219,3 +220,36 @@ class DischargePackageSerializer(serializers.ModelSerializer):
 
     def get_checklist_complete(self, obj):
         return obj.checklist_complete
+
+
+class DischargeMedicationReconciliationSerializer(serializers.ModelSerializer):
+    reconciled_by_name = serializers.SerializerMethodField()
+    is_complete = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DischargeMedicationReconciliation
+        fields = [
+            'id',
+            'inpatient_stay',
+            'home_medications',
+            'discharge_medications',
+            'reconciliation_notes',
+            'interactions_checked',
+            'allergies_reviewed',
+            'patient_counseled',
+            'reconciled_by',
+            'reconciled_by_name',
+            'reconciled_at',
+            'is_complete',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_reconciled_by_name(self, obj):
+        if not obj.reconciled_by_id:
+            return ''
+        user = obj.reconciled_by
+        return f"{user.first_name} {user.last_name}".strip() or user.email
+
+    def get_is_complete(self, obj):
+        return obj.is_complete

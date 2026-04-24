@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { PaginatedResponse } from '@/types';
 
 interface LabTest {
@@ -97,12 +98,16 @@ export default function TestsPage() {
   const totalPages = Math.ceil(filteredTests.length / pageSize);
 
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.internalTools}
+      title="internal test registry"
+      description="This route is restricted to administrators because it is internal tooling."
+    >
+      <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Lab Tests</h1>
-          <p className="mt-2 text-gray-600">View and manage all lab test bookings</p>
+          <h1 className="text-3xl font-bold text-gray-900">Internal Test Registry</h1>
+          <p className="mt-2 text-gray-600">Administrative tooling for lab test verification and QA only.</p>
         </div>
 
         {/* Filters */}
@@ -262,6 +267,6 @@ export default function TestsPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

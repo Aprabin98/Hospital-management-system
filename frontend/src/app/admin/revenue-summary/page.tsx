@@ -22,25 +22,12 @@ interface RevenueSummaryApiResponse {
 }
 
 export default function RevenueSummaryPage() {
-  const [userRole, setUserRole] = useState('');
-  const [isRoleLoading, setIsRoleLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<RevenueSummaryApiResponse | null>(null);
 
-  const isAdminRole = userRole === 'ADMIN';
-
   useEffect(() => {
-    const role = (localStorage.getItem('userRole') || '').toUpperCase();
-    setUserRole(role);
-    setIsRoleLoading(false);
-
     const loadSummary = async () => {
-      if (role !== 'ADMIN') {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         setIsLoading(true);
         const response = await apiClient.get<RevenueSummaryApiResponse>('/payments/revenue/');
@@ -72,30 +59,6 @@ export default function RevenueSummaryPage() {
     if (!summary || summary.total_revenue === 0) return 0;
     return (summary.total_refunded_amount / summary.total_revenue) * 100;
   }, [summary]);
-
-  if (isRoleLoading) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center text-gray-600">Loading...</div>
-      </MainLayout>
-    );
-  }
-
-  if (!isAdminRole) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-sm text-gray-500">Revenue summary is available for admin users only.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   if (isLoading) {
     return (

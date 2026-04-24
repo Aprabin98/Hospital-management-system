@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 
 interface AuditLogItem {
@@ -42,7 +44,7 @@ const getErrorMessage = (err: unknown, fallback: string) => {
 };
 
 export default function AuditLogsPage() {
-  const [userRole, setUserRole] = useState('');
+  const { userRole } = useAuth();
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -85,10 +87,6 @@ export default function AuditLogsPage() {
     setPage(1);
   }, [datePreset]);
 
-  useEffect(() => {
-    setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-  }, []);
-
   const buildFilterParams = useCallback(
     (targetPage: number, targetPageSize: number): Record<string, string | number> => {
       const params: Record<string, string | number> = {
@@ -116,7 +114,7 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     const fetchAuditLogs = async () => {
-      if (userRole !== 'ADMIN') {
+      if ((userRole || '').toUpperCase() !== 'ADMIN') {
         setLoading(false);
         return;
       }
@@ -249,18 +247,13 @@ export default function AuditLogsPage() {
     }
   };
 
-  if (userRole && userRole !== 'ADMIN') {
-    return (
-      <MainLayout>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-700">
-          Access denied. Audit logs are available only for admin users.
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.audit}
+      title="audit logs"
+      description="Audit logs are available only for admin users."
+      contentClassName="space-y-4"
+    >
       <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>
@@ -511,6 +504,6 @@ export default function AuditLogsPage() {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
@@ -54,11 +54,7 @@ export default function PrescriptionsPage() {
     };
   }, [previewPdfUrl]);
 
-  useEffect(() => {
-    fetchPrescriptions();
-  }, [activeOnly]);
-
-  const fetchPrescriptions = async () => {
+  const fetchPrescriptions = useCallback(async () => {
     try {
       setIsLoading(true);
       const endpoint = activeOnly ? '/prescriptions/active/' : '/prescriptions/';
@@ -70,7 +66,11 @@ export default function PrescriptionsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeOnly]);
+
+  useEffect(() => {
+    void fetchPrescriptions();
+  }, [fetchPrescriptions]);
 
   const handleEditPrescription = (prescription: Prescription) => {
     setEditingPrescription(prescription);

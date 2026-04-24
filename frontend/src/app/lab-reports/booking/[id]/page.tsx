@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
@@ -14,16 +14,13 @@ export default function BookingDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchBookingDetails = useCallback(async () => {
     if (!bookingId) {
       setError('Invalid booking id');
       setIsLoading(false);
       return;
     }
-    fetchBookingDetails();
-  }, [bookingId]);
 
-  const fetchBookingDetails = async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get(`/lab/bookings/${bookingId}/`);
@@ -34,7 +31,11 @@ export default function BookingDetailsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    void fetchBookingDetails();
+  }, [fetchBookingDetails]);
 
   if (isLoading) {
     return (

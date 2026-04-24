@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
 import { apiClient } from '@/lib/api';
+import { AppIcon } from '@/components/UI/AppIcon';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -37,23 +38,18 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
     }
   }, []);
 
-  const fetchUnreadCount = async (): Promise<number> => {
-    const data = await apiClient.get<{ unread_count: number }>('/notifications/unread-count/');
-    return Number(data.unread_count || 0);
-  };
-
   React.useEffect(() => {
     const loadUnread = async () => {
       try {
-        const response = await fetchUnreadCount();
-        setUnreadCount(response);
+        const data = await apiClient.get<{ unread_count: number }>('/notifications/unread-count/');
+        setUnreadCount(Number(data.unread_count || 0));
       } catch {
         setUnreadCount(0);
       }
     };
 
     if (isAuthenticated) {
-      loadUnread();
+      void loadUnread();
     }
   }, [isAuthenticated]);
 
@@ -69,20 +65,18 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
 
   const getAvatarBgColor = () => {
     const colors = [
-      'bg-blue-500',
-      'bg-purple-500',
-      'bg-pink-500',
-      'bg-green-500',
-      'bg-yellow-500',
-      'bg-red-500',
-      'bg-indigo-500',
-      'bg-cyan-500',
+      'bg-teal-600',
+      'bg-cyan-600',
+      'bg-indigo-600',
+      'bg-emerald-600',
+      'bg-amber-600',
+      'bg-rose-600',
     ];
     if (user?.email) {
       const hash = user.email.charCodeAt(0);
       return colors[hash % colors.length];
     }
-    return 'bg-blue-500';
+    return 'bg-teal-600';
   };
 
   const handleLogout = async () => {
@@ -91,86 +85,93 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="flex items-center justify-between border-b border-gray-300 bg-white px-6 py-4 shadow-sm">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onToggleSidebar}
-          className="rounded-lg hover:bg-gray-100 p-2 transition-colors"
-          title="Toggle Sidebar"
-        >
-          ☰
-        </button>
-        <h2 className="text-lg font-semibold text-gray-800">Hospital Management System</h2>
-      </div>
-
-      {isAuthenticated && user && (
-        <div className="relative">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push('/notifications')}
-              className="relative rounded-lg p-2 hover:bg-gray-100 transition-colors"
-              title="Notifications"
-            >
-              <span className="text-lg">🔔</span>
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
-            >
-            <div className={`w-8 h-8 rounded-full ${getAvatarBgColor()} flex items-center justify-center text-white font-bold text-sm`}>
-              {getAvatarLetter()}
-            </div>
-            <span className="text-sm font-medium text-gray-700">
-              {user.first_name || user.email.split('@')[0]}
-            </span>
-            </button>
+    <header className="border-b border-white/60 bg-white/75 px-4 py-4 shadow-[0_10px_35px_rgba(15,23,42,0.05)] backdrop-blur xl:px-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onToggleSidebar}
+            className="rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-700 transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700"
+            title="Toggle Sidebar"
+          >
+            <AppIcon name="menu" className="h-5 w-5" />
+          </button>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">Care Operations</p>
+            <h2 className="text-lg font-bold text-slate-900">MediMind Hospital Management System</h2>
           </div>
+        </div>
 
-          {isUserMenuOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
-              <div className="px-4 py-3 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full ${getAvatarBgColor()} flex items-center justify-center text-white font-bold`}>
-                    {getAvatarLetter()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {user.first_name && user.last_name
-                        ? `${user.first_name} ${user.last_name}`
-                        : user.first_name || user.email}
-                    </p>
-                    <p className="text-xs text-gray-500">{user.role}</p>
+        {isAuthenticated && user && (
+          <div className="relative">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push('/notifications')}
+                className="relative rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-700 transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700"
+                title="Notifications"
+              >
+                <AppIcon name="notifications" className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setIsUserMenuOpen((value) => !value)}
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 transition hover:-translate-y-0.5 hover:border-teal-200"
+              >
+                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${getAvatarBgColor()} text-sm font-bold text-white`}>
+                  {getAvatarLetter()}
+                </div>
+                <div className="hidden text-left sm:block">
+                  <p className="text-sm font-semibold text-slate-800">{user.first_name || user.email.split('@')[0]}</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">{user.role}</p>
+                </div>
+              </button>
+            </div>
+
+            {isUserMenuOpen && (
+              <div className="absolute right-0 z-50 mt-3 w-64 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_28px_60px_rgba(15,23,42,0.18)]">
+                <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full ${getAvatarBgColor()} font-bold text-white`}>
+                      {getAvatarLetter()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.first_name || user.email}
+                      </p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">{user.role}</p>
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+                >
+                  <AppIcon name="dashboard" className="h-4 w-4" />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => router.push('/profile')}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+                >
+                  <AppIcon name="profile" className="h-4 w-4" />
+                  Profile & Account
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 border-t border-slate-200 px-4 py-3 text-left text-sm text-red-600 transition hover:bg-red-50"
+                >
+                  <AppIcon name="logout" className="h-4 w-4" />
+                  Logout
+                </button>
               </div>
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-              >
-                📊 Dashboard
-              </button>
-              <button
-                onClick={() => router.push('/profile')}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-              >
-                👤 Profile & Account
-              </button>
-              <button
-                onClick={handleLogout}
-                className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 border-t border-gray-200 rounded-b-lg"
-              >
-                🚪 Logout
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </header>
   );
 }

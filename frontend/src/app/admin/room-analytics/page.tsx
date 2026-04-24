@@ -38,16 +38,10 @@ interface StatsResponse {
 }
 
 export default function RoomAnalyticsPage() {
-  const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StatsResponse | null>(null);
 
-  const canManage = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchStats();
   }, []);
 
@@ -97,19 +91,6 @@ export default function RoomAnalyticsPage() {
       toast.error('Failed to export room statistics');
     }
   };
-
-  if (!canManage) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

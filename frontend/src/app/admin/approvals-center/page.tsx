@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { MainLayout } from '@/components/Layout';
+import { useAuth } from '@/hooks';
 import { apiClient } from '@/lib/api';
 
 interface AdmissionRequestItem {
@@ -71,12 +72,6 @@ const emptyCounts = {
 };
 
 export default function ApprovalsCenterPage() {
-  const [userRole] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('userRole') || '').toUpperCase();
-    }
-    return '';
-  });
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState(emptyCounts);
   const [admissions, setAdmissions] = useState<AdmissionRequestItem[]>([]);
@@ -85,8 +80,7 @@ export default function ApprovalsCenterPage() {
   const [refunds, setRefunds] = useState<RefundItem[]>([]);
   const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
   const [notes, setNotes] = useState('');
-
-  const isAdminOpsRole = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
+  const { userRole } = useAuth();
 
   useEffect(() => {
     loadApprovals();
@@ -178,19 +172,6 @@ export default function ApprovalsCenterPage() {
     ],
     [counts]
   );
-
-  if (!isAdminOpsRole) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

@@ -34,7 +34,6 @@ interface APIMetrics {
 }
 
 export default function SystemHealthPage() {
-  const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
@@ -43,9 +42,6 @@ export default function SystemHealthPage() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     loadData();
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadData, 30000);
@@ -79,22 +75,6 @@ export default function SystemHealthPage() {
       setLoading(false);
     }
   };
-
-  if (userRole !== 'ADMIN') {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="mt-2 text-gray-600">Only ADMIN users can access system health monitoring.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

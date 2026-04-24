@@ -250,3 +250,43 @@ class DischargePackage(models.Model):
             self.billing_clearance,
             self.doctor_signed_off_at is not None,
         ])
+
+
+class DischargeMedicationReconciliation(models.Model):
+    inpatient_stay = models.OneToOneField(
+        InpatientStay,
+        on_delete=models.CASCADE,
+        related_name='medication_reconciliation',
+    )
+    home_medications = models.TextField(blank=True)
+    discharge_medications = models.TextField(blank=True)
+    reconciliation_notes = models.TextField(blank=True)
+    interactions_checked = models.BooleanField(default=False)
+    allergies_reviewed = models.BooleanField(default=False)
+    patient_counseled = models.BooleanField(default=False)
+    reconciled_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ipd_med_reconciliations',
+    )
+    reconciled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Medication Reconciliation - Stay #{self.inpatient_stay_id}"
+
+    @property
+    def is_complete(self):
+        return all([
+            bool(self.discharge_medications.strip()),
+            self.interactions_checked,
+            self.allergies_reviewed,
+            self.patient_counseled,
+            self.reconciled_at is not None,
+        ])

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
@@ -39,24 +38,13 @@ const DEFAULT_SETTINGS: SystemSettings = {
 };
 
 export default function SystemSettingsPage() {
-  const [userRole, setUserRole] = useState('');
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isAdmin = userRole === 'ADMIN';
-
   useEffect(() => {
-    const role = (localStorage.getItem('userRole') || '').toUpperCase();
-    setUserRole(role);
-
     const loadSettings = async () => {
-      if (role !== 'ADMIN') {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const response = await apiClient.get<SystemSettings>('/system/settings/');
         setSettings(response);
@@ -97,22 +85,6 @@ export default function SystemSettingsPage() {
       <MainLayout>
         <div className="flex min-h-screen items-center justify-center">
           <p className="text-gray-600">Loading system settings...</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <p className="text-gray-500">You do not have permission to access this page.</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
         </div>
       </MainLayout>
     );

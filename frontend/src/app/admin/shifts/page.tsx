@@ -18,16 +18,10 @@ interface Shift {
 export default function ManageShiftsPage() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', start_time: '', end_time: '', slot_duration: 30 });
 
-  const isAdmin = userRole === 'ADMIN';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchShifts();
   }, []);
 
@@ -70,21 +64,6 @@ export default function ManageShiftsPage() {
       toast.error('Failed to delete shift');
     }
   };
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

@@ -37,7 +37,6 @@ interface RoomFormState {
 }
 
 export default function RoomsManagementPage() {
-  const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [rooms, setRooms] = useState<RoomItem[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -52,12 +51,7 @@ export default function RoomsManagementPage() {
     is_active: true,
   });
 
-  const isAdmin = userRole === 'ADMIN';
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
-    }
     fetchRooms();
   }, []);
 
@@ -106,19 +100,6 @@ export default function RoomsManagementPage() {
       setCreating(false);
     }
   };
-
-  if (!isAdmin) {
-    return (
-      <MainLayout>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">Access Denied</p>
-            <Link href="/dashboard" className="mt-4 inline-block text-blue-600 hover:text-blue-800">Back to Dashboard</Link>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   return (
     <MainLayout>

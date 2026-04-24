@@ -1,0 +1,22 @@
+# Caddyfile for HMS TLS reverse proxy
+{
+    email {env.EMAIL}
+    auto_https off
+}
+
+{env.DOMAIN} {
+    reverse_proxy backend:8000
+    encode gzip
+    log {
+        output stdout
+        format console
+    }
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "same-origin"
+    }
+    tls internal
+}

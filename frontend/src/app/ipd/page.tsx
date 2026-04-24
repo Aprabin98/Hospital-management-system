@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { MainLayout } from '@/components/Layout';
+import { ProtectedPage } from '@/components/Auth';
+import { useAuth } from '@/hooks';
+import { ACCESS_MATRIX } from '@/lib/access';
 import { apiClient } from '@/lib/api';
 import { EmptyState, PageHeader, SectionCard, StatCard, StatusBadge } from '@/components/UI';
 
@@ -29,13 +31,11 @@ export default function IPDPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const userRole = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userRole');
-  }, []);
-
-  const role = (userRole || '').toUpperCase();
-  const canAccess = ['ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(role);
+  const { userRole } = useAuth();
+  const canAccess = useMemo(
+    () => ACCESS_MATRIX.ipd.includes((userRole || '').toUpperCase() as (typeof ACCESS_MATRIX.ipd)[number]),
+    [userRole]
+  );
 
   useEffect(() => {
     if (!canAccess) return;
@@ -60,19 +60,13 @@ export default function IPDPage() {
     loadData();
   }, [canAccess]);
 
-  if (!canAccess) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="font-semibold text-red-600">Access Denied. IPD roles required.</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <ProtectedPage
+      allowedRoles={ACCESS_MATRIX.ipd}
+      title="IPD workflow"
+      description="Inpatient workflow is restricted to authorized admission and clinical care roles."
+    >
+      <div className="space-y-6">
         <PageHeader
           title="Inpatient (IPD) Workflow"
           description="Admission to discharge management with rounds and discharge package."
@@ -126,6 +120,6 @@ export default function IPDPage() {
           )}
         </SectionCard>
       </div>
-    </MainLayout>
+    </ProtectedPage>
   );
 }
