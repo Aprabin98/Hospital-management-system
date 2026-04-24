@@ -6,13 +6,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 DEFAULT_SECRET_KEY = 'your-secret-key-change-this-in-production'
-SECRET_KEY = os.getenv('SECRET_KEY', '').strip()
-if not SECRET_KEY:
-    if os.getenv('VERCEL'):
-        vercel_seed = os.getenv('VERCEL_GIT_COMMIT_SHA', '') or os.getenv('VERCEL_URL', '') or 'vercel-build'
-        SECRET_KEY = f'django-insecure-vercel-{vercel_seed}'
-    else:
-        SECRET_KEY = DEFAULT_SECRET_KEY
+SECRET_KEY = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY).strip()
+if os.getenv('VERCEL') and SECRET_KEY == DEFAULT_SECRET_KEY:
+    vercel_seed = os.getenv('VERCEL_GIT_COMMIT_SHA', '') or os.getenv('VERCEL_URL', '') or 'vercel-build'
+    SECRET_KEY = f'django-insecure-vercel-{vercel_seed}'
 
 
 def _env_bool(name, default='false'):
@@ -26,7 +23,7 @@ def _env_list(name, default=''):
 
 DEBUG = _env_bool('DEBUG', 'true')
 
-if not DEBUG and SECRET_KEY == DEFAULT_SECRET_KEY:
+if not DEBUG and SECRET_KEY == DEFAULT_SECRET_KEY and not os.getenv('VERCEL'):
     raise RuntimeError('SECRET_KEY must be set in production.')
 
 ALLOWED_HOSTS = _env_list(
