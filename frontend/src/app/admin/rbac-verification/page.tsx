@@ -20,10 +20,11 @@ interface RoleAccessData {
 }
 
 interface SystemStatus {
-  total_users: number;
+  total_active_users: number;
   admin_users: number;
   authenticated_today: number;
-  failed_logins_today: number;
+  failed_login_attempts: number;
+  two_fa_enabled_users: number;
 }
 
 export default function RBACVerificationPage() {
@@ -46,7 +47,7 @@ export default function RBACVerificationPage() {
       setRoleData(roleResponse);
 
       // Fetch system status
-      const statusResponse = await apiClient.get<SystemStatus>('/system/health/');
+      const statusResponse = await apiClient.get<SystemStatus>('/system/security-status/');
       setSystemStatus(statusResponse);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load RBAC verification data';
@@ -92,7 +93,7 @@ export default function RBACVerificationPage() {
           <div className="grid gap-4 md:grid-cols-4">
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900">{systemStatus.total_users}</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{systemStatus.total_active_users}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-medium text-gray-600">Admin Users</p>
@@ -104,7 +105,7 @@ export default function RBACVerificationPage() {
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-medium text-gray-600">Failed Logins</p>
-              <p className="mt-2 text-2xl font-bold text-red-600">{systemStatus.failed_logins_today}</p>
+              <p className="mt-2 text-2xl font-bold text-red-600">{systemStatus.failed_login_attempts}</p>
             </div>
           </div>
         )}

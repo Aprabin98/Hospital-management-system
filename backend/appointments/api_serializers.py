@@ -22,6 +22,7 @@ class SpecializationSerializer(serializers.ModelSerializer):
 class DoctorSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
     specialization = SpecializationSerializer(read_only=True)
+    photo_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Doctor
@@ -34,6 +35,7 @@ class DoctorSerializer(serializers.ModelSerializer):
             'experience_years',
             'is_available',
             'photo',
+            'photo_url',
             'phone',
         ]
         read_only_fields = ['id']
@@ -46,6 +48,15 @@ class DoctorSerializer(serializers.ModelSerializer):
             'first_name': obj.user.first_name,
             'last_name': obj.user.last_name,
         }
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return ''
+
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.photo.url)
+        return obj.photo.url
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

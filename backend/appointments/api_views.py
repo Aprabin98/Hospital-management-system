@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.http import FileResponse
+from django.core.files.storage import default_storage
 from django.utils import timezone
 from appointments.models import (
     Appointment,
@@ -637,12 +638,18 @@ def appointment_download_pdf_api(request, appointment_id):
     if request.user.role not in ['PATIENT', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
-    if not appointment.pdf_file:
+    pdf_missing = (
+        not appointment.pdf_file
+        or not appointment.pdf_file.name
+        or not default_storage.exists(appointment.pdf_file.name)
+    )
+
+    if pdf_missing:
         generate_qr_code(appointment)
         generate_appointment_pdf(appointment)
-        appointment.save()
+        appointment.save(update_fields=['qr_code', 'pdf_file', 'updated_at'])
 
-    if not appointment.pdf_file:
+    if not appointment.pdf_file or not appointment.pdf_file.name:
         return Response({'detail': 'PDF not available.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     response = FileResponse(appointment.pdf_file.open('rb'), content_type='application/pdf')

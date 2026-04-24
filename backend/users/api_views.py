@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from django.contrib.auth import authenticate
 from django.conf import settings
 from django.views.decorators.http import require_http_methods
@@ -31,6 +32,41 @@ def _parse_page_params(request, default_page=1, default_page_size=20, max_page_s
     return page, page_size
 
 
+AUTH_RESPONSE_EXAMPLE = OpenApiExample(
+    'Auth success',
+    value={
+        'token': 'access.jwt.token',
+        'refresh': 'refresh.jwt.token',
+        'user': {
+            'id': 1,
+            'email': 'admin@hms.test',
+            'role': 'ADMIN',
+            'first_name': 'System',
+            'last_name': 'Admin',
+        },
+        'role': 'ADMIN',
+    },
+    response_only=True,
+)
+
+
+@extend_schema(
+    summary='Login with email and password',
+    description='Authenticates the user and returns JWT tokens. If two-factor authentication is required, returns HTTP 202 instead of tokens.',
+    examples=[
+        OpenApiExample(
+            'Login request',
+            value={'email': 'admin@hms.test', 'password': 'StrongPassword123!'},
+            request_only=True,
+        ),
+        AUTH_RESPONSE_EXAMPLE,
+    ],
+    responses={
+        200: OpenApiResponse(description='Login successful'),
+        202: OpenApiResponse(description='Two-factor verification required'),
+        401: OpenApiResponse(description='Invalid credentials'),
+    },
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -192,6 +228,18 @@ def login_api(request):
         )
 
 
+@extend_schema(
+    summary='Verify 2FA OTP',
+    description='Verifies the six-digit OTP sent for second-factor authentication and returns JWT tokens on success.',
+    examples=[
+        OpenApiExample(
+            'OTP verify request',
+            value={'email': 'admin@hms.test', 'otp': '123456'},
+            request_only=True,
+        ),
+        AUTH_RESPONSE_EXAMPLE,
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -268,6 +316,17 @@ def two_factor_verify_api(request):
     )
 
 
+@extend_schema(
+    summary='Resend 2FA OTP',
+    description='Resends the OTP for a pending two-factor login challenge.',
+    examples=[
+        OpenApiExample(
+            'OTP resend request',
+            value={'email': 'admin@hms.test'},
+            request_only=True,
+        ),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -291,6 +350,10 @@ def two_factor_resend_api(request):
     return Response({'detail': 'Verification code sent.'}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='Logout current user',
+    description='Logs out the authenticated API user. For JWT clients, token cleanup is also handled client-side.',
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_http_methods(["POST"])
@@ -326,6 +389,22 @@ def logout_api(request):
     )
 
 
+@extend_schema(
+    summary='Register a patient account',
+    description='Creates a new self-service patient account. Public registration is restricted to the PATIENT role.',
+    examples=[
+        OpenApiExample(
+            'Register request',
+            value={
+                'email': 'patient@example.com',
+                'password': 'StrongPassword123!',
+                'first_name': 'Hari',
+                'last_name': 'Shrestha',
+            },
+            request_only=True,
+        ),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -431,6 +510,17 @@ def register_api(request):
         )
 
 
+@extend_schema(
+    summary='Request password reset',
+    description='Sends a password reset link or token to the provided email address.',
+    examples=[
+        OpenApiExample(
+            'Password reset request',
+            value={'email': 'patient@example.com'},
+            request_only=True,
+        ),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -452,6 +542,22 @@ def password_reset_request_api(request):
     return Response({'detail': 'Password reset email sent successfully.'}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='Confirm password reset',
+    description='Sets a new password using the reset token generated earlier.',
+    examples=[
+        OpenApiExample(
+            'Password reset confirm request',
+            value={
+                'user_id': 1,
+                'token': 'reset-token',
+                'password': 'NewStrongPassword123!',
+                'confirm_password': 'NewStrongPassword123!',
+            },
+            request_only=True,
+        ),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @require_http_methods(["POST"])
@@ -484,6 +590,11 @@ def password_reset_confirm_api(request):
     return Response({'detail': 'Password reset successful. Please login.'}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    summary='Get current authenticated user',
+    description='Returns the currently authenticated user profile summary.',
+    responses={200: OpenApiResponse(description='Current user returned successfully')},
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_http_methods(["GET"])

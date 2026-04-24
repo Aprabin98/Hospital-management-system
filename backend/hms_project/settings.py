@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',
 
     # Our apps
     'users',
@@ -222,6 +223,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
@@ -240,6 +242,22 @@ REST_FRAMEWORK = {
         'anon': '100/hour',
         'user': '1000/hour'
     }
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Hospital Management System API',
+    'DESCRIPTION': (
+        'OpenAPI documentation for the Django REST backend of the Hospital '
+        'Management System. Covers authentication, patients, appointments, '
+        'clinical workflows, lab, pharmacy, billing, notifications, and '
+        'enterprise operations.'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+    },
 }
 
 # Site domain (used in activation emails)

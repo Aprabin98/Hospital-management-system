@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
         setAnalytics({
           ...DEFAULT_ANALYTICS,
           ...summary,
-          doctor_metrics: doctorMetrics.items || [],
+          doctor_metrics: doctorMetrics.items?.length ? doctorMetrics.items : summary.doctor_metrics || [],
         });
         setError(null);
       } catch (requestError: any) {
@@ -86,6 +86,16 @@ export default function AnalyticsPage() {
   const appointmentCompletionRate = useMemo(() => {
     const total = analytics.total_appointments_month;
     return total > 0 ? ((analytics.completed_appointments_month / total) * 100).toFixed(1) : 0;
+  }, [analytics]);
+
+  const cancelledRate = useMemo(() => {
+    const total = analytics.total_appointments_month;
+    return total > 0 ? ((analytics.cancelled_appointments_month / total) * 100).toFixed(1) : '0.0';
+  }, [analytics]);
+
+  const noShowRate = useMemo(() => {
+    const total = analytics.total_appointments_month;
+    return total > 0 ? ((analytics.no_show_appointments_month / total) * 100).toFixed(1) : '0.0';
   }, [analytics]);
 
   return (
@@ -190,7 +200,7 @@ export default function AnalyticsPage() {
                   {analytics.cancelled_appointments_month}
                 </p>
                 <p className="mt-1 text-sm text-orange-700">
-                  {((analytics.cancelled_appointments_month / analytics.total_appointments_month) * 100).toFixed(1)}% of total
+                  {cancelledRate}% of total
                 </p>
               </div>
 
@@ -200,7 +210,7 @@ export default function AnalyticsPage() {
                   {analytics.no_show_appointments_month}
                 </p>
                 <p className="mt-1 text-sm text-red-700">
-                  {((analytics.no_show_appointments_month / analytics.total_appointments_month) * 100).toFixed(1)}% of total
+                  {noShowRate}% of total
                 </p>
               </div>
 

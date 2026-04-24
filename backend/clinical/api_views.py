@@ -500,7 +500,7 @@ def doctors_list_api(request):
     end_idx = start_idx + page_size
     paginated_doctors = doctors[start_idx:end_idx]
     
-    serializer = DoctorSerializer(paginated_doctors, many=True)
+    serializer = DoctorSerializer(paginated_doctors, many=True, context={'request': request})
     
     return Response(
         {
@@ -525,7 +525,7 @@ def doctor_create_api(request):
         return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     doctor = serializer.save()
-    return Response(DoctorSerializer(doctor).data, status=status.HTTP_201_CREATED)
+    return Response(DoctorSerializer(doctor, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
@@ -607,9 +607,9 @@ def doctor_detail_api(request, doctor_id):
                 doctor.is_available = bool(data.get('is_available'))
             doctor.save()
 
-            return Response(DoctorSerializer(doctor).data, status=status.HTTP_200_OK)
+            return Response(DoctorSerializer(doctor, context={'request': request}).data, status=status.HTTP_200_OK)
 
-        serializer = DoctorSerializer(doctor)
+        serializer = DoctorSerializer(doctor, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Doctor.DoesNotExist:
         return Response(

@@ -110,6 +110,7 @@ class TestResultItemSerializer(serializers.ModelSerializer):
 class TestResultSerializer(serializers.ModelSerializer):
     booking_info = TestBookingSerializer(source='booking', read_only=True)
     items = TestResultItemSerializer(many=True, read_only=True)
+    pdf_url = serializers.SerializerMethodField()
     
     class Meta:
         model = TestResult
@@ -120,12 +121,22 @@ class TestResultSerializer(serializers.ModelSerializer):
             'status',
             'notes',
             'pdf_file',
+            'pdf_url',
             'is_released',
             'has_critical_values',
             'items',
             'filled_at',
         ]
         read_only_fields = ['id', 'filled_at', 'items']
+
+    def get_pdf_url(self, obj):
+        if not obj.pdf_file:
+            return ''
+
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.pdf_file.url)
+        return obj.pdf_file.url
 
 
 class TestRecommendationSerializer(serializers.ModelSerializer):

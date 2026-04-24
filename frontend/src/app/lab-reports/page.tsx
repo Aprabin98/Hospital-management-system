@@ -6,6 +6,20 @@ import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 
+const BACKEND_ORIGIN = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '')
+  : 'http://localhost:8000';
+
+function getBackendFileUrl(path?: string | null) {
+  if (!path) {
+    return '';
+  }
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  return `${BACKEND_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
 function extractList(response: unknown): any[] {
   if (Array.isArray(response)) {
     return response;
@@ -345,11 +359,11 @@ export default function LabReportsPage() {
                           )}
                           {result.pdf_file ? (
                             <>
-                              <a href={result.pdf_file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 font-medium">
+                              <a href={getBackendFileUrl(result.pdf_url || result.pdf_file)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 font-medium">
                                 View PDF
                               </a>
                               <span className="text-gray-300">|</span>
-                              <a href={result.pdf_file} download className="text-green-600 hover:text-green-700 font-medium">
+                              <a href={getBackendFileUrl(result.pdf_url || result.pdf_file)} download className="text-green-600 hover:text-green-700 font-medium">
                                 Download
                               </a>
                             </>

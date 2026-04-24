@@ -29,6 +29,7 @@ interface ReportLinkCard {
   href: string;
   className: string;
   category: ReportCategory;
+  allowedRoles: string[];
 }
 
 interface ExportAction {
@@ -61,58 +62,69 @@ export default function ReportsPage() {
       href: '/billing',
       className: 'rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-indigo-700 hover:bg-indigo-100',
       category: 'FINANCE',
+      allowedRoles: ['ADMIN', 'RECEPTIONIST', 'PATIENT'],
     },
     {
       title: 'Appointment Load Report',
       href: '/appointments?filter=ACTIVE',
       className: 'rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-700 hover:bg-blue-100',
       category: 'OPERATIONS',
+      allowedRoles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'],
     },
     {
       title: 'Room Occupancy Report',
       href: '/rooms',
       className: 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 hover:bg-emerald-100',
       category: 'OPERATIONS',
+      allowedRoles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'PATIENT'],
     },
     {
       title: 'Patient Registry Report',
       href: '/patients',
       className: 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 hover:bg-slate-100',
       category: 'CLINICAL',
+      allowedRoles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'],
     },
     {
       title: 'Audit Log Report',
       href: '/audit-logs',
       className: 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 hover:bg-rose-100',
       category: 'COMPLIANCE',
+      allowedRoles: ['ADMIN'],
     },
     {
       title: 'AI Report Reader',
       href: '/ai-health/report-reader',
       className: 'rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-3 text-cyan-700 hover:bg-cyan-100',
       category: 'AI',
+      allowedRoles: ['DOCTOR', 'PATIENT', 'RECEPTIONIST'],
     },
     {
       title: 'AI Triage',
       href: '/ai-health/triage',
       className: 'rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700 hover:bg-green-100',
       category: 'AI',
+      allowedRoles: ['DOCTOR', 'PATIENT', 'RECEPTIONIST', 'NURSE'],
     },
     {
       title: 'Heart Risk Detector',
       href: '/ai-health/heart-risk',
       className: 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 hover:bg-rose-100',
       category: 'CLINICAL',
+      allowedRoles: ['DOCTOR', 'PATIENT'],
     },
     {
       title: 'Issued Prescriptions',
       href: '/prescriptions-writer',
       className: 'rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 hover:bg-gray-50',
       category: 'CLINICAL',
+      allowedRoles: ['DOCTOR'],
     },
   ], []);
 
-  const filteredReportCards = reportCards.filter((item) => category === 'ALL' || item.category === category);
+  const filteredReportCards = reportCards.filter(
+    (item) => item.allowedRoles.includes(role) && (category === 'ALL' || item.category === category)
+  );
 
   const saveBlob = (blob: Blob, fileName: string) => {
     const objectUrl = URL.createObjectURL(blob);

@@ -25,8 +25,12 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'api'
 
+class FinanceRouter(DefaultRouter):
+    include_format_suffixes = False
+
+
 # ======== Phase 7: Finance & Insurance Router ========
-finance_router = DefaultRouter()
+finance_router = FinanceRouter()
 finance_router.register(r'invoices', phase7_api_views.InvoiceViewSet, basename='invoice')
 finance_router.register(r'claims', phase7_api_views.InsuranceClaimViewSet, basename='claim')
 finance_router.register(r'denial-reworks', phase7_api_views.DenialReworkViewSet, basename='denial_rework')

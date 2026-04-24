@@ -132,13 +132,32 @@ export default function AppointmentDetailPage() {
     }
 
     try {
-      const blob = await apiClient.get<Blob>(`/appointments/${appointment.id}/download-pdf/`, {
-        responseType: 'blob',
-      } as any);
+      const token = localStorage.getItem('authToken');
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/appointments/${appointment.id}/download-pdf/`, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to fetch appointment PDF';
+        try {
+          const payload = await response.json();
+          message = payload?.detail || payload?.message || message;
+        } catch {
+          // Ignore non-JSON error body.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
 
       if (viewInBrowser) {
-        window.open(url, '_blank');
+        const popup = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!popup) {
+          window.location.href = url;
+        }
       } else {
         const a = document.createElement('a');
         a.href = url;

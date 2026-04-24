@@ -7,6 +7,20 @@ import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 
+const BACKEND_ORIGIN = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '')
+  : 'http://localhost:8000';
+
+function getBackendFileUrl(path?: string | null) {
+  if (!path) {
+    return '';
+  }
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  return `${BACKEND_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
 export default function ResultDetailsPage() {
   const params = useParams<{ id?: string | string[] }>();
   const resultId = typeof params?.id === 'string' ? params.id : '';
@@ -199,7 +213,7 @@ export default function ResultDetailsPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Report Document</h2>
             <div className="flex flex-wrap gap-3">
               <a 
-                href={result.pdf_file}
+                href={getBackendFileUrl(result.pdf_url || result.pdf_file)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
@@ -207,7 +221,7 @@ export default function ResultDetailsPage() {
                 📄 View PDF Report
               </a>
               <a
-                href={result.pdf_file}
+                href={getBackendFileUrl(result.pdf_url || result.pdf_file)}
                 download
                 className="inline-flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
               >

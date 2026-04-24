@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
@@ -32,6 +31,7 @@ interface Doctor {
   experience_years: number;
   is_available: boolean;
   photo?: string;
+  photo_url?: string;
   phone?: string;
 }
 
@@ -94,7 +94,8 @@ export default function DoctorsPage() {
     return username;
   };
 
-  const getDoctorPhotoUrl = (photo?: string) => {
+  const getDoctorPhotoUrl = (doctor: Doctor) => {
+    const photo = doctor.photo_url || doctor.photo;
     if (!photo) return null;
     if (photo.startsWith('http://') || photo.startsWith('https://')) {
       return photo;
@@ -210,14 +211,12 @@ export default function DoctorsPage() {
                 className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Doctor Photo */}
-                {getDoctorPhotoUrl(doctor.photo) && !imageErrorIds.has(doctor.id) ? (
+                {getDoctorPhotoUrl(doctor) && !imageErrorIds.has(doctor.id) ? (
                   <div className="relative w-full h-48 bg-gray-100">
-                    <Image
-                      src={getDoctorPhotoUrl(doctor.photo)!}
+                    <img
+                      src={getDoctorPhotoUrl(doctor)!}
                       alt={`Dr. ${getDoctorName(doctor)}`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover"
+                      className="h-full w-full object-cover"
                       onError={() => {
                         setImageErrorIds((prev) => {
                           const next = new Set(prev);

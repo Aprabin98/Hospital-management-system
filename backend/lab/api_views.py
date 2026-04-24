@@ -217,7 +217,7 @@ def lab_results_list_api(request):
     end_idx = start_idx + page_size
     paginated_results = results[start_idx:end_idx]
     
-    serializer = TestResultSerializer(paginated_results, many=True)
+    serializer = TestResultSerializer(paginated_results, many=True, context={'request': request})
     
     return Response(
         {
@@ -341,7 +341,7 @@ def lab_result_detail_api(request, result_id):
         elif request.user.role not in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = TestResultSerializer(result)
+        serializer = TestResultSerializer(result, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except TestResult.DoesNotExist:
         return Response(

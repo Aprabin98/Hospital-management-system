@@ -121,12 +121,38 @@ def generate_receipt_pdf(payment):
         # ── Patient & Doctor Info ────────────────────────────
         patient = payment.patient
         doctor = payment.doctor
+        appointment = payment.appointment
+        lab_booking = payment.lab_booking
+
+        doctor_name = (
+            f"Dr. {doctor.user.get_full_name().strip() or doctor.user.username}"
+            if doctor else
+            'N/A'
+        )
+        doctor_specialization = str(doctor.specialization) if doctor and doctor.specialization else 'N/A'
+        doctor_fee = f"Rs. {doctor.consultation_fee}" if doctor else 'N/A'
+        service_label = payment.get_payment_type_display()
+        service_reference = 'N/A'
+        service_date = 'N/A'
+        service_time = 'N/A'
+        service_status = payment.get_status_display()
+
+        if appointment:
+            service_reference = f'Appointment #{appointment.id}'
+            service_date = str(appointment.date)
+            service_time = f'{appointment.start_time} - {appointment.end_time}'
+            service_status = appointment.status
+        elif lab_booking:
+            service_reference = f'Lab Booking #{lab_booking.id}'
+            service_date = str(lab_booking.date)
+            service_time = lab_booking.template.name if lab_booking.template_id else 'N/A'
+            service_status = lab_booking.status
 
         info_data = [
             ['PATIENT', 'DOCTOR'],
-            [patient.full_name, f"Dr. {doctor.user.username}"],
-            [patient.user.email, str(doctor.specialization)],
-            [patient.phone or 'N/A', f"Rs. {doctor.consultation_fee} fee"],
+            [patient.full_name, doctor_name],
+            [patient.user.email, doctor_specialization],
+            [patient.phone or 'N/A', doctor_fee],
         ]
 
         info_table = Table(info_data, colWidths=[3*inch, 3*inch])
@@ -143,13 +169,13 @@ def generate_receipt_pdf(payment):
         story.append(Spacer(1, 0.2*inch))
 
         # ── Appointment Info ─────────────────────────────────
-        apt = payment.appointment
         apt_data = [
-            ['APPOINTMENT DETAILS', ''],
-            ['Appointment ID:', f'#{apt.id}'],
-            ['Date:', str(apt.date)],
-            ['Time:', f'{apt.start_time} - {apt.end_time}'],
-            ['Status:', apt.status],
+            ['SERVICE DETAILS', ''],
+            ['Service Type:', service_label],
+            ['Reference:', service_reference],
+            ['Date:', service_date],
+            ['Time / Slot:', service_time],
+            ['Status:', service_status],
         ]
 
         apt_table = Table(apt_data, colWidths=[3*inch, 3*inch])

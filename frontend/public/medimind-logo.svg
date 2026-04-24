@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">MediMind Logo</title>
+  <desc id="desc">MediMind monogram with medical cross and neural arc</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bg)"/>
+  <path d="M128 322V192h48l40 86 40-86h48v130h-38v-66l-31 66h-38l-31-66v66z" fill="#ffffff"/>
+  <path d="M372 172c-26 0-48 22-48 48s22 48 48 48 48-22 48-48-22-48-48-48zm0 26a22 22 0 110 44 22 22 0 010-44z" fill="#ffffff"/>
+  <path d="M356 292h32v24h24v32h-24v24h-32v-24h-24v-32h24z" fill="url(#accent)"/>
+  <circle cx="388" cy="112" r="8" fill="#93c5fd"/>
+  <circle cx="420" cy="132" r="6" fill="#bfdbfe"/>
+  <circle cx="432" cy="168" r="5" fill="#dbeafe"/>
+</svg>

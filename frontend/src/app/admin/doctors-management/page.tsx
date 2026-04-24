@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
@@ -45,6 +44,7 @@ interface Doctor {
   is_available: boolean;
   phone?: string;
   photo?: string;
+  photo_url?: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -367,13 +367,11 @@ export default function DoctorsManagementPage() {
                   <tr key={doctor.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {doctor.photo && (
-                          <Image
-                            src={`${BACKEND_ORIGIN}${doctor.photo}`}
+                        {(doctor.photo_url || doctor.photo) && (
+                          <img
+                            src={doctor.photo_url || `${BACKEND_ORIGIN}${doctor.photo}`}
                             alt={`${doctor.user.first_name} ${doctor.user.last_name}`}
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover"
+                            className="h-10 w-10 rounded-full object-cover"
                           />
                         )}
                         <div>
