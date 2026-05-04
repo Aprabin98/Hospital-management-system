@@ -285,7 +285,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/profile" className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5">
+            <Link href="/profile" className="inline-flex text-black-600 items-center gap-2 rounded-2xl border border-gray-500 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5">
               <AppIcon name="profile" className="h-4 w-4" />
               My Profile
             </Link>

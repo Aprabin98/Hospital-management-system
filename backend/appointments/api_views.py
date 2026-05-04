@@ -14,7 +14,6 @@ from appointments.models import (
     Appointment,
     MedicalReportAnalysis,
     TriageAssessment,
-    WaitingList,
     Queue,
     NursingNote,
     NursingTask,
@@ -28,8 +27,6 @@ from .api_serializers import (
 )
 from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
 from .triage import evaluate_triage
-from .feature_views import promote_waiting_list
-from .no_show_predictor import PredictionEngine
 from audit.utils import log_audit_event
 from .report_reader import (
     analyze_report_text,
@@ -159,143 +156,6 @@ def appointment_detail_api(request, appointment_id):
             {'detail': f'Error: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["GET"])
-def waiting_list_queue_api(request):
-    """Admin/reception queue list for waiting patients."""
-    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    doctor_id = request.GET.get('doctor_id')
-    queryset = WaitingList.objects.filter(status='WAITING').select_related('patient', 'doctor__user').order_by('-priority', 'created_at')
-    if doctor_id:
-        queryset = queryset.filter(doctor_id=doctor_id)
-
-    items = [
-        {
-            'id': row.id,
-            'patient_id': row.patient_id,
-            'patient': row.patient.full_name,
-            'doctor_id': row.doctor_id,
-            'doctor': row.doctor.user.username,
-            'date': row.date.isoformat(),
-            'priority': row.priority,
-            'status': row.status,
-        }
-        for row in queryset[:300]
-    ]
-    return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["POST"])
-def waiting_list_promote_api(request, waiting_id):
-    """Manually promote a waiting list entry when a slot opens."""
-    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    try:
-        waiting = WaitingList.objects.get(pk=waiting_id, status='WAITING')
-    except WaitingList.DoesNotExist:
-        return Response({'detail': 'Waiting list entry not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    promoted = promote_waiting_list(waiting.doctor, waiting.date, created_by=request.user)
-    if not promoted:
-        return Response({'detail': 'No promotable slot available right now.'}, status=status.HTTP_409_CONFLICT)
-
-    return Response({'promoted_appointment_id': promoted.id}, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["POST"])
-def waiting_list_priority_api(request, waiting_id):
-    """Set waiting-list priority score."""
-    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    try:
-        waiting = WaitingList.objects.get(pk=waiting_id)
-    except WaitingList.DoesNotExist:
-        return Response({'detail': 'Waiting list entry not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    try:
-        priority = int(request.data.get('priority', waiting.priority))
-    except (TypeError, ValueError):
-        return Response({'detail': 'priority must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    waiting.priority = max(0, min(100, priority))
-    waiting.save(update_fields=['priority'])
-    return Response({'id': waiting.id, 'priority': waiting.priority}, status=status.HTTP_200_OK)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["GET"])
-def no_show_dashboard_api(request):
-    """No-show risk dashboard for admin/reception/doctor roles."""
-    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'DOCTOR']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    upcoming = Appointment.objects.filter(
-        date__gte=datetime.today().date(),
-        status__in=['PENDING', 'CONFIRMED'],
-    ).select_related('patient', 'doctor__user')[:200]
-
-    items = []
-    for appointment in upcoming:
-        prediction = PredictionEngine.predict_appointment(appointment)
-        items.append(
-            {
-                'appointment_id': appointment.id,
-                'patient': appointment.patient.full_name,
-                'doctor': appointment.doctor.user.username,
-                'date': appointment.date.isoformat(),
-                'risk_level': prediction.risk_level,
-                'probability': round(prediction.no_show_probability, 3),
-                'status': appointment.status,
-            }
-        )
-
-    return Response({'count': len(items), 'results': items}, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["POST"])
-def no_show_outcome_api(request, appointment_id):
-    """Set final show/no-show outcome for an appointment."""
-    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'DOCTOR']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    try:
-        appointment = Appointment.objects.get(pk=appointment_id)
-    except Appointment.DoesNotExist:
-        return Response({'detail': 'Appointment not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    outcome = (request.data.get('outcome') or '').strip().lower()
-    if outcome not in {'showed', 'no_show'}:
-        return Response({'detail': 'Invalid outcome.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    prediction = PredictionEngine.predict_appointment(appointment)
-    prediction.actually_no_showed = outcome == 'no_show'
-    prediction.save(update_fields=['actually_no_showed', 'updated_at'])
-
-    appointment.status = 'NO_SHOW' if prediction.actually_no_showed else 'COMPLETED'
-    appointment.save(update_fields=['status', 'updated_at'])
-
-    return Response(
-        {
-            'appointment_id': appointment.id,
-            'status': appointment.status,
-            'risk_level': prediction.risk_level,
-        },
-        status=status.HTTP_200_OK,
-    )
 
 
 @api_view(['POST'])

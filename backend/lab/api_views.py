@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django.views.decorators.http import require_http_methods
 from .models import (
     TestBooking, TestResult, TestTemplate, TestRecommendation, TestSchedule, TestField,
-    LabSample, QCLog, CriticalValueAcknowledgment
+    LabSample
 )
 from .api_serializers import (
     TestBookingSerializer,
@@ -17,8 +17,6 @@ from .api_serializers import (
     TestTemplateSerializer,
     TestRecommendationSerializer,
     LabSampleSerializer,
-    QCLogSerializer,
-    CriticalValueAcknowledgmentSerializer,
 )
 
 
@@ -808,128 +806,4 @@ def lab_sample_detail_api(request, sample_id):
 
     from .api_serializers import LabSampleSerializer
     serializer = LabSampleSerializer(sample)
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["GET", "POST"])
-def qc_logs_api(request):
-    """Get/create quality control and calibration logs."""
-    if request.user.role not in ['ADMIN', 'LAB_TECHNICIAN']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    if request.method == 'GET':
-        qc_type = (request.GET.get('qc_type') or '').strip()
-        logs = QCLog.objects.select_related('sample', 'test_template', 'performed_by').all()
-        if qc_type:
-            logs = logs.filter(qc_type=qc_type)
-        logs = logs.order_by('-performed_at')[:200]
-
-        from .api_serializers import QCLogSerializer
-        serializer = QCLogSerializer(logs, many=True)
-        return Response({'count': logs.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
-
-    # POST - Create QC log
-    qc_type = (request.data.get('qc_type') or '').strip()
-    result = (request.data.get('result') or '').strip()
-    details = (request.data.get('details') or '').strip()
-
-    if not qc_type or not result or not details:
-        return Response({'detail': 'qc_type, result, and details are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    from .models import QCLog
-    qc_log = QCLog.objects.create(
-        qc_type=qc_type,
-        test_template_id=request.data.get('test_template'),
-        sample_id=request.data.get('sample'),
-        performed_by=request.user,
-        result=result,
-        details=details,
-        reference_value=request.data.get('reference_value', ''),
-        actual_value=request.data.get('actual_value', ''),
-        deviation=request.data.get('deviation', ''),
-    )
-
-    from .api_serializers import QCLogSerializer
-    serializer = QCLogSerializer(qc_log)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["GET", "POST"])
-def critical_values_pending_api(request):
-    """Get pending critical values that need doctor acknowledgment."""
-    if request.user.role not in ['ADMIN', 'DOCTOR', 'LAB_TECHNICIAN']:
-        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-    if request.method == 'GET':
-        from .models import CriticalValueAcknowledgment
-        # Get unacknowledged critical values
-        pending = CriticalValueAcknowledgment.objects.filter(acknowledged_at__isnull=True).select_related(
-            'result__booking__patient', 'acknowledged_by__user', 'escalated_to'
-        ).order_by('-created_at')[:100]
-
-        from .api_serializers import CriticalValueAcknowledgmentSerializer
-        serializer = CriticalValueAcknowledgmentSerializer(pending, many=True)
-        return Response({'count': pending.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
-
-    # POST - Create critical value record (auto-called when result has critical items)
-    result_id = request.data.get('result')
-    if not result_id:
-        return Response({'detail': 'result is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        result = TestResult.objects.get(pk=result_id)
-    except TestResult.DoesNotExist:
-        return Response({'detail': 'Test result not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    from .models import CriticalValueAcknowledgment
-    crit_ack, created = CriticalValueAcknowledgment.objects.get_or_create(
-        result=result,
-        defaults={
-            'is_critical': True,
-            'urgency': request.data.get('urgency', 'URGENT'),
-            'critical_fields': request.data.get('critical_fields', []),
-            'notification_method': request.data.get('notification_method', 'SMS'),
-            'notification_sent_at': timezone.now(),
-        }
-    )
-
-    from .api_serializers import CriticalValueAcknowledgmentSerializer
-    serializer = CriticalValueAcknowledgmentSerializer(crit_ack)
-    return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-
-
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-@require_http_methods(["PATCH"])
-def critical_value_acknowledge_api(request, critical_id):
-    """Doctor acknowledges a critical lab value."""
-    if request.user.role != 'DOCTOR':
-        return Response({'detail': 'Only doctors can acknowledge critical values.'}, status=status.HTTP_403_FORBIDDEN)
-
-    try:
-        from .models import CriticalValueAcknowledgment
-        crit_ack = CriticalValueAcknowledgment.objects.select_related('result__booking__patient').get(pk=critical_id)
-    except CriticalValueAcknowledgment.DoesNotExist:
-        return Response({'detail': 'Critical value record not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    if crit_ack.acknowledged_at:
-        return Response({'detail': 'Already acknowledged.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    from clinical.models import Doctor
-    try:
-        doctor = Doctor.objects.get(user=request.user)
-    except Doctor.DoesNotExist:
-        return Response({'detail': 'Doctor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    crit_ack.acknowledged_by = doctor
-    crit_ack.acknowledged_at = timezone.now()
-    crit_ack.acknowledgment_notes = (request.data.get('notes') or '').strip()
-    crit_ack.save()
-
-    from .api_serializers import CriticalValueAcknowledgmentSerializer
-    serializer = CriticalValueAcknowledgmentSerializer(crit_ack)
     return Response(serializer.data, status=status.HTTP_200_OK)

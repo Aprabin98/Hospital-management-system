@@ -60,7 +60,6 @@ INSTALLED_APPS = [
     'users',
     'clinical',
     'appointments',
-    'rooms',
     'audit',
     'notifications',
     'reviews',
@@ -70,13 +69,6 @@ INSTALLED_APPS = [
     'prescriptions',
     'payments',
     'lab',
-    'pharmacy',
-    'inpatient',
-    'quality_compliance',
-    'emergency',
-    'radiology',
-    'surgery',
-    'inventory',
 ]
 
 MIDDLEWARE = [

@@ -15,12 +15,9 @@ django.setup()
 from django.utils import timezone
 from users.models import User, PatientProfile
 from clinical.models import Doctor, Specialization
-from rooms.models import Room, RoomBed
 from appointments.models import Appointment, TriageAssessment
-from lab.models import TestTemplate, TestField, TestBooking, TestResult, TestResultItem, QCLog
-from pharmacy.models import MedicationInventory
+from lab.models import TestTemplate, TestField, TestBooking, TestResult, TestResultItem
 from prescriptions.models import Prescription, PrescriptionItem
-from inpatient.models import InpatientStay, ProgressNote, DailyRound, DischargePackage
 
 print("\n" + "="*70)
 print("SEEDING TEST DATA")

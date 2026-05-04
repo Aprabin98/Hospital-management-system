@@ -16,12 +16,9 @@ django.setup()
 from django.utils import timezone
 from users.models import User, PatientProfile
 from clinical.models import Doctor, Specialization, DoctorSchedule, Shift
-from rooms.models import Room, RoomBed, RoomAssignment, AdmissionRequest
 from appointments.models import Appointment, TriageAssessment, Queue
-from lab.models import TestTemplate, TestField, TestBooking, TestResult, TestResultItem, LabSample, QCLog
-from pharmacy.models import MedicationInventory, DispensingTransaction
+from lab.models import TestTemplate, TestField, TestBooking, TestResult, TestResultItem, LabSample
 from prescriptions.models import Prescription, PrescriptionItem
-from inpatient.models import InpatientStay, ProgressNote, DailyRound, MedicationAdministrationRecord, ProcedureSchedule, DischargePackage
 from payments.models import Payment
 
 # Test users

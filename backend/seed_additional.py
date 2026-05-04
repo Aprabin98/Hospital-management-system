@@ -16,7 +16,6 @@ from users.models import User, PatientProfile
 from clinical.models import Doctor
 from appointments.models import Appointment, TriageAssessment
 from prescriptions.models import Prescription, PrescriptionItem
-from pharmacy.models import MedicationInventory
 
 print("\n" + "="*70)
 print("SEEDING ADDITIONAL DATA (Appointments & Prescriptions)")

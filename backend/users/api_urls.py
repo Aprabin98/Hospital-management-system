@@ -3,38 +3,20 @@ from django.urls import path
 from . import api_views
 from . import admin_api_views
 from appointments import api_views as appointments_api_views
-from appointments import queue_api_views
 from clinical import api_views as clinical_api_views
 from clinical import analytics_views as clinical_analytics_views
 from lab import api_views as lab_api_views
 from prescriptions import api_views as prescriptions_api_views
-from rooms import api_views as rooms_api_views
 from heart_risk import api_views as heart_risk_api_views
 from notifications import api_views as notifications_api_views
 from reviews import api_views as reviews_api_views
 from payments import api_views as payments_api_views
-from payments import phase7_api_views
 from audit import api_views as audit_api_views
 from audit import health_views
 from drug_checker import api_views as drug_checker_api_views
-from pharmacy import api_views as pharmacy_api_views
-from inpatient import api_views as inpatient_api_views
-from quality_compliance import api_views as quality_compliance_api_views
-from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'api'
-
-class FinanceRouter(DefaultRouter):
-    include_format_suffixes = False
-
-
-# ======== Phase 7: Finance & Insurance Router ========
-finance_router = FinanceRouter()
-finance_router.register(r'invoices', phase7_api_views.InvoiceViewSet, basename='invoice')
-finance_router.register(r'claims', phase7_api_views.InsuranceClaimViewSet, basename='claim')
-finance_router.register(r'denial-reworks', phase7_api_views.DenialReworkViewSet, basename='denial_rework')
-finance_router.register(r'pre-auths', phase7_api_views.InsurancePreAuthViewSet, basename='pre_auth')
 
 
 urlpatterns = [
@@ -76,11 +58,6 @@ urlpatterns = [
     path('appointments/available-slots/', appointments_api_views.appointments_available_slots_api, name='appointments_available_slots'),
     path('appointments/<int:appointment_id>/download-pdf/', appointments_api_views.appointment_download_pdf_api, name='appointment_download_pdf'),
     
-    # Phase 2: Queue Management APIs
-    path('queue/', queue_api_views.queue_list_api, name='queue_list'),
-    path('queue/<int:queue_id>/status/', queue_api_views.queue_update_status_api, name='queue_status_update'),
-    path('queue/check-duplicate/', queue_api_views.check_duplicate_patient_api, name='queue_check_duplicate'),
-    path('queue/<int:queue_id>/rebook/', queue_api_views.no_show_rebook_api, name='queue_rebook'),
     
     # Medical Records
     path('medical-records/', clinical_api_views.medical_records_list_api, name='medical_records_list'),
@@ -132,9 +109,6 @@ urlpatterns = [
     # Phase 4: Lab Lifecycle APIs
     path('lab/samples/', lab_api_views.lab_samples_list_api, name='lab_samples_list'),
     path('lab/samples/<int:sample_id>/', lab_api_views.lab_sample_detail_api, name='lab_sample_detail'),
-    path('lab/qc-logs/', lab_api_views.qc_logs_api, name='qc_logs'),
-    path('lab/critical-values/pending/', lab_api_views.critical_values_pending_api, name='critical_values_pending'),
-    path('lab/critical-values/<int:critical_id>/acknowledge/', lab_api_views.critical_value_acknowledge_api, name='critical_value_acknowledge'),
     
     # Prescriptions
     path('prescriptions/', prescriptions_api_views.prescriptions_list_api, name='prescriptions_list'),
@@ -144,20 +118,6 @@ urlpatterns = [
     path('prescriptions/<int:prescription_id>/download-pdf/', prescriptions_api_views.prescription_download_pdf_api, name='prescription_download_pdf'),
     path('prescriptions/active/', prescriptions_api_views.prescriptions_active_api, name='prescriptions_active'),
     
-    # Rooms
-    path('rooms/available/', rooms_api_views.rooms_available_api, name='rooms_available'),
-    path('rooms/create/', rooms_api_views.room_create_api, name='room_create'),
-    path('rooms/assignments/', rooms_api_views.room_assignments_list_api, name='room_assignments_list'),
-    path('rooms/current-assignment/', rooms_api_views.room_current_assignment_api, name='room_current_assignment'),
-    path('rooms/admission-requests/', rooms_api_views.admission_requests_list_api, name='admission_requests_list'),
-    path('rooms/admission-requests/admin/', rooms_api_views.admission_requests_admin_api, name='admission_requests_admin'),
-    path('rooms/admission-requests/<int:request_id>/review/', rooms_api_views.admission_request_review_api, name='admission_request_review'),
-    path('rooms/book-bed/', rooms_api_views.room_book_bed_api, name='room_book_bed'),
-    path('rooms/book-request/', rooms_api_views.room_book_request_api, name='room_book_request'),
-    path('rooms/transfers/', rooms_api_views.room_transfers_admin_api, name='room_transfers_admin'),
-    path('rooms/transfers/create/', rooms_api_views.room_transfer_create_api, name='room_transfer_create'),
-    path('rooms/transfers/<int:transfer_id>/review/', rooms_api_views.room_transfer_review_api, name='room_transfer_review'),
-
     # Notifications
     path('notifications/', notifications_api_views.notifications_list_api, name='notifications_list'),
     path('notifications/unread-count/', notifications_api_views.notifications_unread_count_api, name='notifications_unread_count'),
@@ -179,28 +139,13 @@ urlpatterns = [
     # Payments & Billing
     path('payments/', payments_api_views.payments_list_api, name='payments_list'),
     path('payments/<int:payment_id>/', payments_api_views.payment_detail_api, name='payment_detail'),
-    path('payments/stats/', payments_api_views.payment_stats_api, name='payment_stats'),
-    path('payments/revenue/', payments_api_views.payment_revenue_summary_api, name='payment_revenue_summary'),
     path('payments/<int:payment_id>/mark-paid/', payments_api_views.payment_mark_paid_api, name='payment_mark_paid'),
-    path('payments/<int:payment_id>/refund/', payments_api_views.refund_request_api, name='refund_request'),
-    path('payments/<int:payment_id>/refund/manage/', payments_api_views.refund_manage_api, name='refund_manage'),
     path('payments/<int:payment_id>/invoice/', payments_api_views.invoice_download_api, name='invoice_download'),
-    path('payments/insurance/', payments_api_views.insurance_list_api, name='insurance_list'),
-    path('payments/insurance/create/', payments_api_views.insurance_create_api, name='insurance_create'),
-    path('payments/insurance/<int:insurance_id>/verify/', payments_api_views.insurance_verify_api, name='insurance_verify'),
-    path('payments/refunds/admin/', payments_api_views.refunds_admin_api, name='refunds_admin'),
 
-    # Waiting-list and no-show operations
-    path('appointments/waiting-list/queue/', appointments_api_views.waiting_list_queue_api, name='appointments_waiting_list_queue'),
-    path('appointments/waiting-list/<int:waiting_id>/promote/', appointments_api_views.waiting_list_promote_api, name='appointments_waiting_list_promote'),
-    path('appointments/waiting-list/<int:waiting_id>/priority/', appointments_api_views.waiting_list_priority_api, name='appointments_waiting_list_priority'),
-    path('appointments/no-show/dashboard/', appointments_api_views.no_show_dashboard_api, name='appointments_no_show_dashboard'),
-    path('appointments/no-show/<int:appointment_id>/outcome/', appointments_api_views.no_show_outcome_api, name='appointments_no_show_outcome'),
+    # AI Triage and Assessment
+    path('ai-triage/', appointments_api_views.ai_triage_api, name='ai_triage'),
+    path('ai-triage/<int:triage_id>/priority/', appointments_api_views.triage_priority_update_api, name='ai_triage_priority_update'),
 
-    # Room statistics workflow
-    path('rooms/statistics/', rooms_api_views.room_statistics_api, name='rooms_statistics'),
-    path('rooms/statistics/export/csv/', rooms_api_views.room_statistics_export_csv_api, name='rooms_statistics_export_csv'),
-    
     # Heart Risk Assessment  
     path('heart-risk/', heart_risk_api_views.heart_risk_assessments_list_api, name='heart_risk_assessments_list'),
     path('heart-risk/latest/', heart_risk_api_views.heart_risk_latest_api, name='heart_risk_latest'),
@@ -211,34 +156,11 @@ urlpatterns = [
     path('ai-report-reader/', appointments_api_views.report_reader_list_api, name='ai_report_reader_list'),
     path('ai-report-reader/create/', appointments_api_views.report_reader_create_api, name='ai_report_reader_create'),
     path('ai-report-reader/<int:analysis_id>/', appointments_api_views.report_reader_detail_api, name='ai_report_reader_detail'),
-    path('ai-triage/', appointments_api_views.ai_triage_api, name='ai_triage'),
 
     # Phase 3: Nurse workflow
     path('nurse/dashboard/', appointments_api_views.nurse_dashboard_api, name='nurse_dashboard'),
     path('nurse/notes/', appointments_api_views.nursing_notes_api, name='nursing_notes'),
     path('nurse/tasks/', appointments_api_views.nursing_tasks_api, name='nursing_tasks'),
-    path('ai-triage/<int:triage_id>/priority/', appointments_api_views.triage_priority_update_api, name='ai_triage_priority_update'),
-
-    # Phase 5: Pharmacy and Medication Operations
-    path('pharmacy/medications/', pharmacy_api_views.medication_inventory_api, name='pharmacy_medications_list'),
-    path('pharmacy/medications/<int:medication_id>/', pharmacy_api_views.medication_detail_api, name='pharmacy_medication_detail'),
-    path('pharmacy/pending-dispense/', pharmacy_api_views.pending_dispense_queue_api, name='pharmacy_pending_dispense'),
-    path('pharmacy/dispense-transaction/', pharmacy_api_views.dispense_transaction_api, name='pharmacy_dispense_transaction_create'),
-    path('pharmacy/dispense-transaction/<int:transaction_id>/', pharmacy_api_views.dispense_transaction_api, name='pharmacy_dispense_transaction_update'),
-    path('pharmacy/controlled-drugs/', pharmacy_api_views.controlled_drug_log_api, name='pharmacy_controlled_drugs'),
-    path('pharmacy/alerts/', pharmacy_api_views.pharmacy_alerts_api, name='pharmacy_alerts'),
-    path('pharmacy/dashboard/', pharmacy_api_views.pharmacy_dashboard_api, name='pharmacy_dashboard'),
-
-    # Phase 6: Inpatient (IPD) Clinical Workflow
-    path('ipd/stays/', inpatient_api_views.ipd_stays_api, name='ipd_stays'),
-    path('ipd/stays/<int:stay_id>/', inpatient_api_views.ipd_stay_detail_api, name='ipd_stay_detail'),
-    path('ipd/stays/<int:stay_id>/progress-notes/', inpatient_api_views.ipd_progress_notes_api, name='ipd_progress_notes'),
-    path('ipd/stays/<int:stay_id>/rounds/', inpatient_api_views.ipd_rounds_api, name='ipd_rounds'),
-    path('ipd/stays/<int:stay_id>/discharge/', inpatient_api_views.ipd_discharge_api, name='ipd_discharge'),
-    path('ipd/stays/<int:stay_id>/medication-reconciliation/', inpatient_api_views.ipd_medication_reconciliation_api, name='ipd_medication_reconciliation'),
-    path('ipd/stays/<int:stay_id>/mar/', inpatient_api_views.ipd_mar_api, name='ipd_mar'),
-    path('ipd/stays/<int:stay_id>/procedures/', inpatient_api_views.ipd_procedures_api, name='ipd_procedures'),
-    path('ipd/dashboard/', inpatient_api_views.ipd_dashboard_api, name='ipd_dashboard'),
 
     # System Health Check & Monitoring (Phase 1)
     path('system/health-check/', health_views.system_health_check, name='system_health_check'),
@@ -247,33 +169,4 @@ urlpatterns = [
     path('system/api-metrics/', health_views.system_api_metrics, name='system_api_metrics'),
     path('rbac/role-matrix/', health_views.rbac_role_matrix, name='rbac_role_matrix'),
     path('system/security-status/', health_views.system_security_status, name='system_security_status'),
-    
-    # Phase 7: Finance & Insurance Maturity
-    path('finance/dashboard/', phase7_api_views.finance_dashboard_api, name='finance_dashboard'),
-    
-    # Financial Reconciliation Reports
-    path('finance/reconciliation/daily/', phase7_api_views.daily_reconciliation_api, name='finance_reconciliation_daily'),
-    path('finance/reconciliation/monthly/', phase7_api_views.monthly_reconciliation_api, name='finance_reconciliation_monthly'),
-    path('finance/reconciliation/receivables/', phase7_api_views.outstanding_receivables_api, name='finance_outstanding_receivables'),
-    path('finance/reconciliation/claims/', phase7_api_views.claim_status_report_api, name='finance_claim_status_report'),
-    path('finance/reconciliation/provider-performance/', phase7_api_views.provider_performance_api, name='finance_provider_performance'),
-    path('finance/reconciliation/refunds/', phase7_api_views.refund_summary_api, name='finance_refund_summary'),
-
-    # Phase 8: Quality, Compliance & Enterprise Readiness
-    path('compliance/dashboard/', quality_compliance_api_views.compliance_dashboard_api, name='compliance_dashboard'),
-    path('compliance/evidence-export/', quality_compliance_api_views.compliance_evidence_export_api, name='compliance_evidence_export'),
-    path('compliance/incidents/', quality_compliance_api_views.incidents_api, name='compliance_incidents'),
-    path('compliance/incidents/<int:incident_id>/', quality_compliance_api_views.incident_detail_api, name='compliance_incident_detail'),
-    path('compliance/incidents/<int:incident_id>/triage/', quality_compliance_api_views.incident_triage_api, name='compliance_incident_triage'),
-    path('compliance/incidents/<int:incident_id>/resolve/', quality_compliance_api_views.incident_resolve_api, name='compliance_incident_resolve'),
-    path('compliance/sla-breaches/', quality_compliance_api_views.sla_breaches_api, name='compliance_sla_breaches'),
-    path('compliance/sla-breaches/<int:breach_id>/', quality_compliance_api_views.sla_breach_detail_api, name='compliance_sla_breach_detail'),
-    path('compliance/sla-breaches/<int:breach_id>/escalate/', quality_compliance_api_views.sla_breach_escalate_api, name='compliance_sla_breach_escalate'),
-    path('compliance/sla-breaches/<int:breach_id>/resolve/', quality_compliance_api_views.sla_breach_resolve_api, name='compliance_sla_breach_resolve'),
-    path('compliance/backup-drills/', quality_compliance_api_views.backup_drills_api, name='compliance_backup_drills'),
-    path('compliance/backup-drills/<int:drill_id>/', quality_compliance_api_views.backup_drill_detail_api, name='compliance_backup_drill_detail'),
-    path('compliance/backup-drills/<int:drill_id>/verify/', quality_compliance_api_views.backup_drill_verify_api, name='compliance_backup_drill_verify'),
-    path('compliance/retention-policies/', quality_compliance_api_views.retention_policies_api, name='compliance_retention_policies'),
-    path('compliance/retention-policies/<int:policy_id>/', quality_compliance_api_views.retention_policy_detail_api, name='compliance_retention_policy_detail'),
-    path('compliance/retention-policies/<int:policy_id>/execute/', quality_compliance_api_views.retention_policy_execute_api, name='compliance_retention_policy_execute'),
-] + finance_router.urls
+]

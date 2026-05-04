@@ -47,7 +47,6 @@ urlpatterns = [
     path('users/', include('users.urls', namespace='users')),
     path('clinical/', include('clinical.urls', namespace='clinical')),
     path('appointments/', include('appointments.urls', namespace='appointments')),
-    path('rooms/', include('rooms.urls', namespace='rooms')),
     path('audit/', include('audit.urls', namespace='audit')),
     path('notifications/', include('notifications.urls', namespace='notifications')),
     path('reviews/', include('reviews.urls', namespace='reviews')),
@@ -56,10 +55,6 @@ urlpatterns = [
     path('prescriptions/', include('prescriptions.urls', namespace='prescriptions')),
     path('payments/', include('payments.urls', namespace='payments')),
     path('lab/', include('lab.urls', namespace='lab')),
-    path('api/emergency/', include('emergency.urls', namespace='emergency')),
-    path('api/radiology/', include('radiology.urls', namespace='radiology')),
-    path('api/surgery/', include('surgery.urls', namespace='surgery')),
-    path('api/inventory/', include('inventory.urls', namespace='inventory')),
     path('', user_views.login_view, name='home'),
 ]
 
