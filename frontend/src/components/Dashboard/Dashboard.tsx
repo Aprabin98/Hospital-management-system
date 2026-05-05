@@ -17,8 +17,6 @@ interface DashboardStats {
 interface DashboardExtra {
   lab_tests: number;
   prescriptions: number;
-  room_assignments: number;
-  room_recommendations: number;
   recommended_tests: number;
   heart_risk: string;
   unread_notifications: number;
@@ -50,11 +48,6 @@ interface PaymentStats {
   overdue_count: number;
 }
 
-interface RevenueSummary {
-  net_revenue: number;
-  total_refunded_amount: number;
-}
-
 interface MetricCard {
   title: string;
   value: string | number;
@@ -83,8 +76,6 @@ export default function Dashboard() {
   const [extra, setExtra] = useState<DashboardExtra>({
     lab_tests: 0,
     prescriptions: 0,
-    room_assignments: 0,
-    room_recommendations: 0,
     recommended_tests: 0,
     heart_risk: 'Not Assessed',
     unread_notifications: 0,
@@ -96,7 +87,6 @@ export default function Dashboard() {
     my_lab_bookings: 0,
   });
   const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
-  const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null);
   const [recommendedTests, setRecommendedTests] = useState<LabRecommendationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { userRole: authUserRole, isLoading: isAuthLoading } = useAuth();
@@ -114,8 +104,6 @@ export default function Dashboard() {
         const extraData: DashboardExtra = {
           lab_tests: 0,
           prescriptions: 0,
-          room_assignments: 0,
-          room_recommendations: 0,
           recommended_tests: 0,
           heart_risk: 'Not Assessed',
           unread_notifications: 0,
@@ -137,7 +125,6 @@ export default function Dashboard() {
 
         if (role === 'patient') {
           requests.push(
-            apiClient.get<{ id: number }>('/rooms/current-assignment/').then(() => { extraData.room_assignments = 1; }).catch(() => undefined),
             apiClient.get<{ count: number; results?: AppointmentSummaryItem[] }>('/appointments/?page_size=200').then((d) => {
               const items = d.results || [];
               const upcoming = items.filter((item) => ['PENDING', 'CONFIRMED'].includes((item.status || '').toUpperCase())).length;
@@ -150,12 +137,6 @@ export default function Dashboard() {
               setRoleStats((prev) => ({ ...prev, my_lab_bookings: d.count || 0 }));
             }).catch(() => undefined)
           );
-        } else {
-          requests.push(
-            apiClient.get<{ results?: AppointmentSummaryItem[] }>('/rooms/admission-requests/?page_size=5').then((d) => {
-              extraData.room_recommendations = (d.results || []).length;
-            }).catch(() => undefined)
-          );
         }
 
         if (['patient', 'doctor'].includes(role)) {
@@ -164,14 +145,6 @@ export default function Dashboard() {
               extraData.heart_risk = d.risk_level || 'Not Assessed';
             }).catch(() => undefined)
           );
-        }
-
-        if (role === 'admin') {
-          requests.push(
-            apiClient.get<RevenueSummary>('/payments/revenue/').then(setRevenueSummary).catch(() => setRevenueSummary(null))
-          );
-        } else {
-          setRevenueSummary(null);
         }
 
         await Promise.allSettled(requests);
@@ -213,45 +186,24 @@ export default function Dashboard() {
     const cards: MetricCard[] = [
       { title: 'Lab Volume', value: extra.lab_tests, description: 'Bookings and result workflow', href: '/lab-reports', icon: 'lab', tone: 'rose' },
       { title: 'Prescriptions', value: extra.prescriptions, description: 'Medication orders in system', href: '/prescriptions', icon: 'prescriptions', tone: 'amber' },
-      { title: userRole === 'PATIENT' ? 'My Lab Bookings' : 'Room Allocation', value: userRole === 'PATIENT' ? roleStats.my_lab_bookings : extra.room_assignments, description: userRole === 'PATIENT' ? 'Track tests and reports' : 'Current patient placement', href: userRole === 'PATIENT' ? '/lab-reports' : '/rooms', icon: userRole === 'PATIENT' ? 'lab' : 'rooms', tone: 'indigo' },
+      { title: userRole === 'PATIENT' ? 'My Lab Bookings' : 'Lab Bookings', value: userRole === 'PATIENT' ? roleStats.my_lab_bookings : extra.lab_tests, description: userRole === 'PATIENT' ? 'Track tests and reports' : 'Current lab workload', href: '/lab-reports', icon: 'lab', tone: 'indigo' },
       { title: 'Heart Risk', value: extra.heart_risk, description: 'Latest risk classification', href: '/ai-health/heart-risk', icon: 'heart', tone: 'teal' },
     ];
 
-    if (isAdminOpsRole) {
-      cards.push({ title: 'Room Requests', value: extra.room_recommendations, description: 'Admissions and transfer queue', href: '/admin/approvals-center', icon: 'rooms', tone: 'slate' });
-    }
-
     return cards;
-  }, [extra, isAdminOpsRole, roleStats.my_lab_bookings, userRole]);
+  }, [extra.lab_tests, extra.heart_risk, extra.prescriptions, roleStats.my_lab_bookings, userRole]);
 
   const adminKpis = useMemo<MetricCard[]>(() => {
-    if (!isAdminOpsRole) {
+    if (!isAdminOpsRole || !paymentStats) {
       return [];
     }
 
-    const cards: MetricCard[] = [];
-
-    if (paymentStats) {
-      cards.push(
-        { title: 'Paid Bills', value: paymentStats.paid_count, description: `Rs. ${Number(paymentStats.total_paid).toFixed(2)} collected`, href: '/billing?status=PAID', icon: 'billing', tone: 'teal' },
-        { title: 'Unpaid Bills', value: paymentStats.unpaid_count, description: `Rs. ${Number(paymentStats.total_unpaid).toFixed(2)} pending`, href: '/billing?status=UNPAID', icon: 'finance', tone: 'rose' },
-        { title: 'Overdue Bills', value: paymentStats.overdue_count, description: 'Accounts needing follow-up', href: '/billing?status=OVERDUE', icon: 'security', tone: 'amber' }
-      );
-    }
-
-    if (revenueSummary) {
-      cards.push({
-        title: 'Net Revenue',
-        value: `Rs. ${Number(revenueSummary.net_revenue).toFixed(2)}`,
-        description: `Refunded Rs. ${Number(revenueSummary.total_refunded_amount).toFixed(2)}`,
-        href: '/billing',
-        icon: 'finance',
-        tone: 'slate',
-      });
-    }
-
-    return cards;
-  }, [isAdminOpsRole, paymentStats, revenueSummary]);
+    return [
+      { title: 'Paid Bills', value: paymentStats.paid_count, description: `Rs. ${Number(paymentStats.total_paid).toFixed(2)} collected`, href: '/billing?status=PAID', icon: 'billing', tone: 'teal' },
+      { title: 'Unpaid Bills', value: paymentStats.unpaid_count, description: `Rs. ${Number(paymentStats.total_unpaid).toFixed(2)} pending`, href: '/billing?status=UNPAID', icon: 'finance', tone: 'rose' },
+      { title: 'Overdue Bills', value: paymentStats.overdue_count, description: 'Accounts needing follow-up', href: '/billing?status=OVERDUE', icon: 'security', tone: 'amber' },
+    ];
+  }, [isAdminOpsRole, paymentStats]);
 
   if (isLoading) {
     return (
@@ -335,11 +287,10 @@ export default function Dashboard() {
           <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <QuickActionCard title="Add Doctor" description="Create a new doctor profile." href="/admin/doctors-management?create=1" icon="doctors" />
             <QuickActionCard title="Manage Doctors" description="Review staffing and availability." href="/admin/doctors-management" icon="doctors" />
-            <QuickActionCard title="Manage Rooms" description="Track room inventory and occupancy." href="/admin/rooms-management" icon="rooms" />
             <QuickActionCard title="Patient Operations" description="Search, export, and review patient activity." href="/admin/patient-operations" icon="patients" />
-            <QuickActionCard title="Approvals Center" description="Resolve admissions, transfers, and refunds." href="/admin/approvals-center" icon="security" />
-            <QuickActionCard title="Revenue Summary" description="View collection and refunds." href="/admin/revenue-summary" icon="finance" />
-            <QuickActionCard title="Emergency Queue" description="Open the triage board and urgent cases." href="/emergency" icon="emergency" />
+            <QuickActionCard title="Billing Overview" description="Review payment history and overdue balances." href="/billing" icon="billing" />
+            <QuickActionCard title="Lab Workflow" description="Open lab bookings and results." href="/admin/lab-workflow" icon="lab" />
+            <QuickActionCard title="Reports" description="Open the shared operational reports workspace." href="/reports" icon="reports" />
             <QuickActionCard title="Security Monitoring" description="Review logins, lockouts, and access events." href="/admin/security-monitoring" icon="security" />
           </div>
         </section>
@@ -392,7 +343,7 @@ export default function Dashboard() {
               <QuickActionCard title="Medical Records" description="Review your health records." href="/medical-records" icon="reports" />
               <QuickActionCard title="Lab Reports" description="Track bookings and results." href="/lab-reports" icon="lab" />
               <QuickActionCard title="Prescriptions" description="See active medication plans." href="/prescriptions" icon="prescriptions" />
-              <QuickActionCard title="Rooms" description="View current room and bed details." href="/rooms" icon="rooms" />
+              <QuickActionCard title="Billing" description="Review your invoices and payments." href="/billing" icon="billing" />
               <QuickActionCard title="Notifications" description="Open all care alerts." href="/notifications" icon="notifications" />
               <QuickActionCard title="Doctors" description="Browse available doctors." href="/doctors" icon="doctors" />
               <QuickActionCard title="Heart Risk" description="Run or review your heart risk assessment." href="/ai-health/heart-risk" icon="heart" />
@@ -403,7 +354,7 @@ export default function Dashboard() {
               <QuickActionCard title="Medical Records" description="Review health records and notes." href="/medical-records" icon="reports" />
               <QuickActionCard title="Lab Reports" description="Open tests and diagnostic reports." href="/lab-reports" icon="lab" />
               <QuickActionCard title="Prescriptions" description="Manage medication orders." href="/prescriptions" icon="prescriptions" />
-              <QuickActionCard title="Emergency Queue" description="Open urgent triage workflow." href="/emergency" icon="emergency" />
+              <QuickActionCard title="Reports" description="Open the shared operational reports workspace." href="/reports" icon="reports" />
               <QuickActionCard title="Doctors" description="View doctor roster and availability." href="/doctors" icon="doctors" />
               <QuickActionCard title="AI Triage" description="Check symptom urgency quickly." href="/ai-health/triage" icon="spark" />
               <QuickActionCard title="My Profile" description="Edit your account details." href="/profile" icon="profile" />

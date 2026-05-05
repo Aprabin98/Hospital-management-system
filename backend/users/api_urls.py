@@ -138,6 +138,8 @@ urlpatterns = [
     
     # Payments & Billing
     path('payments/', payments_api_views.payments_list_api, name='payments_list'),
+    path('payments/my/', payments_api_views.payments_list_api, name='payments_my'),
+    path('payments/stats/', payments_api_views.payment_stats_api, name='payments_stats'),
     path('payments/<int:payment_id>/', payments_api_views.payment_detail_api, name='payment_detail'),
     path('payments/<int:payment_id>/mark-paid/', payments_api_views.payment_mark_paid_api, name='payment_mark_paid'),
     path('payments/<int:payment_id>/invoice/', payments_api_views.invoice_download_api, name='invoice_download'),

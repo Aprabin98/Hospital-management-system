@@ -18,30 +18,30 @@ const serviceCards = [
     title: 'Billing and Insurance',
     label: 'Finance',
     description:
-      'Invoices, refunds, insurance verification, pre-authorizations, claims, and reconciliation.',
+      'Invoice management, payment tracking, insurance verification, and billing workflows.',
   },
   {
-    title: 'Prescriptions and Pharmacy',
-    label: 'Medication',
+    title: 'Clinical Management',
+    label: 'Clinical',
     description:
-      'Digital prescriptions, dispense workflow, stock visibility, and controlled drug logs.',
+      'Clinical observations, diagnoses, treatment plans, and medical documentation.',
   },
   {
-    title: 'Inpatient and Emergency',
-    label: 'Care delivery',
+    title: 'Prescriptions',
+    label: 'Prescriptions',
     description:
-      'IPD stays, rounds, discharge workflow, emergency encounters, and room assignment operations.',
+      'Digital prescriptions, prescription tracking, and medication records.',
   },
   {
     title: 'Audit, Notifications, and AI',
     label: 'Operations',
     description:
-      'Security logs, role-based access, in-app alerts, WhatsApp notifications, and AI health tools.',
+      'Security logs, role-based access, in-app alerts, and AI health analytics tools.',
   },
 ];
 
 const highlights = [
-  'Role-based access for admin, doctor, nurse, receptionist, lab, pharmacy, and patient users',
+  'Role-based access for admin, doctor, receptionist, lab technician, and patient users',
   'JWT authentication with refresh flow and optional 2FA verification',
   'Responsive operational workspace for hospital departments',
   'PDF receipts, lab reports, and prescriptions generated inside the system',
@@ -49,19 +49,19 @@ const highlights = [
 
 const hospitalServices = [
   'Outpatient consultation',
-  'Emergency care support',
-  'Laboratory testing',
-  'Radiology workflow',
-  'Pharmacy operations',
-  'Inpatient admission and discharge',
+  'Appointment scheduling and management',
+  'Laboratory testing and results',
+  'Clinical diagnostics and observations',
+  'Prescription management',
   'Insurance and billing desk',
   'Medical records and clinical documentation',
+  'Audit logging and compliance',
 ];
 
 const metrics = [
-  { value: '20+', label: 'Hospital modules' },
-  { value: '10', label: 'User roles supported' },
-  { value: '24/7', label: 'Operational readiness theme' },
+  { value: '12', label: 'Core app modules' },
+  { value: '5', label: 'User roles supported' },
+  { value: '24/7', label: 'Operational readiness' },
   { value: '1', label: 'Unified care platform' },
 ];
 

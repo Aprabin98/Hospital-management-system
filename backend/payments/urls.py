@@ -1,4 +1,5 @@
 from django.urls import path
+from . import khalti_views
 from . import views
 from . import insurance_views
 
@@ -21,4 +22,8 @@ urlpatterns = [
     path('insurance/', insurance_views.insurance_list, name='insurance_list'),
     path('insurance/create/', insurance_views.insurance_create, name='insurance_create'),
     path('insurance/<int:insurance_id>/verify/', insurance_views.insurance_verify, name='insurance_verify'),
+    
+    # Khalti payment integration
+    path('khalti/initiate/', khalti_views.initiate_khalti_payment, name='khalti_initiate'),
+    path('khalti/verify/', khalti_views.verify_khalti_payment, name='khalti_verify'),
 ]

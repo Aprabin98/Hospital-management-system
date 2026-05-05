@@ -89,6 +89,11 @@ class Payment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Khalti fields
+    khalti_transaction_id = models.CharField(max_length=255, null=True, blank=True)
+    khalti_pidx = models.CharField(max_length=255, null=True, blank=True)
+    khalti_mobile = models.CharField(max_length=20, null=True, blank=True)
+    
     # Reminder tracking
     reminder_sent_count = models.IntegerField(default=0)
     last_reminder_sent = models.DateTimeField(null=True, blank=True)

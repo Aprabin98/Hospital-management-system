@@ -281,7 +281,7 @@ def appointment_create_api(request):
         date=booking_date,
         start_time=start_time_obj,
         end_time=end_time_obj,
-        status='CONFIRMED',
+        status='PENDING',
         notes=notes,
     )
 

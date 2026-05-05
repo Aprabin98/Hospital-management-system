@@ -26,8 +26,6 @@ interface Payment {
   is_overdue: boolean;
   overdue_days: number;
   notes: string;
-  has_refund_request: boolean;
-  refund_status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,7 +41,6 @@ const BillingDetailPage = () => {
 
   const isPatient = userRole === 'PATIENT';
   const canManageBilling = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-  const canManageRefunds = userRole === 'ADMIN';
 
   useEffect(() => {
     setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
@@ -122,27 +119,6 @@ const BillingDetailPage = () => {
       toast.success('Payment marked as paid');
     } catch (err: any) {
       const message = err?.message || 'Failed to mark payment as paid';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const manageRefund = async (decision: 'APPROVED' | 'REJECTED') => {
-    if (!payment) {
-      return;
-    }
-    try {
-      setProcessing(true);
-      await apiClient.post(`/payments/${payment.id}/refund/manage/`, {
-        status: decision,
-      });
-      toast.success(`Refund ${decision.toLowerCase()} successfully`);
-      const refreshed = await apiClient.get<Payment>(`/payments/${payment.id}/`);
-      setPayment(refreshed);
-    } catch (err: any) {
-      const message = err?.message || 'Failed to manage refund';
       setError(message);
       toast.error(message);
     } finally {
@@ -292,25 +268,6 @@ const BillingDetailPage = () => {
                     >
                       {processing ? 'Updating...' : 'Mark as Paid'}
                     </button>
-                  )}
-
-                  {canManageRefunds && payment.refund_status === 'PENDING' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => manageRefund('APPROVED')}
-                        disabled={processing}
-                        className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Approve Refund
-                      </button>
-                      <button
-                        onClick={() => manageRefund('REJECTED')}
-                        disabled={processing}
-                        className="rounded-lg border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Reject Refund
-                      </button>
-                    </div>
                   )}
                 </div>
               </div>

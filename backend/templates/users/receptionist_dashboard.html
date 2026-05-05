@@ -33,7 +33,6 @@
                 <a href="{% url 'appointments:book_step1' %}" class="btn btn-primary">📅 Book Appointment</a>
                 <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline-primary">📋 View Appointments</a>
                 <a href="{% url 'clinical:doctor_search' %}" class="btn btn-outline-secondary">🔍 Find Doctors</a>
-                <a href="{% url 'rooms:receptionist_assign_room' %}" class="btn btn-outline-secondary">🛏️ Assign Room</a>
             </div>
         </div>
     </div>
@@ -49,7 +48,7 @@
                 <strong>AI Reports Processed:</strong> {{ ai_reports_count }}
             </div>
             <div class="alert alert-light border mt-2 mb-0 small">
-                Use navbar groups for all modules: <strong>Tests</strong>, <strong>Reports</strong>, and <strong>Rooms</strong>.
+                Use navbar groups for the supported modules: <strong>Tests</strong>, <strong>Reports</strong>, and <strong>Billing</strong>.
             </div>
         </div>
     </div>

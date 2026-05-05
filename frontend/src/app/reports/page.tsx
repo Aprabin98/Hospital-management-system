@@ -17,12 +17,10 @@ interface DashboardStats {
 interface RevenueSummary {
   total_revenue: number;
   total_transactions: number;
-  total_refunded_amount: number;
-  pending_refund_count: number;
   net_revenue: number;
 }
 
-type ReportCategory = 'ALL' | 'OPERATIONS' | 'FINANCE' | 'CLINICAL' | 'AI' | 'COMPLIANCE';
+type ReportCategory = 'ALL' | 'OPERATIONS' | 'FINANCE' | 'CLINICAL' | 'AI';
 
 interface ReportLinkCard {
   title: string;
@@ -45,7 +43,6 @@ export default function ReportsPage() {
   const { userRole, isLoading: authLoading } = useAuth();
   const role = (userRole || '').toUpperCase();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
   const [category, setCategory] = useState<ReportCategory>('ALL');
   const [exportMessage, setExportMessage] = useState('');
   const [activeExportId, setActiveExportId] = useState('');
@@ -53,9 +50,7 @@ export default function ReportsPage() {
   const isDoctor = role === 'DOCTOR';
   const isAdmin = role === 'ADMIN';
   const isReceptionist = role === 'RECEPTIONIST';
-  const isFinanceRole = ['ADMIN', 'BILLING_OFFICER', 'INSURANCE_COORDINATOR'].includes(role);
-  const isComplianceRole = ['ADMIN', 'QUALITY_COMPLIANCE_OFFICER'].includes(role);
-
+  const isFinanceRole = isAdmin || isReceptionist;
   const reportCards = useMemo<ReportLinkCard[]>(() => [
     {
       title: 'Billing Operations Report',
@@ -72,25 +67,11 @@ export default function ReportsPage() {
       allowedRoles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'],
     },
     {
-      title: 'Room Occupancy Report',
-      href: '/rooms',
-      className: 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 hover:bg-emerald-100',
-      category: 'OPERATIONS',
-      allowedRoles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'PATIENT'],
-    },
-    {
       title: 'Patient Registry Report',
       href: '/patients',
       className: 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 hover:bg-slate-100',
       category: 'CLINICAL',
       allowedRoles: ['ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'],
-    },
-    {
-      title: 'Audit Log Report',
-      href: '/audit-logs',
-      className: 'rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700 hover:bg-rose-100',
-      category: 'COMPLIANCE',
-      allowedRoles: ['ADMIN'],
     },
     {
       title: 'AI Report Reader',
@@ -179,30 +160,6 @@ export default function ReportsPage() {
   };
 
   const exportActions: ExportAction[] = useMemo(() => [
-    {
-      id: 'room-csv',
-      title: 'Room Occupancy Snapshot',
-      description: 'Download the latest room statistics as CSV.',
-      format: 'CSV',
-      allowedRoles: ['ADMIN', 'RECEPTIONIST'],
-      run: () => downloadCsv('/rooms/statistics/export/csv/', `room-occupancy-${new Date().toISOString().slice(0, 10)}.csv`),
-    },
-    {
-      id: 'finance-daily',
-      title: 'Daily Finance Reconciliation',
-      description: 'Export finance reconciliation metrics as JSON.',
-      format: 'JSON',
-      allowedRoles: ['ADMIN', 'BILLING_OFFICER', 'INSURANCE_COORDINATOR'],
-      run: () => downloadJson('/finance/reconciliation/daily/', `finance-reconciliation-${new Date().toISOString().slice(0, 10)}.json`),
-    },
-    {
-      id: 'compliance-evidence',
-      title: 'Compliance Evidence Pack',
-      description: 'Export compliance incidents, breaches, and drill evidence.',
-      format: 'JSON',
-      allowedRoles: ['ADMIN', 'QUALITY_COMPLIANCE_OFFICER'],
-      run: () => downloadJson('/compliance/evidence-export/', `compliance-evidence-${new Date().toISOString().slice(0, 10)}.json`),
-    },
   ], [downloadCsv, downloadJson]);
 
   const visibleExportActions = exportActions.filter((action) => action.allowedRoles.includes(role));
@@ -217,13 +174,8 @@ export default function ReportsPage() {
         const dashboardStats = await apiClient.get<DashboardStats>('/dashboard/stats/');
         setStats(dashboardStats);
 
-        if (role === 'ADMIN') {
-          const revenueSummary = await apiClient.get<RevenueSummary>('/payments/revenue/');
-          setRevenue(revenueSummary);
-        }
       } catch {
         setStats(null);
-        setRevenue(null);
       }
     };
 
@@ -241,7 +193,7 @@ export default function ReportsPage() {
         {authLoading ? <p className="text-sm text-gray-600">Loading reports workspace...</p> : null}
 
         <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-          {(['ALL', 'OPERATIONS', 'FINANCE', 'CLINICAL', 'AI', 'COMPLIANCE'] as ReportCategory[]).map((item) => (
+          {(['ALL', 'OPERATIONS', 'FINANCE', 'CLINICAL', 'AI'] as ReportCategory[]).map((item) => (
             <button
               key={item}
               type="button"
@@ -266,14 +218,6 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {isAdmin && revenue && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard label="Net Revenue" value={`Rs. ${Number(revenue.net_revenue).toFixed(2)}`} tone="green" />
-            <StatCard label="Refunded Amount" value={`Rs. ${Number(revenue.total_refunded_amount).toFixed(2)}`} tone="red" />
-            <StatCard label="Pending Refund Requests" value={revenue.pending_refund_count} tone="amber" />
-          </div>
-        )}
-
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filteredReportCards.length === 0 ? (
             <EmptyState title="No reports in this category" description="Choose another category to view report modules." />
@@ -285,9 +229,6 @@ export default function ReportsPage() {
               return null;
             }
             if (card.category === 'CLINICAL' && !(isAdmin || isReceptionist || isDoctor)) {
-              return null;
-            }
-            if (card.category === 'COMPLIANCE' && !isAdmin) {
               return null;
             }
             return (
@@ -334,7 +275,7 @@ export default function ReportsPage() {
             <p className="mt-4 text-sm text-gray-700">{exportMessage}</p>
           )}
 
-          {(isFinanceRole || isComplianceRole) && (
+          {isFinanceRole && (
             <p className="mt-2 text-xs text-gray-500">
               Exports are role-protected and reflect your backend permissions.
             </p>

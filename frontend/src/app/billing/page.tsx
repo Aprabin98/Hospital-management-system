@@ -25,8 +25,6 @@ interface Payment {
   is_overdue: boolean;
   overdue_days: number;
   notes: string;
-  has_refund_request: boolean;
-  refund_status: string | null;
   created_at: string;
 }
 
@@ -53,8 +51,6 @@ interface PaymentsApiResponse {
 interface RevenueSummary {
   total_revenue: number;
   total_transactions: number;
-  total_refunded_amount: number;
-  pending_refund_count: number;
   net_revenue: number;
 }
 
@@ -73,20 +69,9 @@ const BillingPageContent = () => {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState(() => (searchParams?.get('status') || '').toUpperCase());
   const [userRole, setUserRole] = useState('');
-  const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [showRefundModal, setShowRefundModal] = useState(false);
-  const [refundReason, setRefundReason] = useState('');
-  const [submittingRefund, setSubmittingRefund] = useState(false);
-  const [selectedRefundReviewPayment, setSelectedRefundReviewPayment] = useState<Payment | null>(null);
-  const [showRefundReviewModal, setShowRefundReviewModal] = useState(false);
-  const [refundDecision, setRefundDecision] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
-  const [refundReviewNotes, setRefundReviewNotes] = useState('');
-  const [submittingRefundReview, setSubmittingRefundReview] = useState(false);
 
   const isPatient = userRole === 'PATIENT';
   const canManageBilling = userRole === 'ADMIN' || userRole === 'RECEPTIONIST';
-  const canManageRefunds = userRole === 'ADMIN';
 
   // Fetch payments and stats
   const fetchData = useCallback(async () => {
@@ -99,15 +84,13 @@ const BillingPageContent = () => {
         paymentsParams.status = statusFilter;
       }
 
-      const [paymentsRes, statsRes, revenueRes] = await Promise.all([
+      const [paymentsRes, statsRes] = await Promise.all([
         apiClient.get<PaymentsApiResponse>('/payments/', { params: paymentsParams }),
         apiClient.get<Stats>('/payments/stats/'),
-        userRole === 'ADMIN' ? apiClient.get<RevenueSummary>('/payments/revenue/') : Promise.resolve(null),
-      ]) as [PaymentsApiResponse, Stats, RevenueSummary | null];
+      ]) as [PaymentsApiResponse, Stats];
 
       setPayments(paymentsRes.results || []);
       setStats(statsRes);
-      setRevenueSummary(revenueRes);
     } catch (err: unknown) {
       const message = getErrorMessage(err, 'Failed to load billing information');
       setError(message);
@@ -128,19 +111,6 @@ const BillingPageContent = () => {
     fetchData();
   }, [fetchData, userRole]);
 
-  const handleRequestRefund = (payment: Payment) => {
-    if (!isPatient) {
-      setError('Only patients can request refunds.');
-      return;
-    }
-    if (payment.status !== 'PAID') {
-      setError('Only paid payments can be refunded.');
-      return;
-    }
-    setSelectedPayment(payment);
-    setShowRefundModal(true);
-  };
-
   const markAsPaid = async (payment: Payment) => {
     if (!canManageBilling) {
       setError('Access denied.');
@@ -157,68 +127,6 @@ const BillingPageContent = () => {
       const message = getErrorMessage(err, 'Failed to mark payment as paid');
       setError(message);
       toast.error(message);
-    }
-  };
-
-  const openRefundReviewModal = (payment: Payment) => {
-    if (!canManageRefunds) {
-      setError('Only admin can manage refunds.');
-      return;
-    }
-    setSelectedRefundReviewPayment(payment);
-    setRefundDecision('APPROVED');
-    setRefundReviewNotes('');
-    setShowRefundReviewModal(true);
-  };
-
-  const submitRefundReview = async () => {
-    if (!selectedRefundReviewPayment) {
-      return;
-    }
-
-    try {
-      setSubmittingRefundReview(true);
-      await apiClient.post(`/payments/${selectedRefundReviewPayment.id}/refund/manage/`, {
-        status: refundDecision,
-        notes: refundReviewNotes,
-      });
-      toast.success(`Refund ${refundDecision.toLowerCase()} successfully`);
-      setShowRefundReviewModal(false);
-      setSelectedRefundReviewPayment(null);
-      await fetchData();
-    } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Failed to process refund request');
-      setError(message);
-      toast.error(message);
-    } finally {
-      setSubmittingRefundReview(false);
-    }
-  };
-
-  const submitRefundRequest = async () => {
-    if (!selectedPayment || !refundReason.trim()) {
-      setError('Please provide a refund reason.');
-      return;
-    }
-
-    try {
-      setSubmittingRefund(true);
-      await apiClient.post(`/payments/${selectedPayment.id}/refund/`, {
-        reason: refundReason,
-      });
-      toast.success('Refund request submitted');
-
-      // Reset and refresh
-      setShowRefundModal(false);
-      setRefundReason('');
-      setSelectedPayment(null);
-      await fetchData();
-    } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Failed to submit refund request');
-      setError(message);
-      toast.error(message);
-    } finally {
-      setSubmittingRefund(false);
     }
   };
 
@@ -296,7 +204,7 @@ const BillingPageContent = () => {
             <h1 className="text-3xl font-bold text-gray-900">Billing & Payments</h1>
             <p className="mt-1 text-gray-600">
               {canManageBilling
-                ? 'Admin billing control panel for payment and refund operations'
+                ? 'Admin billing control panel for payment operations'
                 : 'Manage your payment history and invoices'}
             </p>
           </div>
@@ -341,27 +249,6 @@ const BillingPageContent = () => {
               </div>
             )}
 
-            {canManageBilling && revenueSummary && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-700 p-4 text-white shadow-sm">
-                  <p className="text-sm opacity-85">Net Revenue</p>
-                  <p className="mt-2 text-2xl font-bold">Rs. {Number(revenueSummary.net_revenue).toFixed(2)}</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-cyan-600 to-sky-700 p-4 text-white shadow-sm">
-                  <p className="text-sm opacity-85">Gross Revenue</p>
-                  <p className="mt-2 text-2xl font-bold">Rs. {Number(revenueSummary.total_revenue).toFixed(2)}</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 p-4 text-white shadow-sm">
-                  <p className="text-sm opacity-85">Refunded Amount</p>
-                  <p className="mt-2 text-2xl font-bold">Rs. {Number(revenueSummary.total_refunded_amount).toFixed(2)}</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-rose-500 to-red-600 p-4 text-white shadow-sm">
-                  <p className="text-sm opacity-85">Pending Refund Requests</p>
-                  <p className="mt-2 text-2xl font-bold">{revenueSummary.pending_refund_count}</p>
-                </div>
-              </div>
-            )}
-
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               {isPatient && (
                 <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
@@ -370,12 +257,12 @@ const BillingPageContent = () => {
               )}
               {canManageBilling && (
                 <div className="mb-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-                  <span className="font-semibold">Admin Note:</span> Use Mark as Paid for pending payments and Manage Refund for pending refund requests.
+                  <span className="font-semibold">Admin Note:</span> Use Mark as Paid for pending payments.
                 </div>
               )}
               <p className="mb-3 text-sm font-semibold text-gray-700">Filter by Status</p>
               <div className="flex flex-wrap gap-2">
-                {['', 'UNPAID', 'PAID', 'OVERDUE', 'REFUNDED'].map((status) => {
+                {['', 'UNPAID', 'PAID', 'OVERDUE'].map((status) => {
                   const selected = statusFilter === status;
                   const label = status || 'ALL';
                   return (
@@ -472,33 +359,12 @@ const BillingPageContent = () => {
                               >
                                 Download Bill PDF
                               </button>
-                              {isPatient && payment.status === 'PAID' && !payment.has_refund_request && (
-                                <button
-                                  onClick={() => handleRequestRefund(payment)}
-                                  className="rounded-md border border-rose-300 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
-                                >
-                                  Request Refund
-                                </button>
-                              )}
-                              {isPatient && payment.has_refund_request && (
-                                <span className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                                  Refund: {payment.refund_status || 'PENDING'}
-                                </span>
-                              )}
                               {canManageBilling && ['UNPAID', 'OVERDUE', 'PARTIALLY_PAID'].includes(payment.status) && (
                                 <button
                                   onClick={() => markAsPaid(payment)}
                                   className="rounded-md border border-blue-300 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
                                 >
                                   Mark as Paid
-                                </button>
-                              )}
-                              {canManageRefunds && payment.refund_status === 'PENDING' && (
-                                <button
-                                  onClick={() => openRefundReviewModal(payment)}
-                                  className="rounded-md border border-violet-300 px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-50"
-                                >
-                                  Manage Refund
                                 </button>
                               )}
                             </div>
@@ -513,96 +379,6 @@ const BillingPageContent = () => {
           </>
         )}
 
-        {showRefundModal && selectedPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-900">Request Refund</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Payment #{selectedPayment.id} • Rs. {Number(selectedPayment.amount).toFixed(2)}
-              </p>
-
-              <label className="mt-4 block text-sm font-medium text-gray-700">Refund reason</label>
-              <textarea
-                value={refundReason}
-                onChange={(e) => setRefundReason(e.target.value)}
-                rows={4}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder="Describe why you need this refund"
-              />
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setShowRefundModal(false);
-                    setRefundReason('');
-                    setSelectedPayment(null);
-                  }}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  disabled={submittingRefund}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitRefundRequest}
-                  disabled={submittingRefund || !refundReason.trim()}
-                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submittingRefund ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showRefundReviewModal && selectedRefundReviewPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-900">Manage Refund Request</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Payment #{selectedRefundReviewPayment.id} • Rs. {Number(selectedRefundReviewPayment.amount).toFixed(2)}
-              </p>
-
-              <label className="mt-4 block text-sm font-medium text-gray-700">Decision</label>
-              <select
-                value={refundDecision}
-                onChange={(e) => setRefundDecision(e.target.value as 'APPROVED' | 'REJECTED')}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="APPROVED">Approve</option>
-                <option value="REJECTED">Reject</option>
-              </select>
-
-              <label className="mt-4 block text-sm font-medium text-gray-700">Admin notes (optional)</label>
-              <textarea
-                value={refundReviewNotes}
-                onChange={(e) => setRefundReviewNotes(e.target.value)}
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder="Add notes for the refund decision"
-              />
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setShowRefundReviewModal(false);
-                    setSelectedRefundReviewPayment(null);
-                  }}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  disabled={submittingRefundReview}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitRefundReview}
-                  disabled={submittingRefundReview}
-                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submittingRefundReview ? 'Saving...' : 'Save Decision'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </MainLayout>
   );

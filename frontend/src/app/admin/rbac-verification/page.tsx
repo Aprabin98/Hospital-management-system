@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MainLayout } from '@/components/Layout';
+import { useAuth } from '@/hooks';
 import { apiClient } from '@/lib/api';
 
 interface RoleEndpoint {
@@ -28,6 +29,7 @@ interface SystemStatus {
 }
 
 export default function RBACVerificationPage() {
+  const { isLoading: authLoading, userRole } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState('ADMIN');
@@ -61,8 +63,20 @@ export default function RBACVerificationPage() {
   }, [activeRole]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (userRole !== 'ADMIN') {
+      setRoleData(null);
+      setSystemStatus(null);
+      setError('Access denied. Admins only.');
+      setLoading(false);
+      return;
+    }
+
     void loadData();
-  }, [loadData]);
+  }, [authLoading, loadData, userRole]);
 
   const filteredEndpoints = roleData?.endpoints.filter(
     (ep) =>

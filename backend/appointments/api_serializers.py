@@ -63,6 +63,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     doctor_name = serializers.SerializerMethodField()
     doctor_details = DoctorSerializer(source='doctor', read_only=True)
+    payment_id = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    payment_method = serializers.SerializerMethodField()
+    payment_amount = serializers.SerializerMethodField()
     
     class Meta:
         model = Appointment
@@ -78,6 +82,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'end_time',
             'status',
             'notes',
+            'payment_id',
+            'payment_status',
+            'payment_method',
+            'payment_amount',
             'pdf_file',
             'qr_code',
             'created_at',
@@ -90,6 +98,25 @@ class AppointmentSerializer(serializers.ModelSerializer):
     
     def get_doctor_name(self, obj):
         return f"Dr. {obj.doctor.user.first_name} {obj.doctor.user.last_name}"
+
+    def _get_appointment_payment(self, obj):
+        return obj.payments.order_by('-created_at').first()
+
+    def get_payment_id(self, obj):
+        payment = self._get_appointment_payment(obj)
+        return payment.id if payment else None
+
+    def get_payment_status(self, obj):
+        payment = self._get_appointment_payment(obj)
+        return payment.status if payment else None
+
+    def get_payment_method(self, obj):
+        payment = self._get_appointment_payment(obj)
+        return payment.payment_method if payment else None
+
+    def get_payment_amount(self, obj):
+        payment = self._get_appointment_payment(obj)
+        return float(payment.amount) if payment else None
 
 
 class MedicalReportAnalysisSerializer(serializers.ModelSerializer):

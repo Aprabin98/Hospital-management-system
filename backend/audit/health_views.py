@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Sum
 from datetime import datetime, timedelta
 import time
 
@@ -272,17 +272,18 @@ def system_security_status(request):
     today = timezone.now().date()
     
     # Count failed login attempts today
-    failed_logins = LoginAttempt.objects.filter(
-        timestamp__date=today,
-        ip_address__isnull=False  # Failed attempts usually have IP recorded
-    ).count()
+    failed_logins = (
+        LoginAttempt.objects.filter(last_attempt__date=today)
+        .aggregate(total=Sum('failed_count'))['total']
+        or 0
+    )
     
     # Count unique users authenticated today
     today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
     authenticated_users = AuditLog.objects.filter(
         created_at__gte=today_start,
         action='LOGIN'
-    ).values('user').distinct().count()
+    ).values('actor').distinct().count()
     
     # Count 2FA enabled users
     two_fa_enabled = User.objects.filter(

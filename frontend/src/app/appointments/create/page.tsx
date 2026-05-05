@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
+import { initiateKhaltiPayment, openKhaltiWindow } from '@/lib/khalti';
 
 interface Doctor {
   id: number;
@@ -42,6 +43,7 @@ function CreateAppointmentPageContent() {
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [paymentPreference, setPaymentPreference] = useState<'KHALTI' | 'PAY_LATER'>('PAY_LATER');
   const [slots, setSlots] = useState<Array<{ start: string; end: string }>>([]);
   const [scheduleInfo, setScheduleInfo] = useState<SlotResponse['schedule'] | null>(null);
   const [isDoctorOnLeave, setIsDoctorOnLeave] = useState(false);
@@ -119,7 +121,13 @@ function CreateAppointmentPageContent() {
         return;
       }
 
-      const response = await apiClient.post<{ id: number }>('/appointments/create/', {
+      const response = await apiClient.post<{
+        id: number;
+        payment_id?: number | null;
+        payment_status?: string | null;
+        payment_method?: string | null;
+        payment_amount?: number | null;
+      }>('/appointments/create/', {
         doctor: selectedDoctor,
         date: appointmentDate,
         start_time: selectedSlot.start,
@@ -127,8 +135,37 @@ function CreateAppointmentPageContent() {
         notes: notes,
       });
 
-      toast.success('Appointment created successfully!');
-      router.push(`/appointments/${response.id}`);
+      if (paymentPreference === 'KHALTI' && response.payment_id) {
+        try {
+          toast.loading('Preparing Khalti payment...', { id: 'khalti-loading' });
+          const paymentAmount = Number(response.payment_amount || selectedDoctorInfo?.consultation_fee || 0);
+          const returnUrl = `${window.location.origin}/billing/khalti-success?payment_id=${response.payment_id}&appointment_id=${response.id}`;
+          const khaltiResult = await initiateKhaltiPayment(response.payment_id, returnUrl);
+
+          if (khaltiResult.success && khaltiResult.payment_url) {
+            toast.dismiss('khalti-loading');
+            toast.success('Khalti payment window opened. Please scan the QR code to complete payment.');
+            openKhaltiWindow(khaltiResult.payment_url);
+            // Don't redirect yet - let the success page handle redirect after verification
+            return;
+          }
+
+          toast.dismiss('khalti-loading');
+          toast.error(khaltiResult.error || 'Failed to start Khalti payment. Your appointment was still created.');
+          router.push(`/appointments/${response.id}`);
+          return;
+        } catch (paymentError: any) {
+          toast.dismiss('khalti-loading');
+          toast.error(paymentError?.message || 'Appointment created, but Khalti payment could not be started.');
+          router.push(`/appointments/${response.id}`);
+          return;
+        }
+      } else {
+        // Pay later option
+        toast.success('Appointment created successfully! Your appointment is pending.');
+        router.push(`/appointments/${response.id}`);
+        return;
+      }
     } catch (err: any) {
       const errorMsg = err?.message || 'Failed to create appointment';
       setError(errorMsg);
@@ -292,6 +329,44 @@ function CreateAppointmentPageContent() {
                 />
               </div>
 
+              {/* Payment Preference */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Payment Preference
+                </label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentPreference('KHALTI')}
+                    className={`rounded-xl border p-4 text-left transition-colors ${
+                      paymentPreference === 'KHALTI'
+                        ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                        : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-900">Pay now with Khalti</p>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Book the appointment and continue to Khalti payment immediately.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentPreference('PAY_LATER')}
+                    className={`rounded-xl border p-4 text-left transition-colors ${
+                      paymentPreference === 'PAY_LATER'
+                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                        : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-900">Pay later in hospital</p>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Confirm the appointment now and pay at the hospital desk later.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
               {/* Submit Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
@@ -328,8 +403,15 @@ function CreateAppointmentPageContent() {
 
                   <div>
                     <p className="text-xs text-gray-600">Consultation Fee</p>
-                    <p className="text-2xl font-bold text-gray-900">₹{selectedDoctorInfo.consultation_fee}</p>
+                      <p className="text-2xl font-bold text-gray-900">Rs. {selectedDoctorInfo.consultation_fee}</p>
                   </div>
+
+                    <div>
+                      <p className="text-xs text-gray-600">Payment Choice</p>
+                      <p className="font-semibold text-gray-900">
+                        {paymentPreference === 'KHALTI' ? 'Pay now with Khalti' : 'Pay later in hospital'}
+                      </p>
+                    </div>
                 </div>
               )}
 

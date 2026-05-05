@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/Layout';
 import { apiClient } from '@/lib/api';
+import { getStoredAuthState } from '@/lib/auth';
 import toast from 'react-hot-toast';
 
 
@@ -59,6 +60,13 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const loadAnalytics = async () => {
+      const { userRole } = getStoredAuthState();
+      if (userRole !== 'ADMIN') {
+        setError('Access denied. Admins only.');
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
         const [summary, doctorMetrics] = await Promise.all([
@@ -164,7 +172,7 @@ export default function AnalyticsPage() {
           />
           <MetricCard
             title="Total Revenue"
-            value={`₹${(analytics.total_revenue_month / 1000).toFixed(0)}k`}
+            value={`Rs. ${(analytics.total_revenue_month / 1000).toFixed(0)}k`}
             change="+8.7%"
             icon="💰"
             color="emerald"
@@ -272,10 +280,10 @@ export default function AnalyticsPage() {
               <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100 p-4">
                 <p className="text-sm text-gray-600">Monthly Revenue</p>
                 <p className="mt-1 text-2xl font-bold text-emerald-900">
-                  ₹{(analytics.total_revenue_month / 1000).toFixed(1)}k
+                  Rs. {(analytics.total_revenue_month / 1000).toFixed(1)}k
                 </p>
                 <p className="mt-2 text-xs text-emerald-700">
-                  Avg per appointment: ₹{analytics.average_revenue_per_appointment}
+                  Avg per appointment: Rs. {analytics.average_revenue_per_appointment}
                 </p>
               </div>
 
@@ -353,7 +361,7 @@ export default function AnalyticsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className="font-medium text-emerald-700">₹{(doctor.paid_revenue / 1000).toFixed(0)}k</span>
+                      <span className="font-medium text-emerald-700">Rs. {(doctor.paid_revenue / 1000).toFixed(0)}k</span>
                     </td>
                   </tr>
                 ))}

@@ -13,7 +13,8 @@ def auto_create_appointment_payment(sender, instance, created, **kwargs):
     if kwargs.get('raw', False):
         return
 
-    if instance.status == 'CONFIRMED':
+    # Create payment when appointment is first created (regardless of status)
+    if created:
         payment, created = Payment.objects.get_or_create(
             appointment=instance,
             payment_type='APPOINTMENT',
