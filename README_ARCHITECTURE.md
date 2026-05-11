@@ -340,7 +340,7 @@ See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for detailed security baseline.
 - [DOCUMENTATION.md](DOCUMENTATION.md) - Setup, fixtures, deployment
 - [API_MIGRATION_GUIDE.md](API_MIGRATION_GUIDE.md) - Deleted endpoints, migration steps
 - [SECURITY_AUDIT.md](SECURITY_AUDIT.md) - Security baseline, hardening
-- [PHASE_4_COMPLETE.md](PHASE_4_COMPLETE.md) - Project status summary
+- [docs/archive/PHASE_4_COMPLETE.md](docs/archive/PHASE_4_COMPLETE.md) - Project status summary
 
 ---
 

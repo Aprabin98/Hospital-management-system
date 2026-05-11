@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Root-level Django management entrypoint for deployment platforms like Vercel."""
+"""
+Compatibility wrapper for running Django commands from repository root.
+
+Canonical Django entrypoint: backend/manage.py
+"""
 
 from pathlib import Path
 import os

@@ -9,10 +9,6 @@ from lab.models import TestBooking, TestResult, TestTemplate
 from payments.models import Payment
 from users.models import PatientProfile, User
 
-
-collect_ignore = ['test_apis.py', 'test_phase7_api.py']
-
-
 @pytest.fixture
 def api_client():
 	return APIClient()
