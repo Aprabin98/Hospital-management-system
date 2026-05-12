@@ -160,7 +160,6 @@ urlpatterns = [
     path('ai-report-reader/<int:analysis_id>/', appointments_api_views.report_reader_detail_api, name='ai_report_reader_detail'),
 
     # Phase 3: Nurse workflow
-    path('nurse/dashboard/', appointments_api_views.nurse_dashboard_api, name='nurse_dashboard'),
     path('nurse/notes/', appointments_api_views.nursing_notes_api, name='nursing_notes'),
     path('nurse/tasks/', appointments_api_views.nursing_tasks_api, name='nursing_tasks'),
 

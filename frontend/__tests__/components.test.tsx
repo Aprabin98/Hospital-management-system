@@ -34,7 +34,7 @@ describe('Auth - Login Component', () => {
       </form>
     );
 
-    const emailInput = screen.getByPlaceholderText('Email');
+    const emailInput = screen.getByPlaceholderText('Email') as HTMLInputElement;
     await userEvent.type(emailInput, 'invalid-email');
     
     // Browser validation

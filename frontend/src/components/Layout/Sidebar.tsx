@@ -29,7 +29,6 @@ const navItems: NavItem[] = [
   { name: 'Drug Interactions', href: '/admin/drug-interactions', roles: ['admin'] },
   { name: 'Lab Workflow', href: '/admin/lab-workflow', roles: ['admin'] },
   { name: 'Reception Queue', href: '/receptionist/queue', roles: ['admin', 'receptionist', 'doctor'] },
-  { name: 'Nurse Dashboard', href: '/nurse/dashboard', roles: ['nurse', 'admin', 'doctor'] },
   { name: 'Patient Operations', href: '/admin/patient-operations', roles: ['admin', 'receptionist'] },
   { name: 'Users Management', href: '/admin/users-management', roles: ['admin'] },
   { name: 'System Settings', href: '/admin/system-settings', roles: ['admin'] },
@@ -62,7 +61,7 @@ const defaultNavSections = [
   { id: 'core', label: 'Core', items: ['Dashboard', 'Notifications', 'Settings'] },
   { id: 'clinical', label: 'Clinical', items: ['Patients', 'Appointments', 'Medical Records', 'Prescriptions', 'Doctors', 'Manage Leaves', 'Issued Prescriptions'] },
   { id: 'diagnostics', label: 'Diagnostics', items: ['Lab Reports', 'Lab Samples'] },
-  { id: 'operations', label: 'Operations', items: ['Reception Queue', 'Nurse Dashboard', 'Reports', 'Reviews', 'My Ratings', 'Billing'] },
+  { id: 'operations', label: 'Operations', items: ['Reception Queue', 'Reports', 'Reviews', 'My Ratings', 'Billing'] },
   { id: 'intelligence', label: 'AI & Quality', items: ['Heart Risk Detector', 'AI Report Reader', 'AI Triage'] },
 ];
 
@@ -70,7 +69,7 @@ const adminNavSections = [
   { id: 'overview', label: 'Overview', items: ['Dashboard', 'Analytics', 'Reports'] },
   { id: 'management', label: 'Management', items: ['Manage Doctors', 'Manage Tests', 'Specializations', 'Shifts', 'Schedules', 'Users Management', 'System Settings'] },
   { id: 'operations', label: 'Operations', items: ['Patient Operations', 'Patients', 'Appointments', 'Reception Queue', 'Billing'] },
-  { id: 'clinical', label: 'Clinical', items: ['Medical Records', 'Prescriptions', 'Doctors', 'Nurse Dashboard'] },
+  { id: 'clinical', label: 'Clinical', items: ['Medical Records', 'Prescriptions', 'Doctors'] },
   { id: 'platform', label: 'Platform', items: ['Lab Workflow', 'Lab Samples', 'Drug Interactions', 'Notifications'] },
   { id: 'security', label: 'Security', items: ['Security Monitoring', 'RBAC Verification', 'System Health', 'Audit Logs'] },
 ];
