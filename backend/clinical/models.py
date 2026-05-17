@@ -117,3 +117,106 @@ class DoctorLeave(models.Model):
     class Meta:
         unique_together = ['doctor', 'date']
         ordering = ['-date']
+
+
+class PatientVisit(models.Model):
+    RISK_CHOICES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+    ]
+
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='visits'
+    )
+    appointment = models.OneToOneField(
+        'appointments.Appointment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='visit_report'
+    )
+    doctor = models.ForeignKey(
+        Doctor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='patient_visits'
+    )
+    symptoms = models.TextField()
+    vitals = models.JSONField(default=dict, blank=True)
+    diagnosis = models.TextField(blank=True)
+    doctor_notes = models.TextField(blank=True)
+    prescribed_medicines = models.TextField(blank=True)
+    suggested_tests = models.TextField(blank=True)
+    follow_up_date = models.DateField(null=True, blank=True)
+    follow_up_completed = models.BooleanField(default=False)
+    ai_possible_causes = models.TextField(blank=True)
+    ai_recommended_tests = models.TextField(blank=True)
+    ai_risk_level = models.CharField(max_length=10, choices=RISK_CHOICES, default='LOW')
+    ai_red_flags = models.TextField(blank=True)
+    ai_summary = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_patient_visits'
+    )
+    visit_date = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-visit_date']
+        indexes = [
+            models.Index(fields=['patient', '-visit_date']),
+            models.Index(fields=['follow_up_date']),
+            models.Index(fields=['ai_risk_level']),
+        ]
+
+    def __str__(self):
+        return f"{self.patient.full_name} visit on {self.visit_date:%Y-%m-%d}"
+
+
+class PatientDocument(models.Model):
+    TYPE_CHOICES = [
+        ('LAB_REPORT', 'Lab Report'),
+        ('PRESCRIPTION', 'Prescription'),
+        ('DISCHARGE', 'Discharge Summary'),
+        ('SCAN', 'Scan/X-Ray'),
+        ('OTHER', 'Other'),
+    ]
+
+    patient = models.ForeignKey(
+        'users.PatientProfile',
+        on_delete=models.CASCADE,
+        related_name='documents'
+    )
+    visit = models.ForeignKey(
+        PatientVisit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='documents'
+    )
+    title = models.CharField(max_length=180)
+    document_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='OTHER')
+    file = models.FileField(upload_to='patient_documents/')
+    notes = models.TextField(blank=True)
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_patient_documents'
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+        indexes = [models.Index(fields=['patient', '-uploaded_at'])]
+
+    def __str__(self):
+        return f"{self.patient.full_name} - {self.title}"

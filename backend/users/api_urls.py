@@ -55,6 +55,7 @@ urlpatterns = [
     path('appointments/<int:appointment_id>/', appointments_api_views.appointment_detail_api, name='appointment_detail'),
     path('appointments/create/', appointments_api_views.appointment_create_api, name='appointment_create'),
     path('appointments/<int:appointment_id>/update/', appointments_api_views.appointment_update_api, name='appointment_update'),
+    path('appointments/<int:appointment_id>/report/', appointments_api_views.appointment_report_api, name='appointment_report'),
     path('appointments/available-slots/', appointments_api_views.appointments_available_slots_api, name='appointments_available_slots'),
     path('appointments/<int:appointment_id>/download-pdf/', appointments_api_views.appointment_download_pdf_api, name='appointment_download_pdf'),
     
@@ -64,6 +65,13 @@ urlpatterns = [
     path('medical-records/<int:record_id>/', clinical_api_views.medical_record_detail_api, name='medical_record_detail'),
     path('medical-records/create/', clinical_api_views.medical_record_create_api, name='medical_record_create'),
     path('medical-records/<int:record_id>/update/', clinical_api_views.medical_record_update_api, name='medical_record_update'),
+    path('patient-visits/', clinical_api_views.patient_visits_api, name='patient_visits'),
+    path('patients/<int:patient_id>/timeline/', clinical_api_views.patient_timeline_api, name='patient_timeline'),
+    path('patients/<int:patient_id>/care-summary/', clinical_api_views.patient_care_summary_api, name='patient_care_summary'),
+    path('patients/ai-suggestion/', clinical_api_views.patient_ai_suggestion_api, name='patient_ai_suggestion'),
+    path('patient-followups/', clinical_api_views.patient_followups_api, name='patient_followups'),
+    path('patient-followups/<int:visit_id>/complete/', clinical_api_views.patient_followup_complete_api, name='patient_followup_complete'),
+    path('patient-documents/', clinical_api_views.patient_documents_api, name='patient_documents'),
     
     # Vital Logs
     path('vital-logs/', clinical_api_views.vital_logs_list_api, name='vital_logs_list'),

@@ -55,6 +55,15 @@ export default function AppointmentDetailPage() {
   const [existingPrescriptionId, setExistingPrescriptionId] = useState<number | null>(null);
   const [nursingNotes, setNursingNotes] = useState<NursingNoteItem[]>([]);
   const [nursingTasks, setNursingTasks] = useState<NursingTaskItem[]>([]);
+  const [report, setReport] = useState({
+    symptoms: '',
+    diagnosis: '',
+    doctor_notes: '',
+    prescribed_medicines: '',
+    suggested_tests: '',
+    follow_up_date: '',
+    complete_appointment: false,
+  });
 
   const userRole = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -99,6 +108,21 @@ export default function AppointmentDetailPage() {
           setNursingNotes(notesResponse.results || []);
           setNursingTasks(tasksResponse.results || []);
         }
+
+        if (['DOCTOR', 'RECEPTIONIST', 'ADMIN', 'NURSE'].includes(role)) {
+          const reportRes = await apiClient.get<any>(`/appointments/${data.id}/report/`);
+          if (reportRes.exists) {
+            setReport({
+              symptoms: reportRes.symptoms || '',
+              diagnosis: reportRes.diagnosis || '',
+              doctor_notes: reportRes.doctor_notes || '',
+              prescribed_medicines: reportRes.prescribed_medicines || '',
+              suggested_tests: reportRes.suggested_tests || '',
+              follow_up_date: reportRes.follow_up_date || '',
+              complete_appointment: false,
+            });
+          }
+        }
       } catch (err: any) {
         toast.error(err?.message || 'Failed to load appointment details');
       } finally {
@@ -123,6 +147,20 @@ export default function AppointmentDetailPage() {
       toast.error(err?.message || 'Failed to update appointment status');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const saveAppointmentReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const saved = await apiClient.post<any>(`/appointments/${appointmentId}/report/`, {
+        ...report,
+        follow_up_date: report.follow_up_date || null,
+      });
+      toast.success('Appointment report saved to patient history');
+      setAppointment((current) => current ? { ...current, status: saved.appointment_status } : current);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save appointment report');
     }
   };
 
@@ -310,6 +348,28 @@ export default function AppointmentDetailPage() {
               )}
             </div>
           </div>
+        )}
+
+        {canManageStatus && appointment.status !== 'CANCELLED' && (
+          <form onSubmit={saveAppointmentReport} className="rounded-lg border border-blue-200 bg-blue-50 p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-blue-900">Appointment Report for Patient History</h2>
+            <p className="mt-1 text-sm text-blue-700">Save what happened in this appointment before marking it complete.</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <textarea className="rounded-lg border border-gray-300 bg-white p-3 text-sm" rows={3} placeholder="Symptoms / chief complaint" value={report.symptoms} onChange={(e) => setReport({ ...report, symptoms: e.target.value })} />
+              <textarea className="rounded-lg border border-gray-300 bg-white p-3 text-sm" rows={3} placeholder="Diagnosis / assessment" value={report.diagnosis} onChange={(e) => setReport({ ...report, diagnosis: e.target.value })} />
+              <textarea className="rounded-lg border border-gray-300 bg-white p-3 text-sm" rows={3} placeholder="Doctor/reception notes" value={report.doctor_notes} onChange={(e) => setReport({ ...report, doctor_notes: e.target.value })} />
+              <textarea className="rounded-lg border border-gray-300 bg-white p-3 text-sm" rows={3} placeholder="Medicines given/prescribed" value={report.prescribed_medicines} onChange={(e) => setReport({ ...report, prescribed_medicines: e.target.value })} />
+              <input className="rounded-lg border border-gray-300 bg-white p-3 text-sm" placeholder="Suggested tests" value={report.suggested_tests} onChange={(e) => setReport({ ...report, suggested_tests: e.target.value })} />
+              <input className="rounded-lg border border-gray-300 bg-white p-3 text-sm" type="date" value={report.follow_up_date} onChange={(e) => setReport({ ...report, follow_up_date: e.target.value })} />
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm text-blue-900">
+              <input type="checkbox" checked={report.complete_appointment} onChange={(e) => setReport({ ...report, complete_appointment: e.target.checked })} />
+              Mark appointment completed after saving report
+            </label>
+            <button className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+              Save Report to Patient History
+            </button>
+          </form>
         )}
 
         {canViewNurseHandoff && (

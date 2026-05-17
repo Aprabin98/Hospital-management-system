@@ -28,6 +28,8 @@ from .api_serializers import (
 from .utils import generate_available_slots, generate_qr_code, generate_appointment_pdf
 from .triage import evaluate_triage
 from audit.utils import log_audit_event
+from clinical.models import PatientVisit
+from clinical.patient_ai import analyze_patient_visit
 from .report_reader import (
     analyze_report_text,
     build_personalized_guidance,
@@ -413,6 +415,89 @@ def appointment_update_api(request, appointment_id):
             {'detail': f'Error: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def appointment_report_api(request, appointment_id):
+    """Save consultation report into patient visit history before completion."""
+    appointment = Appointment.objects.select_related('patient__user', 'doctor__user').filter(id=appointment_id).first()
+    if not appointment:
+        return Response({'detail': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.role == 'DOCTOR':
+        if not hasattr(request.user, 'doctor_profile') or appointment.doctor_id != request.user.doctor_profile.id:
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+    elif request.user.role not in ['ADMIN', 'RECEPTIONIST', 'NURSE']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    visit = getattr(appointment, 'visit_report', None)
+    if request.method == 'GET':
+        if not visit:
+            return Response({'exists': False})
+        return Response({
+            'exists': True,
+            'id': visit.id,
+            'symptoms': visit.symptoms,
+            'vitals': visit.vitals,
+            'diagnosis': visit.diagnosis,
+            'doctor_notes': visit.doctor_notes,
+            'prescribed_medicines': visit.prescribed_medicines,
+            'suggested_tests': visit.suggested_tests,
+            'follow_up_date': visit.follow_up_date,
+            'ai_possible_causes': visit.ai_possible_causes,
+            'ai_recommended_tests': visit.ai_recommended_tests,
+            'ai_risk_level': visit.ai_risk_level,
+            'ai_red_flags': visit.ai_red_flags,
+            'ai_summary': visit.ai_summary,
+        })
+
+    symptoms = request.data.get('symptoms', '').strip()
+    if not symptoms:
+        return Response({'detail': 'symptoms is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    medicines = request.data.get('prescribed_medicines', '')
+    ai = analyze_patient_visit(appointment.patient, symptoms=symptoms, medicines=medicines)
+    payload = {
+        'patient': appointment.patient,
+        'doctor': appointment.doctor,
+        'appointment': appointment,
+        'symptoms': symptoms,
+        'vitals': request.data.get('vitals') or {},
+        'diagnosis': request.data.get('diagnosis', ''),
+        'doctor_notes': request.data.get('doctor_notes', ''),
+        'prescribed_medicines': medicines,
+        'suggested_tests': request.data.get('suggested_tests', ''),
+        'follow_up_date': request.data.get('follow_up_date') or None,
+        'created_by': request.user,
+        'ai_possible_causes': '\n'.join(ai['possible_causes']),
+        'ai_recommended_tests': '\n'.join(ai['recommended_tests']),
+        'ai_risk_level': ai['risk_level'],
+        'ai_red_flags': '\n'.join(ai['red_flags'] + [f"Allergy warning: {x}" for x in ai['allergy_warnings']]),
+        'ai_summary': ai['summary'],
+    }
+    if visit:
+        for key, value in payload.items():
+            setattr(visit, key, value)
+        visit.save()
+    else:
+        visit = PatientVisit.objects.create(**payload)
+
+    if request.data.get('complete_appointment') is True and appointment.status not in ['COMPLETED', 'CANCELLED']:
+        appointment.status = 'COMPLETED'
+        appointment.save(update_fields=['status', 'updated_at'])
+
+    return Response({
+        'success': True,
+        'visit_id': visit.id,
+        'appointment_status': appointment.status,
+        'ai_possible_causes': visit.ai_possible_causes,
+        'ai_recommended_tests': visit.ai_recommended_tests,
+        'ai_risk_level': visit.ai_risk_level,
+        'ai_red_flags': visit.ai_red_flags,
+        'ai_summary': visit.ai_summary,
+    })
 
 
 @api_view(['GET'])

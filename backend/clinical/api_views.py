@@ -5,12 +5,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.views.decorators.http import require_http_methods
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from users.models import PatientHealthRecord, PatientVitalLog
+from users.models import PatientHealthRecord, PatientProfile, PatientVitalLog
 from users.api_serializers import PatientHealthRecordSerializer, PatientVitalLogSerializer
-from clinical.models import Doctor, DoctorLeave
+from clinical.models import Doctor, DoctorLeave, PatientDocument, PatientVisit
 from rest_framework import serializers
 from clinical.models import Specialization, Shift, DoctorSchedule
+from clinical.patient_ai import analyze_patient_visit
 
 User = get_user_model()
 
@@ -110,8 +112,67 @@ class DoctorCreateSerializer(serializers.Serializer):
         return doctor
 
 
+class PatientVisitSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    doctor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientVisit
+        fields = [
+            'id', 'patient', 'patient_name', 'appointment', 'doctor', 'doctor_name', 'symptoms',
+            'vitals', 'diagnosis', 'doctor_notes', 'prescribed_medicines',
+            'suggested_tests', 'follow_up_date', 'follow_up_completed', 'ai_possible_causes',
+            'ai_recommended_tests', 'ai_risk_level', 'ai_red_flags', 'ai_summary',
+            'created_by', 'visit_date', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'patient_name', 'doctor_name', 'ai_possible_causes',
+            'ai_recommended_tests', 'ai_risk_level', 'ai_red_flags', 'ai_summary',
+            'created_by', 'visit_date', 'updated_at'
+        ]
+
+    def get_doctor_name(self, obj):
+        if not obj.doctor:
+            return ''
+        return obj.doctor.user.get_full_name()
+
+
+class PatientDocumentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientDocument
+        fields = [
+            'id', 'patient', 'visit', 'title', 'document_type', 'file',
+            'file_url', 'notes', 'uploaded_by', 'uploaded_by_name', 'uploaded_at'
+        ]
+        read_only_fields = ['id', 'file_url', 'uploaded_by', 'uploaded_by_name', 'uploaded_at']
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        if obj.file and request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url if obj.file else ''
+
+    def get_uploaded_by_name(self, obj):
+        return obj.uploaded_by.get_full_name() if obj.uploaded_by else ''
+
+
 def _is_admin(request):
     return request.user.role == 'ADMIN'
+
+
+def _can_access_patient(user, patient):
+    if user.role == 'PATIENT':
+        return patient.user_id == user.id
+    return user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE', 'LAB_TECHNICIAN']
+
+
+def _doctor_for_user(user):
+    if user.role != 'DOCTOR':
+        return None
+    return getattr(user, 'doctor_profile', None)
 
 
 @api_view(['GET', 'POST'])
@@ -404,6 +465,218 @@ def medical_record_update_api(request, record_id):
             {'detail': f'Error: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def patient_visits_api(request):
+    if request.method == 'POST':
+        if request.user.role not in ['DOCTOR', 'ADMIN', 'NURSE']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = PatientVisitSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        patient = serializer.validated_data['patient']
+        if not _can_access_patient(request.user, patient):
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        ai = analyze_patient_visit(
+            patient,
+            symptoms=serializer.validated_data.get('symptoms', ''),
+            medicines=serializer.validated_data.get('prescribed_medicines', ''),
+        )
+        visit = serializer.save(
+            doctor=serializer.validated_data.get('doctor') or _doctor_for_user(request.user),
+            created_by=request.user,
+            ai_possible_causes='\n'.join(ai['possible_causes']),
+            ai_recommended_tests='\n'.join(ai['recommended_tests']),
+            ai_risk_level=ai['risk_level'],
+            ai_red_flags='\n'.join(ai['red_flags'] + [
+                f"Allergy warning: {item}" for item in ai['allergy_warnings']
+            ]),
+            ai_summary=ai['summary'],
+        )
+        return Response(PatientVisitSerializer(visit).data, status=status.HTTP_201_CREATED)
+
+    visits = PatientVisit.objects.select_related('patient__user', 'doctor__user').all()
+    patient_id = request.GET.get('patient')
+    if request.user.role == 'PATIENT':
+        visits = visits.filter(patient__user=request.user)
+    elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE', 'LAB_TECHNICIAN']:
+        if patient_id:
+            visits = visits.filter(patient_id=patient_id)
+    else:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    return Response({'count': visits.count(), 'results': PatientVisitSerializer(visits[:50], many=True).data})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def patient_timeline_api(request, patient_id):
+    patient = get_object_or_404(PatientProfile, id=patient_id)
+    if not _can_access_patient(request.user, patient):
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    health_record = getattr(patient, 'health_record', None)
+    visits = PatientVisit.objects.filter(patient=patient).select_related('doctor__user')[:20]
+    vitals = PatientVitalLog.objects.filter(patient=patient).select_related('recorded_by')[:10]
+    allergies = patient.allergies.filter(status='ACTIVE')
+    lab_bookings = patient.test_bookings.select_related('template').order_by('-date')[:10]
+    payments = patient.payments.order_by('-created_at')[:10]
+
+    return Response({
+        'patient': {
+            'id': patient.id,
+            'name': patient.full_name,
+            'phone': patient.phone,
+            'age': patient.get_age(),
+            'gender': patient.gender,
+            'blood_group': patient.blood_group,
+        },
+        'health_record': {
+            'allergies': health_record.allergies if health_record else '',
+            'chronic_conditions': health_record.chronic_conditions if health_record else '',
+            'current_medications': health_record.current_medications if health_record else '',
+            'family_history': health_record.family_history if health_record else '',
+        },
+        'active_allergies': [
+            {'allergen': item.allergen, 'severity': item.severity, 'reaction': item.reaction}
+            for item in allergies
+        ],
+        'visits': PatientVisitSerializer(visits, many=True).data,
+        'vitals': PatientVitalLogSerializer(vitals, many=True).data,
+        'lab_tests': [
+            {'id': item.id, 'test': item.template.name, 'date': item.date, 'status': item.status}
+            for item in lab_bookings
+        ],
+        'payments': [
+            {'id': item.id, 'amount': float(item.amount), 'status': item.status, 'payment_type': item.payment_type}
+            for item in payments
+        ],
+        'documents': PatientDocumentSerializer(
+            patient.documents.all()[:10],
+            many=True,
+            context={'request': request}
+        ).data,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def patient_ai_suggestion_api(request):
+    if request.user.role not in ['DOCTOR', 'ADMIN', 'NURSE']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    patient = get_object_or_404(PatientProfile, id=request.data.get('patient'))
+    if not _can_access_patient(request.user, patient):
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    ai = analyze_patient_visit(
+        patient,
+        symptoms=request.data.get('symptoms', ''),
+        medicines=request.data.get('prescribed_medicines', ''),
+    )
+    return Response(ai, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def patient_care_summary_api(request, patient_id):
+    patient = get_object_or_404(PatientProfile, id=patient_id)
+    if not _can_access_patient(request.user, patient):
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    latest_visit = patient.visits.first()
+    pending_followups = patient.visits.filter(follow_up_date__isnull=False, follow_up_completed=False)
+    health_record = getattr(patient, 'health_record', None)
+    active_allergies = list(patient.allergies.filter(status='ACTIVE').values_list('allergen', flat=True))
+    risk = latest_visit.ai_risk_level if latest_visit else 'LOW'
+    if active_allergies and risk == 'LOW':
+        risk = 'MEDIUM'
+    if pending_followups.filter(follow_up_date__lt=timezone.localdate()).exists():
+        risk = 'HIGH'
+
+    return Response({
+        'patient_id': patient.id,
+        'name': patient.full_name,
+        'risk_flag': risk,
+        'latest_visit': PatientVisitSerializer(latest_visit).data if latest_visit else None,
+        'active_allergies': active_allergies,
+        'chronic_conditions': health_record.chronic_conditions if health_record else '',
+        'current_medications': health_record.current_medications if health_record else '',
+        'pending_followups': PatientVisitSerializer(pending_followups[:10], many=True).data,
+        'recommended_tests': latest_visit.ai_recommended_tests.splitlines() if latest_visit and latest_visit.ai_recommended_tests else [],
+        'summary': (
+            f"{patient.full_name} has {patient.visits.count()} visit(s), "
+            f"{len(active_allergies)} active allerg(ies), "
+            f"and {pending_followups.count()} pending follow-up(s)."
+        ),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET"])
+def patient_followups_api(request):
+    if request.user.role == 'PATIENT':
+        visits = PatientVisit.objects.filter(patient__user=request.user)
+    elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE']:
+        visits = PatientVisit.objects.all()
+        patient_id = request.GET.get('patient')
+        if patient_id:
+            visits = visits.filter(patient_id=patient_id)
+    else:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    visits = visits.filter(follow_up_date__isnull=False, follow_up_completed=False).order_by('follow_up_date')
+    return Response({'count': visits.count(), 'results': PatientVisitSerializer(visits[:50], many=True).data})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def patient_followup_complete_api(request, visit_id):
+    visit = get_object_or_404(PatientVisit, id=visit_id)
+    if request.user.role not in ['DOCTOR', 'ADMIN', 'NURSE']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+    visit.follow_up_completed = True
+    visit.save(update_fields=['follow_up_completed', 'updated_at'])
+    return Response(PatientVisitSerializer(visit).data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["GET", "POST"])
+def patient_documents_api(request):
+    if request.method == 'POST':
+        if request.user.role not in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE', 'LAB_TECHNICIAN']:
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = PatientDocumentSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return Response({'detail': 'Validation error', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        patient = serializer.validated_data['patient']
+        if not _can_access_patient(request.user, patient):
+            return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+        doc = serializer.save(uploaded_by=request.user)
+        return Response(PatientDocumentSerializer(doc, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    patient_id = request.GET.get('patient')
+    docs = PatientDocument.objects.select_related('patient', 'uploaded_by', 'visit').all()
+    if request.user.role == 'PATIENT':
+        docs = docs.filter(patient__user=request.user)
+    elif request.user.role in ['DOCTOR', 'ADMIN', 'RECEPTIONIST', 'NURSE', 'LAB_TECHNICIAN']:
+        if patient_id:
+            docs = docs.filter(patient_id=patient_id)
+    else:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+    return Response({'count': docs.count(), 'results': PatientDocumentSerializer(docs[:50], many=True, context={'request': request}).data})
 
 
 @api_view(['GET', 'POST'])

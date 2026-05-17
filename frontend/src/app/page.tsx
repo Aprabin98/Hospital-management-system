@@ -1,276 +1,121 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-const serviceCards = [
-  {
-    title: 'Appointments and OPD',
-    label: 'Front desk',
-    description:
-      'Fast appointment booking, doctor slots, queue handling, and patient flow coordination.',
-  },
-  {
-    title: 'Laboratory and Diagnostics',
-    label: 'Diagnostics',
-    description:
-      'Lab bookings, result release, templates, critical value tracking, and quality control logs.',
-  },
-  {
-    title: 'Billing and Insurance',
-    label: 'Finance',
-    description:
-      'Invoice management, payment tracking, insurance verification, and billing workflows.',
-  },
-  {
-    title: 'Clinical Management',
-    label: 'Clinical',
-    description:
-      'Clinical observations, diagnoses, treatment plans, and medical documentation.',
-  },
-  {
-    title: 'Prescriptions',
-    label: 'Prescriptions',
-    description:
-      'Digital prescriptions, prescription tracking, and medication records.',
-  },
-  {
-    title: 'Audit, Notifications, and AI',
-    label: 'Operations',
-    description:
-      'Security logs, role-based access, in-app alerts, and AI health analytics tools.',
-  },
+const journey = [
+  'Register patient profile',
+  'Book appointment',
+  'Write appointment report',
+  'AI analyzes history',
+  'Recommend tests',
+  'Track follow-up',
 ];
 
-const highlights = [
-  'Role-based access for admin, doctor, receptionist, lab technician, and patient users',
-  'JWT authentication with refresh flow and optional 2FA verification',
-  'Responsive operational workspace for hospital departments',
-  'PDF receipts, lab reports, and prescriptions generated inside the system',
-];
-
-const hospitalServices = [
-  'Outpatient consultation',
-  'Appointment scheduling and management',
-  'Laboratory testing and results',
-  'Clinical diagnostics and observations',
-  'Prescription management',
-  'Insurance and billing desk',
-  'Medical records and clinical documentation',
-  'Audit logging and compliance',
-];
-
-const metrics = [
-  { value: '12', label: 'Core app modules' },
-  { value: '5', label: 'User roles supported' },
-  { value: '24/7', label: 'Operational readiness' },
-  { value: '1', label: 'Unified care platform' },
+const modules = [
+  ['Patient Timeline', 'Visits, diagnosis, medicines, reports, follow-up, and documents in one profile.'],
+  ['AI Clinical Support', 'Possible causes, recommended tests, risk flag, and allergy warning for doctors.'],
+  ['Hospital Operations', 'Appointments, doctors, lab workflow, prescriptions, billing, and notifications.'],
+  ['Document Vault', 'Store lab reports, prescriptions, scans, and discharge summaries with the patient.'],
 ];
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(15,118,110,0.18),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.86),rgba(241,245,249,0.96))]" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-          <header className="rounded-full border border-white/70 bg-white/80 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur md:px-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/medimind-logo.svg"
-                  alt="MediMind"
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 rounded-2xl"
-                  priority
-                />
-                <div>
-                  <div className="text-lg font-extrabold tracking-tight text-slate-950">MediMind</div>
-                  <div className="text-sm text-slate-500">Hospital Management System</div>
-                </div>
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#083344_0%,#0f766e_48%,#f8fafc_48%)]">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <header className="flex items-center justify-between rounded-2xl border border-white/50 bg-white/90 px-5 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Image src="/medimind-logo.svg" alt="MediMind" width={44} height={44} className="rounded-xl" priority />
+              <div>
+                <p className="text-lg font-black">MediMind</p>
+                <p className="text-xs text-slate-500">Patient-centric hospital system</p>
               </div>
-              <nav className="flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-600">
-                <a href="#services" className="hover:text-slate-950">Services</a>
-                <a href="#modules" className="hover:text-slate-950">Modules</a>
-                <a href="#workflow" className="hover:text-slate-950">Workflow</a>
-                <Link
-                  href="/login"
-                  className="rounded-full border border-slate-200 px-4 py-2 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="rounded-full bg-slate-950 px-4 py-2 text-white transition hover:bg-slate-800"
-                >
-                  Open Workspace
-                </Link>
-              </nav>
             </div>
+            <nav className="flex items-center gap-3 text-sm font-semibold">
+              <a href="#modules" className="hidden text-slate-600 hover:text-slate-950 sm:inline">Modules</a>
+              <a href="#workflow" className="hidden text-slate-600 hover:text-slate-950 sm:inline">Workflow</a>
+              <Link href="/login" className="rounded-xl bg-teal-700 px-4 py-2 text-white hover:bg-teal-800">Login</Link>
+            </nav>
           </header>
 
-          <div className="grid gap-10 pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            <div>
-              <div className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-teal-700">
-                Unified hospital operations
-              </div>
-              <h1 className="mt-6 max-w-3xl text-4xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-                Responsive hospital software for appointments, diagnostics, billing, pharmacy, and patient care.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-                MediMind brings front desk, doctors, nurses, lab teams, pharmacy, finance, and compliance workflows
-                into one modern platform built with Django and Next.js.
+          <div className="grid gap-10 py-16 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <div className="text-white">
+              <p className="inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
+                Final year hospital project
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center rounded-2xl bg-teal-700 px-6 py-3 text-sm font-bold text-white shadow-[0_20px_40px_rgba(15,118,110,0.24)] transition hover:bg-teal-800"
-                >
+              <h1 className="mt-6 max-w-3xl text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
+                Hospital Management System with Patient-Centric AI Clinical Decision Support
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-cyan-50">
+                A complete hospital workspace where every appointment report becomes permanent patient history,
+                and AI helps doctors review symptoms, allergies, risk, and recommended tests.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/login" className="rounded-2xl bg-white px-6 py-3 text-sm font-bold text-teal-800 shadow-lg hover:bg-slate-100">
                   Start Secure Login
                 </Link>
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                >
-                  Create Patient Account
+                <Link href="/demo-flow" className="rounded-2xl border border-white/40 px-6 py-3 text-sm font-bold text-white hover:bg-white/10">
+                  View Demo Flow
                 </Link>
               </div>
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {highlights.map((item) => (
-                  <div key={item} className="rounded-2xl border border-slate-200/80 bg-white/85 px-4 py-4 text-sm text-slate-600 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-                    {item}
+            </div>
+
+            <div className="rounded-[2rem] border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.2)]">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-teal-700">Patient care summary</p>
+              <h2 className="mt-3 text-2xl font-black">Sita Shrestha</h2>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  ['Risk', 'High'],
+                  ['Allergy', 'Penicillin'],
+                  ['History', 'Diabetes'],
+                  ['AI Tests', 'CBC, CRP, X-Ray'],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
+                    <p className="mt-1 font-bold text-slate-950">{value}</p>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute -left-8 top-8 hidden h-24 w-24 rounded-full bg-cyan-200/40 blur-2xl md:block" />
-              <div className="absolute -right-6 bottom-16 hidden h-28 w-28 rounded-full bg-emerald-200/40 blur-2xl md:block" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-slate-950 p-6 text-white shadow-[0_30px_90px_rgba(15,23,42,0.24)]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-200">Care command center</p>
-                    <h2 className="mt-2 text-2xl font-extrabold">All hospital services in one system</h2>
-                  </div>
-                  <div className="rounded-2xl bg-white/10 p-3">
-                    <Image src="/medimind-logo.svg" alt="MediMind logo" width={42} height={42} className="h-10 w-10" />
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  {metrics.map((item) => (
-                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/6 p-4">
-                      <div className="text-2xl font-black">{item.value}</div>
-                      <div className="mt-1 text-sm text-slate-300">{item.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-cyan-500/20 via-slate-900 to-emerald-500/20 p-5">
-                  <p className="text-sm font-semibold text-cyan-100">Hospital service gallery</p>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {hospitalServices.map((service) => (
-                      <div key={service} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-slate-100">
-                        {service}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="mt-5 rounded-2xl bg-teal-50 p-4 text-sm leading-6 text-teal-900">
+                AI suggestions are decision support only. Final diagnosis and treatment are always made by the doctor.
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="services" className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.22em] text-teal-700">Hospital services</p>
-            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              The homepage now shows the full service story of the system.
-            </h2>
-          </div>
-          <p className="max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-            Instead of a blank redirect screen, the landing page now communicates what the hospital provides across care,
-            diagnostics, operations, and administration.
-          </p>
+      <section id="modules" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-teal-700">Core modules</p>
+          <h2 className="mt-2 text-3xl font-black">Built for both hospital operations and patient management.</h2>
         </div>
-
-        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {serviceCards.map((card, index) => (
-            <article
-              key={card.title}
-              className="group rounded-[1.75rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(15,23,42,0.1)]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                  {card.label}
-                </span>
-                <span className="text-xs font-bold text-teal-700">0{index + 1}</span>
-              </div>
-              <h3 className="mt-5 text-2xl font-extrabold tracking-tight text-slate-950">{card.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">{card.description}</p>
+        <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {modules.map(([title, description]) => (
+            <article key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-lg font-black">{title}</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section id="modules" className="mx-auto max-w-7xl px-4 pb-18 sm:px-6 lg:px-8">
-        <div className="grid gap-6 rounded-[2rem] border border-slate-200/80 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] lg:grid-cols-[0.9fr_1.1fr] lg:p-8">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.22em] text-cyan-700">Coverage</p>
-            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Built for real hospital departments</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">
-              The system already covers administrative, clinical, diagnostic, pharmacy, finance, and compliance needs.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              'Patient registration and profile',
-              'Doctor schedules and shifts',
-              'Appointment queue and no-show handling',
-              'Medical records and vital logs',
-              'Lab workflow and report release',
-              'Prescription writer and pharmacy',
-              'Billing, refunds, and insurance',
-              'Rooms, IPD, emergency, radiology, and surgery',
-            ].map((item) => (
-              <div key={item} className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700">
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="workflow" className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="rounded-[2rem] bg-slate-950 px-6 py-8 text-white shadow-[0_30px_80px_rgba(15,23,42,0.2)] lg:px-8">
-          <p className="text-sm font-bold uppercase tracking-[0.22em] text-emerald-300">Patient journey</p>
-          <h2 className="mt-2 text-3xl font-black tracking-tight">From arrival to discharge, one workflow.</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-4">
-            {[
-              'Patient registers and books an appointment',
-              'Doctor, nurse, or receptionist manages the queue',
-              'Lab, pharmacy, and billing continue the workflow',
-              'Audit, notifications, and reports stay synchronized',
-            ].map((item, index) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/6 p-5">
-                <div className="text-sm font-black text-emerald-300">Step {index + 1}</div>
-                <p className="mt-3 text-sm leading-7 text-slate-200">{item}</p>
+        <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl">
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-cyan-300">Working mechanism</p>
+          <h2 className="mt-2 text-3xl font-black">From appointment to lifetime patient history.</h2>
+          <div className="mt-8 grid gap-3 md:grid-cols-6">
+            {journey.map((item, index) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-black text-cyan-300">0{index + 1}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-100">{item}</p>
               </div>
             ))}
           </div>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
-            >
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/login" className="rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 hover:bg-slate-100">
               Continue to Login
             </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center rounded-2xl border border-white/20 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/8"
-            >
-              Visit Application Workspace
+            <Link href="/patients" className="rounded-2xl border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
+              Open Patients
             </Link>
           </div>
         </div>

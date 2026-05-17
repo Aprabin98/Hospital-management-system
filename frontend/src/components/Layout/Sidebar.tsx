@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { name: 'RBAC Verification', href: '/admin/rbac-verification', roles: ['admin'] },
   { name: 'System Health', href: '/admin/system-health', roles: ['admin'] },
   { name: 'Patients', href: '/patients', roles: ['admin', 'doctor', 'receptionist', 'nurse'] },
+  { name: 'Demo Flow', href: '/demo-flow', roles: ['admin', 'doctor', 'receptionist', 'nurse'] },
   { name: 'Appointments', href: '/appointments', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse'] },
   { name: 'Medical Records', href: '/medical-records', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse'] },
   { name: 'Prescriptions', href: '/prescriptions', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse', 'pharmacist'] },
@@ -59,7 +60,7 @@ const navItems: NavItem[] = [
 
 const defaultNavSections = [
   { id: 'core', label: 'Core', items: ['Dashboard', 'Notifications', 'Settings'] },
-  { id: 'clinical', label: 'Clinical', items: ['Patients', 'Appointments', 'Medical Records', 'Prescriptions', 'Doctors', 'Manage Leaves', 'Issued Prescriptions'] },
+  { id: 'clinical', label: 'Clinical', items: ['Patients', 'Demo Flow', 'Appointments', 'Medical Records', 'Prescriptions', 'Doctors', 'Manage Leaves', 'Issued Prescriptions'] },
   { id: 'diagnostics', label: 'Diagnostics', items: ['Lab Reports', 'Lab Samples'] },
   { id: 'operations', label: 'Operations', items: ['Reception Queue', 'Reports', 'Reviews', 'My Ratings', 'Billing'] },
   { id: 'intelligence', label: 'AI & Quality', items: ['Heart Risk Detector', 'AI Report Reader', 'AI Triage'] },
@@ -68,7 +69,7 @@ const defaultNavSections = [
 const adminNavSections = [
   { id: 'overview', label: 'Overview', items: ['Dashboard', 'Analytics', 'Reports'] },
   { id: 'management', label: 'Management', items: ['Manage Doctors', 'Manage Tests', 'Specializations', 'Shifts', 'Schedules', 'Users Management', 'System Settings'] },
-  { id: 'operations', label: 'Operations', items: ['Patient Operations', 'Patients', 'Appointments', 'Reception Queue', 'Billing'] },
+  { id: 'operations', label: 'Operations', items: ['Patient Operations', 'Patients', 'Demo Flow', 'Appointments', 'Reception Queue', 'Billing'] },
   { id: 'clinical', label: 'Clinical', items: ['Medical Records', 'Prescriptions', 'Doctors'] },
   { id: 'platform', label: 'Platform', items: ['Lab Workflow', 'Lab Samples', 'Drug Interactions', 'Notifications'] },
   { id: 'security', label: 'Security', items: ['Security Monitoring', 'RBAC Verification', 'System Health', 'Audit Logs'] },
@@ -89,6 +90,7 @@ const sectionIcons: Record<string, React.ComponentProps<typeof AppIcon>['name']>
 const itemIcons: Record<string, React.ComponentProps<typeof AppIcon>['name']> = {
   Dashboard: 'dashboard',
   Patients: 'patients',
+  'Demo Flow': 'spark',
   'Patient Operations': 'patients',
   Appointments: 'appointments',
   Doctors: 'doctors',
