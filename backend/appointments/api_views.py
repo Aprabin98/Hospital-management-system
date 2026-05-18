@@ -457,8 +457,15 @@ def appointment_report_api(request, appointment_id):
     if not symptoms:
         return Response({'detail': 'symptoms is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    if not appointment.doctor:
+        return Response({'detail': 'Appointment must have a doctor assigned'}, status=status.HTTP_400_BAD_REQUEST)
+
     medicines = request.data.get('prescribed_medicines', '')
-    ai = analyze_patient_visit(appointment.patient, symptoms=symptoms, medicines=medicines)
+    try:
+        ai = analyze_patient_visit(appointment.patient, symptoms=symptoms, medicines=medicines)
+    except Exception as e:
+        return Response({'detail': f'AI analysis failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     payload = {
         'patient': appointment.patient,
         'doctor': appointment.doctor,
@@ -477,12 +484,16 @@ def appointment_report_api(request, appointment_id):
         'ai_red_flags': '\n'.join(ai['red_flags'] + [f"Allergy warning: {x}" for x in ai['allergy_warnings']]),
         'ai_summary': ai['summary'],
     }
-    if visit:
-        for key, value in payload.items():
-            setattr(visit, key, value)
-        visit.save()
-    else:
-        visit = PatientVisit.objects.create(**payload)
+    
+    try:
+        if visit:
+            for key, value in payload.items():
+                setattr(visit, key, value)
+            visit.save()
+        else:
+            visit = PatientVisit.objects.create(**payload)
+    except Exception as e:
+        return Response({'detail': f'Failed to save visit: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if request.data.get('complete_appointment') is True and appointment.status not in ['COMPLETED', 'CANCELLED']:
         appointment.status = 'COMPLETED'
