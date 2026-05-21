@@ -20,7 +20,7 @@ const modules = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#083344_0%,#0f766e_48%,#f8fafc_48%)]">
+      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#052e2b_0%,#0f766e_56%,#e6f4f1_100%)]">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <header className="flex items-center justify-between rounded-2xl border border-white/50 bg-white/90 px-5 py-3 shadow-sm">
             <div className="flex items-center gap-3">
@@ -38,23 +38,20 @@ export default function Home() {
           </header>
 
           <div className="grid gap-10 py-16 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-            <div className="text-white">
-              <p className="inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
+            <div className="rounded-[2rem] border border-white/15 bg-slate-950/80 p-7 text-white shadow-2xl backdrop-blur-md sm:p-8">
+              <p className="inline-flex rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100">
                 Final year hospital project
               </p>
               <h1 className="mt-6 max-w-3xl text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
                 Hospital Management System with Patient-Centric AI Clinical Decision Support
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-cyan-50">
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-100/95">
                 A complete hospital workspace where every appointment report becomes permanent patient history,
                 and AI helps doctors review symptoms, allergies, risk, and recommended tests.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/login" className="rounded-2xl bg-white px-6 py-3 text-sm font-bold text-teal-800 shadow-lg hover:bg-slate-100">
+                <Link href="/login" className="inline-flex items-center justify-center rounded-2xl bg-cyan-300 px-6 py-3 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-950/20 hover:bg-cyan-200">
                   Start Secure Login
-                </Link>
-                <Link href="/demo-flow" className="rounded-2xl border border-white/40 px-6 py-3 text-sm font-bold text-white hover:bg-white/10">
-                  View Demo Flow
                 </Link>
               </div>
             </div>
@@ -111,10 +108,10 @@ export default function Home() {
             ))}
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/login" className="rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 hover:bg-slate-100">
+            <Link href="/login" className="inline-flex items-center justify-center rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-950/20 hover:bg-cyan-200">
               Continue to Login
             </Link>
-            <Link href="/patients" className="rounded-2xl border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
+            <Link href="/patients" className="inline-flex items-center justify-center rounded-2xl border border-white/35 bg-white/10 px-5 py-3 text-sm font-extrabold text-white backdrop-blur-sm hover:bg-white/20">
               Open Patients
             </Link>
           </div>

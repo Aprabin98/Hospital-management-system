@@ -17,10 +17,12 @@ class TestKhaltiPaymentFlow:
             password='testpass123',
             role='PATIENT'
         )
-        self.profile = PatientProfile.objects.create(
+        self.profile, _ = PatientProfile.objects.get_or_create(
             user=self.user,
-            full_name='Test Patient',
-            phone='9841234567'
+            defaults={
+                'full_name': 'Test Patient',
+                'phone': '9841234567'
+            }
         )
         self.payment = Payment.objects.create(
             patient=self.profile,
@@ -38,6 +40,8 @@ class TestKhaltiPaymentFlow:
             'return_url': 'http://localhost:3000/billing/khalti-success'
         }
         response = self.client.post(url, data, format='json')
+        if response.status_code not in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]:
+            print('Khalti initiate response:', response.status_code, getattr(response, 'data', response.content))
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
         
     def test_verify_khalti_payment(self):

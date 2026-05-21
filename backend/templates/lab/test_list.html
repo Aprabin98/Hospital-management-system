@@ -12,6 +12,16 @@
                 {% if template.preparation %}
                 <p class="text-warning small"><strong>Preparation:</strong> {{ template.preparation|truncatewords:10 }}</p>
                 {% endif %}
+                {% if template.available_dates %}
+                <div class="mt-3">
+                    <div class="small text-muted mb-1">Available on</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for slot in template.available_dates|slice:":4" %}
+                        <span class="badge bg-light text-dark border">{{ slot.day }} {{ slot.date }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <hr>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="fs-5 fw-bold text-success">Rs. {{ template.price }}</span>

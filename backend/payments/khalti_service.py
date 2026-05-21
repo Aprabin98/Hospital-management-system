@@ -7,13 +7,17 @@ logger = logging.getLogger(__name__)
 
 class KhaltiPaymentService:
     def __init__(self):
-        self.public_key = settings.KHALTI_PUBLIC_KEY
-        self.secret_key = settings.KHALTI_SECRET_KEY
-        self.api_url = settings.KHALTI_API_URL
+        # Use getattr to avoid AttributeError when running tests without env vars
+        self.public_key = getattr(settings, 'KHALTI_PUBLIC_KEY', None)
+        self.secret_key = getattr(settings, 'KHALTI_SECRET_KEY', None)
+        self.api_url = getattr(settings, 'KHALTI_API_URL', None)
         
     def initiate_payment(self, payment_id, amount, return_url):
         """Initiate Khalti payment"""
         try:
+            # Return a controlled failure when Khalti is not configured (tests/environment)
+            if not self.api_url or not self.public_key:
+                return {'success': False, 'error': 'Khalti not configured'}
             from .models import Payment
             payment = Payment.objects.get(id=payment_id)
             
@@ -58,6 +62,9 @@ class KhaltiPaymentService:
     def verify_payment(self, pidx):
         """Verify Khalti payment status"""
         try:
+            # If service not configured, return a controlled error
+            if not self.api_url or not self.secret_key:
+                return {'success': False, 'error': 'Khalti not configured'}
             headers = {'Authorization': f'Key {self.secret_key}'}
             
             response = requests.post(

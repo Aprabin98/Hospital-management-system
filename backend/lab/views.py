@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 
 from .models import TestTemplate, TestField, TestSchedule, TestBooking, TestResult, TestResultItem
 from .forms import TestTemplateForm, TestFieldForm, TestScheduleForm, TestBookingForm, TestResultForm
+from .api_serializers import TestTemplateSerializer
 from .utils import generate_lab_report_pdf
 from notifications.utils import create_notification
 from appointments.models import Appointment
@@ -226,7 +227,9 @@ def test_list(request):
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
 
-    templates = TestTemplate.objects.filter(is_available=True)
+    templates = list(TestTemplate.objects.filter(is_available=True).prefetch_related('schedules'))
+    for template in templates:
+        template.available_dates = TestTemplateSerializer(template).data['available_dates']
     return render(request, 'lab/test_list.html', {'templates': templates})
 
 
@@ -236,11 +239,13 @@ def test_detail(request, pk):
     template = get_object_or_404(TestTemplate, pk=pk, is_available=True)
     fields = template.fields.all()
     schedules = template.schedules.filter(is_active=True)
+    available_dates = TestTemplateSerializer(template).data['available_dates']
 
     return render(request, 'lab/test_detail.html', {
         'template': template,
         'fields': fields,
         'schedules': schedules,
+        'available_dates': available_dates,
     })
 
 

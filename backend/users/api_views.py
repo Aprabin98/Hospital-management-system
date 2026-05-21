@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate
 from django.conf import settings
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 import hashlib
 from .models import User, TwoFactorCode, LoginAttempt
 from audit.utils import log_audit_event
@@ -431,7 +432,7 @@ def register_api(request):
         "role": "patient"
     }
     """
-    from .forms import PatientRegistrationForm
+    from .models import PatientProfile
     
     data = request.data
     
@@ -477,9 +478,61 @@ def register_api(request):
 
         # Ensure patient profile exists for patient role logins.
         if role == 'PATIENT':
-            from .models import PatientProfile
             full_name = f"{user.first_name} {user.last_name}".strip() or user.username
-            PatientProfile.objects.get_or_create(user=user, defaults={'full_name': full_name})
+
+            profile_defaults = {'full_name': full_name}
+
+            patient_fields = {
+                'phone': (data.get('phone') or '').strip(),
+                'gender': (data.get('gender') or '').strip().upper(),
+                'blood_group': (data.get('blood_group') or '').strip().upper(),
+                'address': (data.get('address') or '').strip(),
+                'emergency_contact': (data.get('emergency_contact') or '').strip(),
+            }
+
+            if data.get('date_of_birth'):
+                parsed_dob = parse_date(str(data.get('date_of_birth')).strip())
+                if parsed_dob is None:
+                    return Response(
+                        {'detail': 'Invalid date_of_birth format. Use YYYY-MM-DD.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                patient_fields['date_of_birth'] = parsed_dob
+
+            if data.get('height') not in [None, '']:
+                try:
+                    patient_fields['height'] = float(data.get('height'))
+                except (TypeError, ValueError):
+                    return Response(
+                        {'detail': 'Invalid height value.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            if data.get('weight') not in [None, '']:
+                try:
+                    patient_fields['weight'] = float(data.get('weight'))
+                except (TypeError, ValueError):
+                    return Response(
+                        {'detail': 'Invalid weight value.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            allowed_genders = {choice[0] for choice in PatientProfile.GENDER_CHOICES}
+            if patient_fields['gender'] and patient_fields['gender'] not in allowed_genders:
+                return Response(
+                    {'detail': 'Invalid gender value.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            allowed_blood_groups = {choice[0] for choice in PatientProfile.BLOOD_GROUP_CHOICES}
+            if patient_fields['blood_group'] and patient_fields['blood_group'] not in allowed_blood_groups:
+                return Response(
+                    {'detail': 'Invalid blood_group value.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            profile_defaults.update(patient_fields)
+            PatientProfile.objects.update_or_create(user=user, defaults=profile_defaults)
         
         # Log audit event
         log_audit_event(

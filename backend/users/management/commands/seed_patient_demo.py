@@ -67,11 +67,12 @@ class Command(BaseCommand):
                 name=name,
                 defaults={'price': price, 'duration_minutes': 30, 'is_available': True},
             )
-            TestSchedule.objects.get_or_create(
-                template=template,
-                day='MON',
-                defaults={'start_time': time(9, 0), 'end_time': time(17, 0), 'is_active': True},
-            )
+            for day in ['MON', 'TUE', 'WED', 'THU', 'FRI']:
+                TestSchedule.objects.update_or_create(
+                    template=template,
+                    day=day,
+                    defaults={'start_time': time(9, 0), 'end_time': time(17, 0), 'max_bookings': 20, 'is_active': True},
+                )
 
         old_visit, _ = PatientVisit.objects.get_or_create(
             patient=patient,

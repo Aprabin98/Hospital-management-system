@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}{{ template.name }} - Lab Test Details{% endblock %}
+{% block content %}
+<div class="row g-4">
+	<div class="col-lg-8">
+		<div class="card shadow-sm">
+			<div class="card-body">
+				<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+					<div>
+						<h3 class="mb-1">{{ template.name }}</h3>
+						<p class="text-muted mb-0">{{ template.description }}</p>
+					</div>
+					<div class="text-end">
+						<div class="fs-3 fw-bold text-success">Rs. {{ template.price }}</div>
+						<div class="text-muted">{{ template.duration_minutes }} min</div>
+					</div>
+				</div>
+
+				{% if template.preparation %}
+				<div class="alert alert-warning mt-4 mb-0">
+					<strong>Preparation:</strong> {{ template.preparation }}
+				</div>
+				{% endif %}
+
+				<hr class="my-4">
+
+				<h5 class="mb-3">Sample Requirements / Fields</h5>
+				{% if fields %}
+				<ul class="list-group list-group-flush">
+					{% for field in fields %}
+					<li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+						<span>{{ field.field_name }}</span>
+						{% if field.unit %}<span class="text-muted small">{{ field.unit }}</span>{% endif %}
+					</li>
+					{% endfor %}
+				</ul>
+				{% else %}
+				<p class="text-muted mb-0">No fields configured for this test yet.</p>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<div class="col-lg-4">
+		<div class="card shadow-sm mb-4">
+			<div class="card-body">
+				<h5 class="mb-3">Available Days</h5>
+				{% if schedules %}
+				<div class="d-grid gap-2">
+					{% for schedule in schedules %}
+					<div class="border rounded p-3 bg-light">
+						<div class="fw-semibold">{{ schedule.get_day_display }}</div>
+						<div class="text-muted small">{{ schedule.start_time }} - {{ schedule.end_time }}</div>
+						<div class="text-muted small">Max bookings: {{ schedule.max_bookings }}</div>
+					</div>
+					{% endfor %}
+				</div>
+				{% else %}
+				<p class="text-muted mb-0">No schedule has been added yet.</p>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="card shadow-sm">
+			<div class="card-body">
+				<h5 class="mb-3">Next Available Dates</h5>
+				{% if available_dates %}
+				<div class="d-grid gap-2">
+					{% for slot in available_dates %}
+					<div class="border rounded p-3">
+						<div class="fw-semibold">{{ slot.day }}</div>
+						<div class="text-muted small">{{ slot.date }}</div>
+						<div class="text-muted small">{{ slot.start_time }} - {{ slot.end_time }}</div>
+					</div>
+					{% endfor %}
+				</div>
+				{% else %}
+				<p class="text-muted mb-0">No available dates found.</p>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="mt-4">
+	<a href="{% url 'lab:test_list' %}" class="btn btn-outline-secondary">Back to tests</a>
+	<a href="{% url 'lab:book_test' template.pk %}" class="btn btn-primary">Book this test</a>
+</div>
+{% endblock %}

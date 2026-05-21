@@ -16,8 +16,11 @@ def initiate_khalti_payment(request):
     """Initiate Khalti payment"""
     try:
         payment_id = request.data.get('payment_id')
-        return_url = request.data.get('return_url', 
-            f"{settings.FRONTEND_URL}/billing/khalti-success")
+        # Avoid evaluating settings.FRONTEND_URL when not present in test env
+        return_url = request.data.get('return_url')
+        if not return_url:
+            frontend = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            return_url = f"{frontend}/billing/khalti-success"
         
         if not payment_id:
             return Response({'error': 'payment_id required'}, status=status.HTTP_400_BAD_REQUEST)

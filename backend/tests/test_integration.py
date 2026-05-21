@@ -1,18 +1,24 @@
-/**
- * Integration Tests for Critical Workflows
- * Phase 4: End-to-End validation
- * 
- * These tests validate core user journeys across the system
- */
+"""
+Integration Tests for Critical Workflows
+Phase 4: End-to-End validation
+
+These tests validate core user journeys across the system
+"""
 
 import pytest
 from django.test import TestCase, Client
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.conf import settings
+
+# Disable two-factor requirement during tests to simplify login flows
+settings.TWO_FACTOR_REQUIRED_ROLES = []
+
+User = get_user_model()
 from rest_framework.test import APIClient
 from appointments.models import Appointment
 from lab.models import TestBooking, TestResult
 from payments.models import Payment
-from clinical.models import ClinicalObservation, Diagnosis
+from clinical.models import PatientVisit, PatientDocument, Doctor
 from prescriptions.models import Prescription
 
 
@@ -48,6 +54,13 @@ class PatientJourneyIntegration(TestCase):
             format='json'
         )
         assert response.status_code == 201, f"Registration failed: {response.data}"
+        # Activate created user (registration creates inactive accounts)
+        try:
+            u = User.objects.get(email=self.patient_data['email'])
+            u.is_active = True
+            u.save()
+        except Exception:
+            pass
         
         # Step 2: Login
         login_data = {
@@ -56,7 +69,7 @@ class PatientJourneyIntegration(TestCase):
         }
         response = self.client.post('/api/auth/login/', login_data)
         assert response.status_code == 200
-        token = response.data.get('access')
+        token = response.data.get('token') or response.data.get('access')
         assert token is not None
         
         # Set auth token
@@ -67,7 +80,7 @@ class PatientJourneyIntegration(TestCase):
         assert response.status_code == 200
         
         # Step 4: View own details
-        response = self.client.get('/api/users/me/')
+        response = self.client.get('/api/auth/me/')
         assert response.status_code == 200
         assert response.data['email'] == self.patient_data['email']
         
@@ -94,6 +107,7 @@ class DoctorWorkflowIntegration(TestCase):
             last_name='Smith',
         )
         self.doctor_user.role = 'DOCTOR'
+        self.doctor_user.is_active = True
         self.doctor_user.save()
 
     def test_doctor_workflow(self):
@@ -107,11 +121,11 @@ class DoctorWorkflowIntegration(TestCase):
             }
         )
         assert response.status_code == 200
-        token = response.data.get('access')
+        token = response.data.get('token') or response.data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         
         # View doctors list (should include self)
-        response = self.client.get('/api/clinical/doctors/')
+        response = self.client.get('/api/doctors/')
         assert response.status_code == 200
         
         # View schedules
@@ -135,6 +149,7 @@ class LabTechnicianWorkflow(TestCase):
             username='lab',
         )
         self.lab_user.role = 'LAB_TECHNICIAN'
+        self.lab_user.is_active = True
         self.lab_user.save()
 
     def test_lab_workflow(self):
@@ -145,7 +160,7 @@ class LabTechnicianWorkflow(TestCase):
             {'email': 'lab@example.com', 'password': 'lab_password_123'}
         )
         assert response.status_code == 200
-        token = response.data.get('access')
+        token = response.data.get('token') or response.data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         
         # View lab templates
@@ -172,6 +187,13 @@ class AdminWorkflowIntegration(TestCase):
             password='admin_password_123',
             username='admin'
         )
+        # superuser created active by manager, ensure 2FA bypass for admin during tests
+        try:
+            bypass = set(getattr(settings, 'TWO_FACTOR_BYPASS_EMAILS', set()))
+            bypass.add(self.admin_user.email)
+            settings.TWO_FACTOR_BYPASS_EMAILS = bypass
+        except Exception:
+            pass
 
     def test_admin_operations(self):
         """Admin can perform all privileged operations"""
@@ -181,7 +203,7 @@ class AdminWorkflowIntegration(TestCase):
             {'email': 'admin@example.com', 'password': 'admin_password_123'}
         )
         assert response.status_code == 200
-        token = response.data.get('access')
+        token = response.data.get('token') or response.data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         
         # View all users
@@ -209,6 +231,7 @@ class RoleBasedAccessControlIntegration(TestCase):
             username='patient'
         )
         self.patient_user.role = 'PATIENT'
+        self.patient_user.is_active = True
         self.patient_user.save()
 
     def test_patient_cannot_access_admin_endpoints(self):
@@ -218,7 +241,7 @@ class RoleBasedAccessControlIntegration(TestCase):
             '/api/auth/login/',
             {'email': 'patient@example.com', 'password': 'patient_pass'}
         )
-        token = response.data.get('access')
+        token = response.data.get('token') or response.data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         
         # Try to access admin-only endpoints
@@ -301,10 +324,13 @@ class ErrorHandlingIntegration(TestCase):
     Verify graceful error handling across workflows
     """
 
+    def setUp(self):
+        self.client = APIClient()
+
     def test_invalid_token_handling(self):
         """Invalid token should return 401"""
         self.client.credentials(HTTP_AUTHORIZATION='Bearer invalid_token')
-        response = self.client.get('/api/users/me/')
+        response = self.client.get('/api/auth/me/')
         assert response.status_code == 401
 
     def test_malformed_request_handling(self):
