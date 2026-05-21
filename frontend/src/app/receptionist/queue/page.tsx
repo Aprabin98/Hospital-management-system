@@ -14,8 +14,11 @@ type QueuePriority = 'P1' | 'P2' | 'P3' | 'P4';
 interface DoctorItem {
   id: number;
   user: {
+    username: string;
+    email: string;
     first_name: string;
     last_name: string;
+    display_name?: string;
   };
 }
 
@@ -45,7 +48,10 @@ interface PatientItem {
   full_name: string;
   phone: string;
   user: {
+    username: string;
     email: string;
+    first_name?: string;
+    last_name?: string;
   };
 }
 
@@ -60,6 +66,11 @@ interface DuplicateMatch {
 }
 
 const ALL_STATUS_FILTER = 'WAITING,CALLED,IN_CONSULTATION,NO_SHOW,COMPLETED';
+
+function formatPersonName(firstName?: string, lastName?: string, username?: string, email?: string, fallback?: string) {
+  const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+  return fullName || username || email || fallback || '';
+}
 
 export default function ReceptionQueuePage() {
   const [userRole, setUserRole] = useState('');
@@ -140,7 +151,14 @@ export default function ReceptionQueuePage() {
 
       const url = params.toString() ? `/queue/?${params.toString()}` : '/queue/';
       const response = await apiClient.get<QueueEntry[]>(url);
-      setQueueEntries(Array.isArray(response) ? response : []);
+      const queueItems = Array.isArray(response)
+        ? response
+        : Array.isArray((response as { results?: QueueEntry[]; items?: QueueEntry[] })?.results)
+          ? (response as { results: QueueEntry[] }).results
+          : Array.isArray((response as { results?: QueueEntry[]; items?: QueueEntry[] })?.items)
+            ? (response as { items: QueueEntry[] }).items
+            : [];
+      setQueueEntries(queueItems);
     } catch (error) {
       toast.error(extractApiErrorMessage(error, 'Failed to load queue'));
       setQueueEntries([]);
@@ -343,7 +361,7 @@ export default function ReceptionQueuePage() {
               >
                 {doctors.map((doctor) => (
                   <option key={doctor.id} value={doctor.id}>
-                    Dr. {doctor.user.first_name} {doctor.user.last_name}
+                    Dr. {formatPersonName(doctor.user.first_name, doctor.user.last_name, doctor.user.username, doctor.user.email, doctor.user.display_name)}
                   </option>
                 ))}
               </select>
@@ -378,7 +396,7 @@ export default function ReceptionQueuePage() {
                         selectedPatientId === patient.id ? 'bg-blue-50 text-blue-800' : 'hover:bg-gray-50 text-gray-700'
                       }`}
                     >
-                      <span>{patient.full_name}</span>
+                      <span>{patient.full_name || formatPersonName(patient.user.first_name, patient.user.last_name, patient.user.username, patient.user.email, `Patient ${patient.id}`)}</span>
                       <span className="text-xs">{patient.phone || patient.user.email}</span>
                     </button>
                   ))}
@@ -476,8 +494,8 @@ export default function ReceptionQueuePage() {
                   <div key={entry.id} className="rounded-lg border border-gray-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-base font-semibold text-gray-900">{entry.patient_name}</p>
-                        <p className="text-sm text-gray-600">{entry.doctor_name}</p>
+                        <p className="text-base font-semibold text-gray-900">{entry.patient_name || `Patient #${entry.patient}`}</p>
+                        <p className="text-sm text-gray-600">{entry.doctor_name || `Dr. #${entry.doctor}`}</p>
                         <p className="text-xs text-gray-500">
                           Source: {entry.source} | Wait: {entry.wait_time_minutes} min | Priority: {entry.priority}
                         </p>

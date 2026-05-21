@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
   { name: 'Shifts', href: '/admin/shifts', roles: ['admin'] },
   { name: 'Schedules', href: '/admin/schedules', roles: ['admin'] },
   { name: 'Drug Interactions', href: '/admin/drug-interactions', roles: ['admin'] },
-  { name: 'Lab Workflow', href: '/admin/lab-workflow', roles: ['admin'] },
+  { name: 'Lab Workflow', href: '/admin/lab-workflow', roles: ['admin', 'receptionist'] },
   { name: 'Reception Queue', href: '/receptionist/queue', roles: ['admin', 'receptionist', 'doctor'] },
   { name: 'Patient Operations', href: '/admin/patient-operations', roles: ['admin', 'receptionist'] },
   { name: 'Users Management', href: '/admin/users-management', roles: ['admin'] },
@@ -42,7 +42,10 @@ const navItems: NavItem[] = [
   { name: 'Prescriptions', href: '/prescriptions', roles: ['admin', 'doctor', 'patient', 'receptionist', 'nurse', 'pharmacist'] },
   { name: 'Notifications', href: '/notifications', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician', 'nurse'] },
   { name: 'Billing', href: '/billing', roles: ['patient', 'admin', 'receptionist'] },
+  { name: 'Diagnostics', href: '/lab-dashboard', roles: ['admin', 'lab_technician'] },
+  { name: 'Lab Dashboard', href: '/lab-dashboard', roles: ['admin', 'lab_technician'] },
   { name: 'Lab Reports', href: '/lab-reports', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician'] },
+  { name: 'Fill Lab Results', href: '/lab-reports?tab=results', roles: ['admin', 'lab_technician'] },
   { name: 'Reviews', href: '/reviews', roles: ['admin', 'doctor', 'patient', 'receptionist'] },
   { name: 'My Ratings', href: '/my-ratings', roles: ['patient'] },
   { name: 'Manage Leaves', href: '/manage-leaves', roles: ['doctor'] },
@@ -54,15 +57,22 @@ const navItems: NavItem[] = [
   { name: 'Issued Prescriptions', href: '/prescriptions-writer', roles: ['doctor'] },
   { name: 'Doctors', href: '/doctors', roles: ['doctor', 'patient', 'receptionist', 'nurse'] },
   { name: 'Settings', href: '/settings', roles: ['doctor', 'patient', 'receptionist', 'lab_technician', 'nurse'] },
-  { name: 'Lab Samples', href: '/lab/samples', roles: ['admin', 'lab_technician'] },
 ];
 
 const defaultNavSections = [
   { id: 'core', label: 'Core', items: ['Dashboard', 'Notifications', 'Settings'] },
   { id: 'clinical', label: 'Clinical', items: ['Patients', 'Appointments', 'Medical Records', 'Prescriptions', 'Doctors', 'Manage Leaves', 'Issued Prescriptions'] },
-  { id: 'diagnostics', label: 'Diagnostics', items: ['Lab Reports', 'Lab Samples'] },
+  { id: 'diagnostics', label: 'Diagnostics', items: ['Diagnostics', 'Lab Dashboard', 'Lab Reports', 'Fill Lab Results'] },
   { id: 'operations', label: 'Operations', items: ['Reception Queue', 'Reports', 'Reviews', 'My Ratings', 'Billing'] },
   { id: 'intelligence', label: 'AI & Quality', items: ['Heart Risk Detector', 'AI Report Reader', 'AI Triage'] },
+];
+
+const receptionistNavSections = [
+  { id: 'core', label: 'Core', items: ['Dashboard'] },
+  { id: 'operations', label: 'Front Desk', items: ['Reception Queue', 'Appointments', 'Billing'] },
+  { id: 'clinical', label: 'Care', items: ['Patients', 'Medical Records', 'Prescriptions'] },
+  { id: 'diagnostics', label: 'Diagnostics', items: ['Diagnostics', 'Lab Reports', 'Lab Workflow'] },
+  { id: 'reports', label: 'Reports', items: ['Reports'] },
 ];
 
 const adminNavSections = [
@@ -70,7 +80,7 @@ const adminNavSections = [
   { id: 'management', label: 'Management', items: ['Manage Doctors', 'Manage Tests', 'Specializations', 'Shifts', 'Schedules', 'Users Management', 'System Settings'] },
   { id: 'operations', label: 'Operations', items: ['Patient Operations', 'Patients', 'Appointments', 'Reception Queue', 'Billing'] },
   { id: 'clinical', label: 'Clinical', items: ['Medical Records', 'Prescriptions', 'Doctors'] },
-  { id: 'platform', label: 'Platform', items: ['Lab Workflow', 'Lab Samples', 'Drug Interactions', 'Notifications'] },
+  { id: 'platform', label: 'Platform', items: ['Lab Workflow', 'Drug Interactions', 'Notifications'] },
   { id: 'security', label: 'Security', items: ['Security Monitoring', 'RBAC Verification', 'System Health', 'Audit Logs'] },
 ];
 
@@ -94,8 +104,10 @@ const itemIcons: Record<string, React.ComponentProps<typeof AppIcon>['name']> = 
   Doctors: 'doctors',
   'Manage Doctors': 'doctors',
   Billing: 'billing',
+  Diagnostics: 'lab',
   'Lab Reports': 'lab',
-  'Lab Samples': 'lab',
+  'Fill Lab Results': 'lab',
+  'Lab Dashboard': 'lab',
   'Lab Workflow': 'lab',
   Prescriptions: 'prescriptions',
   'Issued Prescriptions': 'prescriptions',
@@ -123,7 +135,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
   const pathname = usePathname();
   const currentPath = pathname || '';
   const { userRole } = useAuth();
-  const normalizedRole = (userRole || '').toLowerCase();
+  const normalizedRole = normalizeRole(userRole).toLowerCase();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     overview: true,
     management: true,
@@ -134,6 +146,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
     platform: true,
     security: false,
     core: true,
+    reports: true,
     other: true,
   });
 
@@ -147,7 +160,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
       return [];
     }
 
-    const sections = normalizedRole === 'admin' ? adminNavSections : defaultNavSections;
+    const sections = normalizedRole === 'admin' ? adminNavSections : normalizedRole === 'receptionist' ? receptionistNavSections : defaultNavSections;
     const grouped = sections.map((section) => ({
       ...section,
       nav: filteredNavItems.filter((item) => section.items.includes(item.name)),
@@ -158,7 +171,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
 
     if (otherItems.length > 0) {
       grouped.push({
-        id: 'other',
+        id: 'other-more',
         label: 'Other',
         items: [],
         nav: otherItems,

@@ -14,7 +14,7 @@ import hashlib
 from .models import User, TwoFactorCode, LoginAttempt
 from audit.utils import log_audit_event
 from .security import is_identifier_locked, clear_attempts, register_failed_attempt
-from .utils import send_password_reset_email
+from .utils import send_activation_email, send_password_reset_email
 
 
 def _parse_page_params(request, default_page=1, default_page_size=20, max_page_size=100):
@@ -473,7 +473,7 @@ def register_api(request):
             first_name=data.get('first_name'),
             last_name=data.get('last_name'),
             role=role,
-            is_active=True,
+            is_active=False,
         )
 
         # Ensure patient profile exists for patient role logins.
@@ -545,6 +545,8 @@ def register_api(request):
                 'object_repr': user.email,
             },
         )
+
+        send_activation_email(user, request)
         
         return Response(
             {
@@ -1033,9 +1035,9 @@ def patient_allergy_detail_api(request, patient_id, allergy_id):
     return Response(PatientAllergySerializer(updated).data, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "PUT", "PATCH"])
 def patient_detail_api(request, patient_id):
     """
     API endpoint to get patient detail.
@@ -1055,6 +1057,27 @@ def patient_detail_api(request, patient_id):
             own_profile = PatientProfile.objects.filter(user=request.user).first()
             if not own_profile or own_profile.id != patient.id:
                 return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+        if request.method in ['PUT', 'PATCH']:
+            serializer = PatientProfileSerializer(patient, data=request.data, partial=(request.method == 'PATCH'))
+            if not serializer.is_valid():
+                return Response(
+                    {'detail': 'Validation error', 'errors': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            updated_patient = serializer.save()
+            log_audit_event(
+                action='UPDATE',
+                request=request,
+                description='Patient profile updated via API.',
+                target={
+                    'model_name': 'users.patientprofile',
+                    'object_id': str(updated_patient.id),
+                    'object_repr': updated_patient.full_name,
+                },
+            )
+            return Response(PatientProfileSerializer(updated_patient).data, status=status.HTTP_200_OK)
 
         serializer = PatientProfileSerializer(patient)
         return Response(serializer.data, status=status.HTTP_200_OK)

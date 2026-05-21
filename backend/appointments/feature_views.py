@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 
 from .models import Appointment, WaitingList
 from .no_show_predictor import PredictionEngine
+from .utils import generate_appointment_pdf, generate_qr_code
 from clinical.models import Doctor
 
 
@@ -25,30 +26,29 @@ def promote_waiting_list(doctor, target_date, created_by=None):
     if not waiting:
         return None
 
-    candidate_conflict = Appointment.objects.filter(
+    candidate_slot = Appointment.objects.select_for_update().filter(
         doctor=doctor,
         date=target_date,
-        status__in=['PENDING', 'CONFIRMED'],
-    ).order_by('start_time').first()
-    if not candidate_conflict:
+        status__in=['CANCELLED', 'COMPLETED'],
+    ).order_by('-updated_at', '-created_at').first()
+    if not candidate_slot:
         return None
 
-    promoted = Appointment.objects.create(
-        patient=waiting.patient,
-        doctor=doctor,
-        date=candidate_conflict.date,
-        start_time=candidate_conflict.start_time,
-        end_time=candidate_conflict.end_time,
-        status='CONFIRMED',
-        notes='Auto-promoted from waiting list.',
-    )
+    candidate_slot.patient = waiting.patient
+    candidate_slot.status = 'CONFIRMED'
+    candidate_slot.notes = 'Auto-promoted from waiting list.'
+    candidate_slot.save(update_fields=['patient', 'status', 'notes', 'updated_at'])
+
+    generate_qr_code(candidate_slot)
+    generate_appointment_pdf(candidate_slot)
+    candidate_slot.save(update_fields=['qr_code', 'pdf_file', 'updated_at'])
 
     waiting.status = 'PROMOTED'
     waiting.notified_at = timezone.now()
     waiting.promoted_at = timezone.now()
     waiting.save(update_fields=['status', 'notified_at', 'promoted_at'])
 
-    return promoted
+    return candidate_slot
 
 
 @login_required

@@ -41,12 +41,14 @@ class DoctorSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
     
     def get_user(self, obj):
+        full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()
         return {
             'id': obj.user.id,
             'email': obj.user.email,
             'username': obj.user.username,
             'first_name': obj.user.first_name,
             'last_name': obj.user.last_name,
+            'display_name': full_name or obj.user.username or obj.user.email,
         }
 
     def get_photo_url(self, obj):
@@ -196,7 +198,7 @@ class PatientMatchSerializer(serializers.ModelSerializer):
 
 
 class QueueSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    patient_name = serializers.SerializerMethodField()
     doctor_name = serializers.SerializerMethodField()
     wait_time_minutes = serializers.IntegerField(read_only=True)
     consultation_duration_minutes = serializers.IntegerField(read_only=True)
@@ -238,9 +240,24 @@ class QueueSerializer(serializers.ModelSerializer):
             'triage_priority',
             'created_at',
         ]
+
+    def get_patient_name(self, obj):
+        full_name = (obj.patient.full_name or '').strip()
+        if full_name:
+            return full_name
+        user = getattr(obj.patient, 'user', None)
+        if user:
+            user_full_name = f"{user.first_name} {user.last_name}".strip()
+            return user_full_name or user.username or user.email
+        return f'Patient #{obj.patient_id}'
+
+    def get_doctor_name(self, obj):
+        full_name = f"{obj.doctor.user.first_name} {obj.doctor.user.last_name}".strip()
+        return f"Dr. {full_name or obj.doctor.user.username or obj.doctor.user.email}"
     
     def get_doctor_name(self, obj):
-        return f"Dr. {obj.doctor.user.first_name} {obj.doctor.user.last_name}"
+            full_name = f"{obj.doctor.user.first_name} {obj.doctor.user.last_name}".strip()
+            return f"Dr. {full_name or obj.doctor.user.username or obj.doctor.user.email}"
 
 
 class NursingNoteSerializer(serializers.ModelSerializer):

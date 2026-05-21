@@ -78,6 +78,12 @@ class TestTemplateSerializer(serializers.ModelSerializer):
 class TestBookingSerializer(serializers.ModelSerializer):
     template_name = serializers.CharField(source='template.name', read_only=True)
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    result_id = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    expected_report_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    collected_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    received_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    rejected_reason = serializers.CharField(read_only=True, allow_blank=True)
     
     class Meta:
         model = TestBooking
@@ -89,12 +95,24 @@ class TestBookingSerializer(serializers.ModelSerializer):
             'template_name',
             'date',
             'status',
+            'status_display',
             'payment_status',
             'amount',
             'specimen_id',
+            'expected_report_at',
+            'collected_at',
+            'received_at',
+            'rejected_reason',
+            'result_id',
             'created_at',
         ]
         read_only_fields = ['id', 'created_at', 'specimen_id']
+
+    def get_result_id(self, obj):
+        try:
+            return obj.result.id
+        except TestResult.DoesNotExist:
+            return None
 
 
 class TestResultItemSerializer(serializers.ModelSerializer):
@@ -175,6 +193,9 @@ class TestRecommendationSerializer(serializers.ModelSerializer):
 class LabSampleSerializer(serializers.ModelSerializer):
     """Serializer for LabSample model with tracking metadata."""
     result_id = serializers.IntegerField(source='result.id', read_only=True)
+    patient_name = serializers.CharField(source='result.booking.patient.full_name', read_only=True)
+    test_name = serializers.CharField(source='result.booking.template.name', read_only=True)
+    booking_date = serializers.DateField(source='result.booking.date', read_only=True)
     collected_by_name = serializers.SerializerMethodField()
     processed_by_name = serializers.SerializerMethodField()
     validated_by_name = serializers.SerializerMethodField()
@@ -184,6 +205,9 @@ class LabSampleSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'result_id',
+            'patient_name',
+            'test_name',
+            'booking_date',
             'barcode_id',
             'status',
             'collected_by',
@@ -200,7 +224,18 @@ class LabSampleSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'collected_by_name', 'processed_by_name', 'validated_by_name', 'result_id']
+        read_only_fields = [
+            'id',
+            'created_at',
+            'updated_at',
+            'collected_by_name',
+            'processed_by_name',
+            'validated_by_name',
+            'result_id',
+            'patient_name',
+            'test_name',
+            'booking_date',
+        ]
 
     def get_collected_by_name(self, obj):
         if not obj.collected_by:

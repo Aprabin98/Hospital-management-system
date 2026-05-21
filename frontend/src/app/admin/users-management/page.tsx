@@ -32,7 +32,7 @@ export default function UsersManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [pageSize] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);

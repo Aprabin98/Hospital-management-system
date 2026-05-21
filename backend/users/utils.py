@@ -1,5 +1,6 @@
 from django.core.mail import send_mail
 from django.conf import settings
+from django.urls import reverse
 import uuid
 
 from .tasks import send_email_task
@@ -10,13 +11,29 @@ def generate_token():
     return str(uuid.uuid4())
 
 
+def _build_absolute_link(request, path):
+    if request is not None:
+        try:
+            return request.build_absolute_uri(path)
+        except Exception:
+            pass
+    return f"{settings.SITE_DOMAIN}{path}"
+
+
+def _print_terminal_link(label, link):
+    if getattr(settings, 'PRINT_VERIFICATION_LINK_IN_TERMINAL', False):
+        print(f"[{settings.SITE_NAME} {label}] {link}", flush=True)
+
+
 def send_activation_email(user, request):
     """Send account activation email to the user."""
     token = generate_token()
     user.activation_token = token
     user.save()
 
-    activation_link = f"{settings.SITE_DOMAIN}/users/activate/{user.id}/{token}/"
+    activation_path = reverse('users:activate', args=[user.id, token])
+    activation_link = _build_absolute_link(request, activation_path)
+    _print_terminal_link('Verification Link', activation_link)
 
     subject = f"Activate Your {settings.SITE_NAME} Account"
     message = f"""
@@ -61,7 +78,8 @@ def send_password_reset_email(user, request):
     user.activation_token = token  # Reusing token field for reset too
     user.save()
 
-    reset_link = f"{settings.SITE_DOMAIN}/users/reset-password/{user.id}/{token}/"
+    reset_path = reverse('users:password_reset_confirm', args=[user.id, token])
+    reset_link = _build_absolute_link(request, reset_path)
 
     subject = f"Reset Your {settings.SITE_NAME} Password"
     message = f"""

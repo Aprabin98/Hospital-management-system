@@ -15,6 +15,7 @@ export default function AddPatientPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -40,6 +41,7 @@ export default function AddPatientPage() {
         first_name: firstName,
         last_name: lastName,
         email,
+        date_of_birth: dateOfBirth || undefined,
         password,
         role: 'patient',
       });
@@ -110,6 +112,17 @@ export default function AddPatientPage() {
               placeholder="patient@example.com"
               disabled={!canCreatePatient || isSaving}
               required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Date of Birth</label>
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500"
+              disabled={!canCreatePatient || isSaving}
             />
           </div>
 

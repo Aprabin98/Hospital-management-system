@@ -36,8 +36,10 @@ export default function PatientDetailPage() {
   const [priority, setPriority] = useState('MEDIUM');
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docTitle, setDocTitle] = useState('');
+  const [profileDateOfBirth, setProfileDateOfBirth] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -51,6 +53,7 @@ export default function PatientDetailPage() {
         apiClient.get<any>('/lab/recommendations/?page_size=100'),
       ]);
       setPatient(patientRes);
+      setProfileDateOfBirth(patientRes?.date_of_birth || '');
       setTimeline(timelineRes);
       setSummary(summaryRes);
       setTests(Array.isArray(testsRes) ? testsRes : testsRes.results || []);
@@ -83,6 +86,25 @@ export default function PatientDetailPage() {
       toast.error(err?.message || 'Failed to save visit');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canEdit) return;
+
+    try {
+      setSavingProfile(true);
+      const updated = await apiClient.patch(`/patients/${id}/`, {
+        date_of_birth: profileDateOfBirth || null,
+      });
+      setPatient(updated);
+      setProfileDateOfBirth(updated?.date_of_birth || '');
+      toast.success('Patient date of birth updated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update patient date of birth');
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -132,7 +154,7 @@ export default function PatientDetailPage() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{patient?.full_name || timeline?.patient?.name}</h2>
               <p className="text-sm text-gray-600">{patient?.user?.email || '-'} | {patient?.phone || '-'}</p>
-              <p className="text-sm text-gray-600">Blood: {patient?.blood_group || '-'} | Emergency: {patient?.emergency_contact || '-'}</p>
+              <p className="text-sm text-gray-600">Blood: {patient?.blood_group || '-'} | DOB: {patient?.date_of_birth || '-'} | Emergency: {patient?.emergency_contact || '-'}</p>
             </div>
             <span className={`rounded-full px-3 py-1 text-sm font-semibold ${
               summary?.risk_flag === 'HIGH' ? 'bg-red-100 text-red-700' :
@@ -143,6 +165,31 @@ export default function PatientDetailPage() {
           </div>
           <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{summary?.summary}</p>
         </section>
+
+        {canEdit && (
+          <form onSubmit={saveProfile} className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <h3 className="text-lg font-semibold text-emerald-900">Edit Patient Date of Birth</h3>
+            <p className="mt-1 text-sm text-emerald-800">Use this to add or update the patient DOB from the frontend.</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-emerald-900">Date of Birth</label>
+                <input
+                  type="date"
+                  value={profileDateOfBirth}
+                  onChange={(e) => setProfileDateOfBirth(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-300 bg-white p-3 text-sm text-gray-900"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className="rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingProfile ? 'Saving...' : 'Save DOB'}
+              </button>
+            </div>
+          </form>
+        )}
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-gray-200 bg-white p-4">

@@ -5,17 +5,20 @@ Supports token-based check-in, queue management, and no-show recovery.
 from datetime import datetime, timedelta
 
 from django.db.models import Case, IntegerField, Value, When
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 
-from appointments.models import Queue, Appointment
+from appointments.feature_views import promote_waiting_list
+from appointments.models import Queue, Appointment, WaitingList
 from appointments.patient_matcher import PatientMatchingService
 from appointments.api_serializers import QueueSerializer
 from clinical.models import Doctor
 from users.models import PatientProfile
+from appointments.no_show_predictor import PredictionEngine
 
 
 @api_view(['GET', 'POST'])
@@ -416,3 +419,111 @@ def no_show_rebook_api(request, queue_id):
             {'detail': f'Error: {str(e)}'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def waiting_list_queue_api(request):
+    if request.user.role not in ['RECEPTIONIST', 'ADMIN', 'DOCTOR']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    doctor_id = request.query_params.get('doctor_id')
+    qs = WaitingList.objects.filter(status='WAITING').select_related('patient', 'doctor__user')
+    if doctor_id:
+        qs = qs.filter(doctor_id=doctor_id)
+
+    items = [
+        {
+            'id': row.id,
+            'patient': row.patient.full_name,
+            'doctor': row.doctor.user.username,
+            'date': row.date.isoformat(),
+            'priority': row.priority,
+            'status': row.status,
+        }
+        for row in qs[:200]
+    ]
+    return Response({'count': len(items), 'items': items, 'results': items}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def waiting_list_promote_api(request, waiting_id):
+    if request.user.role not in ['RECEPTIONIST', 'ADMIN']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    waiting = get_object_or_404(WaitingList, pk=waiting_id, status='WAITING')
+    promoted = promote_waiting_list(waiting.doctor, waiting.date, created_by=request.user)
+    if not promoted:
+        return Response({'detail': 'No promotable slot available right now.'}, status=status.HTTP_409_CONFLICT)
+
+    return Response({'promoted_appointment_id': promoted.id}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def waiting_list_priority_api(request, waiting_id):
+    if request.user.role not in ['RECEPTIONIST', 'ADMIN']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    waiting = get_object_or_404(WaitingList, pk=waiting_id)
+    try:
+        priority = int(request.data.get('priority', waiting.priority))
+    except (TypeError, ValueError):
+        return Response({'detail': 'priority must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    waiting.priority = max(0, min(100, priority))
+    waiting.save(update_fields=['priority'])
+    return Response({'id': waiting.id, 'priority': waiting.priority}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def no_show_dashboard_api(request):
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'DOCTOR']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    upcoming = Appointment.objects.filter(
+        date__gte=timezone.now().date(),
+        status__in=['PENDING', 'CONFIRMED'],
+    ).select_related('patient', 'doctor__user')[:100]
+
+    items = []
+    for appointment in upcoming:
+        prediction = PredictionEngine.predict_appointment(appointment)
+        items.append({
+            'appointment_id': appointment.id,
+            'patient': appointment.patient.full_name,
+            'doctor': appointment.doctor.user.username,
+            'date': appointment.date.isoformat(),
+            'risk_level': prediction.risk_level,
+            'probability': round(prediction.no_show_probability, 3),
+            'status': appointment.status,
+        })
+
+    return Response({'count': len(items), 'items': items, 'results': items}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def no_show_outcome_api(request, appointment_id):
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST', 'DOCTOR']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    appointment = get_object_or_404(Appointment, pk=appointment_id)
+    outcome = str(request.data.get('outcome', '')).strip().lower()
+    if outcome not in ['showed', 'no_show']:
+        return Response({'detail': 'Invalid outcome.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    prediction = PredictionEngine.predict_appointment(appointment)
+    prediction.actually_no_showed = outcome == 'no_show'
+    prediction.save(update_fields=['actually_no_showed', 'updated_at'])
+
+    appointment.status = 'NO_SHOW' if prediction.actually_no_showed else 'COMPLETED'
+    appointment.save(update_fields=['status', 'updated_at'])
+
+    return Response({
+        'appointment_id': appointment.id,
+        'status': appointment.status,
+        'risk_level': prediction.risk_level,
+    }, status=status.HTTP_200_OK)

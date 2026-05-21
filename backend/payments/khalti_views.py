@@ -45,7 +45,12 @@ def initiate_khalti_payment(request):
         )
         
         if result['success']:
-            log_audit_event(user=request.user, action='KHALTI_INITIATED', details=f'Payment {payment_id}')
+            log_audit_event(
+                action='KHALTI_INITIATED',
+                description=f'Payment {payment_id}',
+                actor=request.user,
+                request=request,
+            )
             return Response({
                 **result,
                 'payment_id': payment.id,
@@ -93,7 +98,12 @@ def verify_khalti_payment(request):
                 payment.appointment.status = 'CONFIRMED'
                 payment.appointment.save(update_fields=['status'])
             
-            log_audit_event(user=request.user, action='KHALTI_VERIFIED', details=f'Payment {payment_id}')
+            log_audit_event(
+                action='KHALTI_VERIFIED',
+                description=f'Payment {payment_id}',
+                actor=request.user,
+                request=request,
+            )
             
             return Response({
                 'success': True,

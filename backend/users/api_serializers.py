@@ -13,12 +13,14 @@ class UserSerializer(serializers.ModelSerializer):
 
 class PatientProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    display_name = serializers.SerializerMethodField()
     
     class Meta:
         model = PatientProfile
         fields = [
             'id',
             'user',
+            'display_name',
             'full_name',
             'phone',
             'gender',
@@ -32,7 +34,17 @@ class PatientProfileSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'display_name', 'created_at', 'updated_at']
+
+    def get_display_name(self, obj):
+        full_name = (obj.full_name or '').strip()
+        if full_name:
+            return full_name
+        user = getattr(obj, 'user', None)
+        if user:
+            user_full_name = f"{user.first_name} {user.last_name}".strip()
+            return user_full_name or user.username or user.email
+        return ''
 
 
 class PatientHealthRecordSerializer(serializers.ModelSerializer):

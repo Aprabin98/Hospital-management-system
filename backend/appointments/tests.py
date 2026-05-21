@@ -1,10 +1,11 @@
 from datetime import date, time, timedelta
+import json
 
 from django.test import TestCase
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from appointments.models import Appointment, TriageAssessment, MedicalReportAnalysis
+from appointments.models import Appointment, TriageAssessment, MedicalReportAnalysis, Queue, WaitingList
 from clinical.models import Doctor, DoctorLeave
 from users.models import PatientProfile, User
 
@@ -43,6 +44,14 @@ class AppointmentsSmokeTests(TestCase):
 			is_active=True,
 		)
 		self.doctor = Doctor.objects.create(user=self.doctor_user)
+
+		self.reception_user = User.objects.create_user(
+			email='reception.appt@example.com',
+			username='reception_appt',
+			password='pass1234',
+			role='RECEPTIONIST',
+			is_active=True,
+		)
 
 		self.appointment = Appointment.objects.create(
 			patient=self.patient_profile,
@@ -111,6 +120,94 @@ class AppointmentsSmokeTests(TestCase):
 		self.assertIn(triage.priority, ['P1', 'P2', 'P3', 'P4'])
 		self.assertGreaterEqual(triage.priority_score, 0)
 		self.assertContains(response, 'Priority assigned')
+
+	def test_receptionist_can_list_queue_via_api(self):
+		Queue.objects.create(
+			patient=self.patient_profile,
+			doctor=self.doctor,
+			status='WAITING',
+			source='SCHEDULED',
+			priority='P4',
+		)
+
+		self.client.force_login(self.reception_user)
+		response = self.client.get(reverse('api:queue_list_api'))
+
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(len(payload), 1)
+		self.assertEqual(payload[0]['patient_name'], self.patient_profile.full_name)
+
+	def test_receptionist_can_create_queue_entry_via_api(self):
+		self.client.force_login(self.reception_user)
+		response = self.client.post(
+			reverse('api:queue_list_api'),
+			data=json.dumps({
+				'patient_id': self.patient_profile.id,
+				'doctor_id': self.doctor.id,
+				'source': 'WALK_IN',
+				'priority': 'P3',
+				'notes': 'Front desk check-in',
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 201)
+		payload = response.json()
+		self.assertEqual(payload['patient_name'], self.patient_profile.full_name)
+		self.assertTrue(payload['doctor_name'])
+
+	def test_receptionist_can_manage_waiting_list_and_no_show_via_api(self):
+		waiting = WaitingList.objects.create(
+			patient=self.other_patient_profile,
+			doctor=self.doctor,
+			date=date.today(),
+			priority=10,
+			status='WAITING',
+		)
+		released_slot = Appointment.objects.create(
+			patient=self.patient_profile,
+			doctor=self.doctor,
+			date=date.today(),
+			start_time=time(10, 0),
+			end_time=time(10, 30),
+			status='CANCELLED',
+		)
+
+		self.client.force_login(self.reception_user)
+
+		queue_response = self.client.get(reverse('api:appointments_waiting_list_queue_api'))
+		self.assertEqual(queue_response.status_code, 200)
+		self.assertIn('results', queue_response.json())
+
+		priority_response = self.client.post(
+			reverse('api:appointments_waiting_list_priority_api', args=[waiting.id]),
+			data=json.dumps({'priority': 90}),
+			content_type='application/json',
+		)
+		self.assertEqual(priority_response.status_code, 200)
+		waiting.refresh_from_db()
+		self.assertEqual(waiting.priority, 90)
+
+		promote_response = self.client.post(reverse('api:appointments_waiting_list_promote_api', args=[waiting.id]))
+		self.assertEqual(promote_response.status_code, 200)
+		self.assertIn('promoted_appointment_id', promote_response.json())
+		released_slot.refresh_from_db()
+		self.assertEqual(released_slot.patient, self.other_patient_profile)
+		self.assertEqual(released_slot.status, 'CONFIRMED')
+
+		no_show_response = self.client.get(reverse('api:appointments_no_show_dashboard_api'))
+		self.assertEqual(no_show_response.status_code, 200)
+		self.assertIn('results', no_show_response.json())
+
+		outcome_response = self.client.post(
+			reverse('api:appointments_no_show_outcome_api', args=[self.appointment.id]),
+			data=json.dumps({'outcome': 'no_show'}),
+			content_type='application/json',
+		)
+		self.assertEqual(outcome_response.status_code, 200)
+		self.appointment.refresh_from_db()
+		self.assertEqual(self.appointment.status, 'NO_SHOW')
 
 	def test_lab_technician_cannot_access_triage_dashboard(self):
 		lab_user = User.objects.create_user(

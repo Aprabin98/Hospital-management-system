@@ -6,6 +6,7 @@ from django.urls import reverse
 from appointments.models import Appointment
 from clinical.models import Doctor
 from lab.models import TestBooking, TestResult, TestTemplate
+from lab.models import LabSample
 from payments.models import Payment
 from users.models import PatientProfile, User
 
@@ -59,6 +60,14 @@ class LabWorkflowTests(TestCase):
 			username='admin_lab',
 			password='pass1234',
 			role='ADMIN',
+			is_active=True,
+		)
+
+		self.reception_user = User.objects.create_user(
+			email='reception.lab@example.com',
+			username='reception_lab',
+			password='pass1234',
+			role='RECEPTIONIST',
 			is_active=True,
 		)
 
@@ -152,6 +161,33 @@ class LabWorkflowTests(TestCase):
 		self.assertEqual(self.booking.status, 'COMPLETED')
 		self.assertIsNotNone(self.booking.completed_at)
 
+	def test_receptionist_can_release_verified_paid_result(self):
+		self.result.is_verified = True
+		self.result.verified_by = self.admin_user
+		self.result.save(update_fields=['is_verified', 'verified_by'])
+
+		payment = Payment.objects.filter(lab_booking=self.booking).first()
+		if payment is None:
+			payment = Payment.objects.create(
+				payment_type='LAB_TEST',
+				lab_booking=self.booking,
+				patient=self.patient_profile,
+				amount=self.booking.amount,
+				status='UNPAID',
+			)
+
+		payment.status = 'PAID'
+		payment.save(update_fields=['status'])
+
+		self.client.force_login(self.reception_user)
+		response = self.client.post(f'/api/lab/results/{self.result.id}/release/')
+
+		self.assertEqual(response.status_code, 200)
+		self.result.refresh_from_db()
+		self.booking.refresh_from_db()
+		self.assertTrue(self.result.is_released)
+		self.assertEqual(self.booking.status, 'COMPLETED')
+
 	def test_invalid_status_transition_is_blocked(self):
 		self.booking.status = 'PENDING'
 		self.booking.save(update_fields=['status'])
@@ -166,3 +202,22 @@ class LabWorkflowTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.booking.refresh_from_db()
 		self.assertEqual(self.booking.status, 'PENDING')
+
+	def test_lab_samples_api_includes_patient_and_test_metadata(self):
+		LabSample.objects.create(
+			result=self.result,
+			barcode_id='BC-10001',
+			status='COLLECTED',
+			collected_by=self.tech_user,
+		)
+
+		self.client.force_login(self.admin_user)
+		response = self.client.get('/api/lab/samples/')
+
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['count'], 1)
+		sample = payload['results'][0]
+		self.assertEqual(sample['patient_name'], self.patient_profile.full_name)
+		self.assertEqual(sample['test_name'], self.template.name)
+		self.assertEqual(sample['booking_date'], str(self.booking.date))

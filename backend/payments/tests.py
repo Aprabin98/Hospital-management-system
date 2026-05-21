@@ -1,3 +1,6 @@
+import json
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -75,3 +78,35 @@ class PaymentsSmokeTests(TestCase):
 			},
 		)
 		self.assertEqual(response.status_code, 201)
+
+	@patch('payments.khalti_views.log_audit_event')
+	@patch('payments.khalti_views.khalti_service.initiate_payment')
+	def test_patient_can_initiate_khalti_payment_via_api(self, mock_initiate_payment, mock_log_audit_event):
+		mock_initiate_payment.return_value = {'success': True, 'payment_url': 'https://khalti.test/pay'}
+		self.client.force_login(self.patient_user)
+
+		response = self.client.post(
+			reverse('api:payments_khalti_initiate_api'),
+			data=json.dumps({
+				'payment_id': self.payment.id,
+				'return_url': 'http://localhost:3000/billing/khalti-success',
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json()['payment_url'], 'https://khalti.test/pay')
+
+	@patch('payments.khalti_views.khalti_service.verify_payment')
+	def test_patient_can_verify_khalti_payment_via_api(self, mock_verify_payment):
+		mock_verify_payment.return_value = {'success': True, 'status': 'Completed', 'mobile': '9800000000'}
+		self.client.force_login(self.patient_user)
+
+		response = self.client.post(
+			reverse('api:payments_khalti_verify_api'),
+			data=json.dumps({'pidx': 'pidx-123', 'payment_id': self.payment.id}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json()['status'], 'Completed')

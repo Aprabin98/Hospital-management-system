@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { MainLayout } from '@/components/Layout';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
@@ -31,22 +32,35 @@ function extractList(response: unknown): any[] {
   return [];
 }
 
-export default function LabReportsPage() {
+function LabReportsContent() {
+  const searchParams = useSearchParams();
+  const tabParam = (searchParams.get('tab') || '').toLowerCase();
   const [tests, setTests] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'tests' | 'bookings' | 'results' | 'recommendations'>('tests');
+  const [activeTab, setActiveTab] = useState<'tests' | 'bookings' | 'results' | 'recommendations'>(() => (
+    tabParam === 'bookings' || tabParam === 'results' || tabParam === 'recommendations' || tabParam === 'tests'
+      ? tabParam
+      : 'tests'
+  ));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState('');
   const [selectedBookingDate, setSelectedBookingDate] = useState<Record<number, string>>({});
   const [bookingTestId, setBookingTestId] = useState<number | null>(null);
   const isPatient = userRole === 'PATIENT';
+  const isLabTechnician = userRole === 'LAB_TECHNICIAN';
 
   useEffect(() => {
     setUserRole((localStorage.getItem('userRole') || '').toUpperCase());
   }, []);
+
+  useEffect(() => {
+    if (tabParam === 'tests' || tabParam === 'bookings' || tabParam === 'results' || tabParam === 'recommendations') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const fetchLabData = useCallback(async () => {
     try {
@@ -115,10 +129,23 @@ export default function LabReportsPage() {
             <p className="mt-2 text-gray-600">
               {isPatient
                 ? 'Select a test, pick an available date, and click Book Test.'
+                : isLabTechnician
+                  ? 'Open the Results tab to enter notes and field values before admin verification and release.'
                 : 'View lab bookings and test results.'}
             </p>
           </div>
+          {isLabTechnician && (
+            <Link href="/lab-dashboard" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-cyan-200 hover:text-cyan-700">
+              Lab Dashboard
+            </Link>
+          )}
         </div>
+
+        {isLabTechnician && (
+          <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900">
+            Lab assistants fill test values in the Results tab. Admin reviews the same report from Lab Workflow before verification and release.
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-4 border-b border-gray-200">
@@ -352,7 +379,7 @@ export default function LabReportsPage() {
                       <td className="px-6 py-4 text-sm">
                         <div className="flex gap-2">
                           <Link href={`/lab-reports/result/${result.id}`} className="text-blue-600 hover:text-blue-700 font-medium">
-                            View Report
+                            {isLabTechnician && !result.is_released ? 'Fill Details' : 'View Report'}
                           </Link>
                           {result.pdf_file && (
                             <span className="text-gray-300">|</span>
@@ -411,5 +438,13 @@ export default function LabReportsPage() {
         )}
       </div>
     </MainLayout>
+  );
+}
+
+export default function LabReportsPage() {
+  return (
+    <Suspense fallback={<MainLayout><div className="text-gray-600">Loading lab reports...</div></MainLayout>}>
+      <LabReportsContent />
+    </Suspense>
   );
 }

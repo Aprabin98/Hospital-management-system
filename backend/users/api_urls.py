@@ -3,6 +3,8 @@ from django.urls import path
 from . import api_views
 from . import admin_api_views
 from appointments import api_views as appointments_api_views
+from appointments import queue_api_views as appointments_queue_api_views
+from payments import khalti_views as payments_khalti_views
 from clinical import api_views as clinical_api_views
 from clinical import analytics_views as clinical_analytics_views
 from lab import api_views as lab_api_views
@@ -58,6 +60,17 @@ urlpatterns = [
     path('appointments/<int:appointment_id>/report/', appointments_api_views.appointment_report_api, name='appointment_report'),
     path('appointments/available-slots/', appointments_api_views.appointments_available_slots_api, name='appointments_available_slots'),
     path('appointments/<int:appointment_id>/download-pdf/', appointments_api_views.appointment_download_pdf_api, name='appointment_download_pdf'),
+    path('queue/', appointments_queue_api_views.queue_list_api, name='queue_list_api'),
+    path('queue/<int:queue_id>/status/', appointments_queue_api_views.queue_update_status_api, name='queue_update_status_api'),
+    path('queue/check-duplicate/', appointments_queue_api_views.check_duplicate_patient_api, name='check_duplicate_api'),
+    path('queue/<int:queue_id>/rebook/', appointments_queue_api_views.no_show_rebook_api, name='no_show_rebook_api'),
+    path('appointments/waiting-list/queue/', appointments_queue_api_views.waiting_list_queue_api, name='appointments_waiting_list_queue_api'),
+    path('appointments/waiting-list/<int:waiting_id>/promote/', appointments_queue_api_views.waiting_list_promote_api, name='appointments_waiting_list_promote_api'),
+    path('appointments/waiting-list/<int:waiting_id>/priority/', appointments_queue_api_views.waiting_list_priority_api, name='appointments_waiting_list_priority_api'),
+    path('appointments/no-show/dashboard/', appointments_queue_api_views.no_show_dashboard_api, name='appointments_no_show_dashboard_api'),
+    path('appointments/no-show/<int:appointment_id>/outcome/', appointments_queue_api_views.no_show_outcome_api, name='appointments_no_show_outcome_api'),
+    path('payments/khalti/initiate/', payments_khalti_views.initiate_khalti_payment, name='payments_khalti_initiate_api'),
+    path('payments/khalti/verify/', payments_khalti_views.verify_khalti_payment, name='payments_khalti_verify_api'),
     
     
     # Medical Records
@@ -100,6 +113,8 @@ urlpatterns = [
     path('lab/bookings/', lab_api_views.lab_bookings_list_api, name='lab_bookings_list'),
     path('lab/bookings/create/', lab_api_views.lab_booking_create_api, name='lab_booking_create'),
     path('lab/bookings/<int:booking_id>/', lab_api_views.lab_booking_detail_api, name='lab_booking_detail'),
+    path('lab/bookings/<int:booking_id>/update-status/', lab_api_views.lab_booking_update_status_api, name='lab_booking_update_status'),
+    path('lab/bookings/<int:booking_id>/result/', lab_api_views.lab_booking_start_result_api, name='lab_booking_start_result'),
     path('lab/results/', lab_api_views.lab_results_list_api, name='lab_results_list'),
     path('lab/results/<int:result_id>/', lab_api_views.lab_result_detail_api, name='lab_result_detail'),
     path('lab/recommendations/', lab_api_views.lab_recommendations_list_api, name='lab_recommendations_list'),

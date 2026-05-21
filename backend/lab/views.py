@@ -543,7 +543,7 @@ def admin_bookings(request):
 @login_required
 def release_result(request, pk):
     """Admin releases result to patient."""
-    if request.user.role != 'ADMIN':
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
         messages.error(request, 'Access denied.')
         return redirect('users:dashboard')
 

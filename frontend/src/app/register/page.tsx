@@ -81,7 +81,7 @@ export default function RegisterPage() {
         height: form.height,
         weight: form.weight,
       });
-      toast.success('Registration successful. Please login.');
+      toast.success('Registration successful. Check your email or the terminal for the activation link, then login.');
       router.push('/login');
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || 'Registration failed');

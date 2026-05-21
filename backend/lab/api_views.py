@@ -1,5 +1,6 @@
 """API views for lab endpoints"""
-from datetime import datetime
+import json
+from datetime import datetime, time, timedelta
 
 from django.utils import timezone
 from rest_framework import status
@@ -8,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.views.decorators.http import require_http_methods
 from .models import (
-    TestBooking, TestResult, TestTemplate, TestRecommendation, TestSchedule, TestField,
+    TestBooking, TestResult, TestResultItem, TestTemplate, TestRecommendation, TestSchedule, TestField,
     LabSample
 )
 from .api_serializers import (
@@ -18,6 +19,7 @@ from .api_serializers import (
     TestRecommendationSerializer,
     LabSampleSerializer,
 )
+from .utils import generate_lab_report_pdf
 
 
 _WEEKDAY_TO_CODE = {
@@ -29,6 +31,18 @@ _WEEKDAY_TO_CODE = {
     5: 'SAT',
     6: 'SUN',
 }
+
+
+def _allowed_next_status_api(current_status):
+    transitions = {
+        'PENDING': ['SAMPLE_COLLECTED', 'REJECTED_SAMPLE'],
+        'SAMPLE_COLLECTED': ['PROCESSING', 'REJECTED_SAMPLE'],
+        'PROCESSING': ['COMPLETED'],
+        'COMPLETED': [],
+        'REJECTED_SAMPLE': [],
+        'CANCELLED': [],
+    }
+    return transitions.get(current_status, [])
 
 
 @api_view(['GET'])
@@ -63,10 +77,10 @@ def lab_bookings_list_api(request):
     from users.models import PatientProfile
     try:
         patient = PatientProfile.objects.get(user=request.user)
-        bookings = TestBooking.objects.filter(patient=patient).select_related('template')
+        bookings = TestBooking.objects.filter(patient=patient).select_related('template', 'result')
     except PatientProfile.DoesNotExist:
         if request.user.role in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
-            bookings = TestBooking.objects.all().select_related('template')
+            bookings = TestBooking.objects.select_related('template', 'result').all()
         else:
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
     
@@ -173,6 +187,7 @@ def lab_booking_create_api(request):
         payment_status='UNPAID',
         amount=template.price,
         notes=notes,
+        expected_report_at=timezone.make_aware(datetime.combine(booking_date, time(18, 0))) + timedelta(minutes=template.duration_minutes),
     )
 
     TestRecommendation.objects.filter(
@@ -183,6 +198,79 @@ def lab_booking_create_api(request):
 
     serializer = TestBookingSerializer(booking)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def lab_booking_start_result_api(request, booking_id):
+    """Create a result shell for a booking so lab techs can enter values."""
+    if request.user.role not in ['ADMIN', 'LAB_TECHNICIAN']:
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        booking = TestBooking.objects.select_related('template', 'patient').prefetch_related('template__fields').get(pk=booking_id)
+    except TestBooking.DoesNotExist:
+        return Response({'detail': 'Test booking not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    result = TestResult.objects.filter(booking=booking).select_related('booking').prefetch_related('items__field').first()
+    created = False
+    if result is None:
+        result = TestResult.objects.create(
+            booking=booking,
+            filled_by=request.user,
+            status='PENDING',
+            notes='',
+        )
+        for field in booking.template.fields.all().order_by('order', 'id'):
+            TestResultItem.objects.create(result=result, field=field, value=None)
+        created = True
+
+    serializer = TestResultSerializer(result, context={'request': request})
+    response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return Response(serializer.data, status=response_status)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_http_methods(["POST"])
+def lab_booking_update_status_api(request, booking_id):
+    """Update a lab booking workflow status from the frontend dashboard."""
+    if request.user.role != 'LAB_TECHNICIAN':
+        return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        booking = TestBooking.objects.get(pk=booking_id)
+    except TestBooking.DoesNotExist:
+        return Response({'detail': 'Test booking not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    new_status = (request.data.get('status') or '').strip().upper()
+    rejected_reason = (request.data.get('rejected_reason') or '').strip()
+
+    allowed = _allowed_next_status_api(booking.status)
+    if new_status not in allowed:
+        return Response(
+            {'detail': f'Invalid status transition: {booking.get_status_display()} -> {new_status}.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if new_status == 'SAMPLE_COLLECTED':
+        booking.collected_by = request.user
+        booking.collected_at = timezone.now()
+        if not booking.specimen_id:
+            booking.specimen_id = f"SP-{booking.id}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+    elif new_status == 'PROCESSING':
+        booking.received_at = booking.received_at or timezone.now()
+    elif new_status == 'REJECTED_SAMPLE':
+        if not rejected_reason:
+            return Response({'detail': 'Please provide a rejected sample reason.'}, status=status.HTTP_400_BAD_REQUEST)
+        booking.rejected_reason = rejected_reason
+
+    booking.status = new_status
+    booking.save()
+
+    serializer = TestBookingSerializer(booking)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -325,19 +413,79 @@ def lab_recommendation_create_api(request):
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "PATCH"])
 def lab_result_detail_api(request, result_id):
     """Get specific test result detail with all items"""
     try:
-        result = TestResult.objects.select_related('booking').prefetch_related('items').get(id=result_id)
+        result = TestResult.objects.select_related('booking', 'booking__patient', 'booking__template').prefetch_related('items__field').get(id=result_id)
 
         if request.user.role == 'PATIENT':
             if result.booking.patient.user_id != request.user.id:
                 return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
         elif request.user.role not in ['ADMIN', 'RECEPTIONIST', 'LAB_TECHNICIAN', 'DOCTOR']:
             return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if request.method == 'PATCH':
+            if request.user.role not in ['ADMIN', 'LAB_TECHNICIAN']:
+                return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+            if result.is_released and request.user.role != 'ADMIN':
+                return Response({'detail': 'Released reports cannot be edited.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            notes = request.data.get('notes')
+            if notes is not None:
+                result.notes = str(notes)
+
+            status_value = (request.data.get('status') or '').strip().upper()
+            valid_statuses = {choice[0] for choice in TestResult.STATUS_CHOICES}
+            if status_value:
+                if status_value not in valid_statuses:
+                    return Response({'detail': 'Invalid result status.'}, status=status.HTTP_400_BAD_REQUEST)
+                result.status = status_value
+            elif result.status == 'PENDING':
+                result.status = 'ENTERED'
+
+            items_payload = request.data.get('items')
+            if isinstance(items_payload, str):
+                try:
+                    items_payload = json.loads(items_payload)
+                except json.JSONDecodeError:
+                    return Response({'detail': 'items must be valid JSON.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if items_payload is not None:
+                if not isinstance(items_payload, list):
+                    return Response({'detail': 'items must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                existing_items = {item.field_id: item for item in result.items.select_related('field').all()}
+                for item_data in items_payload:
+                    if not isinstance(item_data, dict):
+                        return Response({'detail': 'Each item must be an object.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    field_id = item_data.get('field') or item_data.get('field_id')
+                    if field_id is None:
+                        return Response({'detail': 'Each item requires a field id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    try:
+                        field_id = int(field_id)
+                    except (TypeError, ValueError):
+                        return Response({'detail': 'field id must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    value = item_data.get('value', '')
+                    result_item = existing_items.get(field_id)
+                    if result_item is None:
+                        result_item = TestResultItem(result=result, field_id=field_id)
+
+                    result_item.value = value if value not in [None, ''] else None
+                    result_item.save()
+
+            result.filled_by = request.user
+            result.has_critical_values = result.items.filter(is_critical=True).exists()
+            generate_lab_report_pdf(result)
+            result.save()
+
+            serializer = TestResultSerializer(result, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = TestResultSerializer(result, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -692,7 +840,7 @@ def lab_verify_result_api(request, result_id):
 @require_http_methods(["POST"])
 def lab_release_result_api(request, result_id):
     """Admin releases verified and paid lab result to patient."""
-    if request.user.role != 'ADMIN':
+    if request.user.role not in ['ADMIN', 'RECEPTIONIST']:
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -751,7 +899,6 @@ def lab_samples_list_api(request):
     if LabSample.objects.filter(barcode_id=barcode_id).exists():
         return Response({'detail': 'Barcode ID already exists.'}, status=status.HTTP_409_CONFLICT)
 
-    from .models import LabSample
     sample = LabSample.objects.create(
         result=result,
         barcode_id=barcode_id,
@@ -774,7 +921,6 @@ def lab_sample_detail_api(request, sample_id):
         return Response({'detail': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        from .models import LabSample
         sample = LabSample.objects.select_related('result__booking__patient').get(pk=sample_id)
     except LabSample.DoesNotExist:
         return Response({'detail': 'Sample not found.'}, status=status.HTTP_404_NOT_FOUND)

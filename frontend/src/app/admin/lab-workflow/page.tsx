@@ -34,9 +34,10 @@ export default function LabWorkflowPage() {
   const { userRole } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [bookings, setBookings] = useState<LabBookingWorkflowItem[]>([]);
-  const [statusFilter, setStatusFilter] = useState<WorkflowFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<WorkflowFilter>('READY_TO_RELEASE');
 
   const isAdmin = userRole === 'ADMIN';
+  const isReceptionist = userRole === 'RECEPTIONIST';
 
   useEffect(() => {
     fetchWorkflow();
@@ -65,6 +66,10 @@ export default function LabWorkflowPage() {
     return bookings.filter((b) => b.is_released);
   }, [bookings, statusFilter]);
 
+  const filters: WorkflowFilter[] = isAdmin
+    ? ['ALL', 'READY_TO_VERIFY', 'READY_TO_RELEASE', 'RELEASED']
+    : ['READY_TO_RELEASE', 'RELEASED'];
+
   const verifyResult = async (resultId: number | null) => {
     if (!resultId) return;
     try {
@@ -91,19 +96,23 @@ export default function LabWorkflowPage() {
     <ProtectedPage
       allowedRoles={ACCESS_MATRIX.labWorkflow}
       title="lab workflow"
-      description="Verification and release workflow is restricted to administrators."
+      description={isReceptionist ? 'Release verified and paid lab reports from one simple view.' : 'Verification and release workflow is restricted to administrators.'}
     >
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Lab Verification & Release Workflow</h1>
-            <p className="mt-2 text-gray-600">Verify entered reports and release only verified + paid results.</p>
+            <h1 className="text-3xl font-bold text-gray-900">{isReceptionist ? 'Lab Release Workflow' : 'Lab Verification & Release Workflow'}</h1>
+            <p className="mt-2 text-gray-600">
+              {isReceptionist
+                ? 'Release verified and paid reports. Verification remains admin-controlled.'
+                : 'Verify entered reports and release only verified + paid results.'}
+            </p>
           </div>
           <button onClick={fetchWorkflow} className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Refresh</button>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {(['ALL', 'READY_TO_VERIFY', 'READY_TO_RELEASE', 'RELEASED'] as WorkflowFilter[]).map((k) => (
+          {filters.map((k) => (
             <button
               key={k}
               onClick={() => setStatusFilter(k)}
@@ -135,7 +144,7 @@ export default function LabWorkflowPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filtered.map((b) => {
-                  const canVerify = !!b.result_id && !b.is_verified;
+                  const canVerify = isAdmin && !!b.result_id && !b.is_verified;
                   const canRelease = !!b.result_id && b.is_verified && !b.is_released && b.payment_status === 'PAID';
                   return (
                     <tr key={b.id} className="hover:bg-gray-50">
@@ -147,7 +156,14 @@ export default function LabWorkflowPage() {
                       <td className="px-4 py-3 text-sm"><span className={`rounded-full px-2 py-1 text-xs font-medium ${b.is_verified ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>{b.is_verified ? 'Verified' : 'Pending'}</span></td>
                       <td className="px-4 py-3 text-sm"><span className={`rounded-full px-2 py-1 text-xs font-medium ${b.is_released ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>{b.is_released ? 'Released' : 'Pending'}</span></td>
                       <td className="space-x-2 px-4 py-3 text-sm">
-                        <button disabled={!canVerify} onClick={() => verifyResult(b.result_id)} className={`rounded px-3 py-1 text-xs font-medium ${canVerify ? 'border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-400'}`}>Verify</button>
+                        {b.result_id && (
+                          <Link href={`/lab-reports/result/${b.result_id}`} className="rounded px-3 py-1 text-xs font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">
+                            Open Report
+                          </Link>
+                        )}
+                        {isAdmin && (
+                          <button disabled={!canVerify} onClick={() => verifyResult(b.result_id)} className={`rounded px-3 py-1 text-xs font-medium ${canVerify ? 'border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-400'}`}>Verify</button>
+                        )}
                         <button disabled={!canRelease} onClick={() => releaseResult(b.result_id)} className={`rounded px-3 py-1 text-xs font-medium ${canRelease ? 'border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-400'}`}>Release</button>
                       </td>
                     </tr>

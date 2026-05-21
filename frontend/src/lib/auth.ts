@@ -18,7 +18,11 @@ export interface StoredAuthState {
 }
 
 export function normalizeRole(role?: string | null) {
-  return (role || '').trim().toUpperCase();
+  const normalized = (role || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  return normalized === 'LAB_ASSISTANT' ? 'LAB_TECHNICIAN' : normalized;
 }
 
 export function getStoredAuthState(): StoredAuthState {

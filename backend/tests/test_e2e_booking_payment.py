@@ -24,6 +24,10 @@ def test_end_to_end_booking_and_payment(monkeypatch):
     resp = client.post('/api/auth/register/', reg_data, format='json')
     assert resp.status_code == 201
 
+    user = User.objects.get(email=reg_data['email'])
+    activation_resp = client.get(f'/users/activate/{user.id}/{user.activation_token}/')
+    assert activation_resp.status_code == 302
+
     # Login to get token
     login_resp = client.post('/api/auth/login/', {'email': reg_data['email'], 'password': reg_data['password']})
     assert login_resp.status_code == 200

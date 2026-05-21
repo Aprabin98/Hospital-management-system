@@ -37,6 +37,7 @@ class TestResultItemInline(admin.TabularInline):
 class TestResultAdmin(admin.ModelAdmin):
     list_display = ['booking', 'filled_by', 'is_released', 'filled_at']
     list_filter = ['is_released']
+    search_fields = ['booking__patient__full_name', 'booking__template__name']
     inlines = [TestResultItemInline]
 
 
@@ -44,25 +45,39 @@ class TestResultAdmin(admin.ModelAdmin):
 
 @admin.register(LabSample)
 class LabSampleAdmin(admin.ModelAdmin):
-    list_display = ['barcode_id', 'result', 'status', 'collected_by', 'collected_at', 'validated_by']
-    list_filter = ['status', 'collected_at', 'validated_at']
-    search_fields = ['barcode_id', 'result__booking__patient__full_name']
+    list_display = [
+        'barcode_id',
+        'sample_patient',
+        'sample_test',
+        'status',
+        'collected_by',
+        'processed_by',
+        'validated_by',
+        'created_at',
+    ]
+    list_filter = ['status', 'created_at', 'collected_at', 'validated_at']
+    search_fields = ['barcode_id', 'result__booking__patient__full_name', 'result__booking__template__name']
+    autocomplete_fields = ['result', 'collected_by', 'processed_by', 'validated_by']
     readonly_fields = ['created_at', 'updated_at']
+
+    def sample_patient(self, obj):
+        return obj.result.booking.patient.full_name
+
+    sample_patient.short_description = 'Patient'
+
+    def sample_test(self, obj):
+        return obj.result.booking.template.name
+
+    sample_test.short_description = 'Test'
     fieldsets = (
-        ('Sample Information', {
+        ('Workflow', {
             'fields': ('result', 'barcode_id', 'status')
         }),
-        ('Collection', {
-            'fields': ('collected_by', 'collected_at')
+        ('Accession', {
+            'fields': ('collected_by', 'collected_at', 'processed_by', 'processed_at')
         }),
-        ('Processing', {
-            'fields': ('processed_by', 'processed_at')
-        }),
-        ('Validation', {
-            'fields': ('validated_by', 'validated_at')
-        }),
-        ('Rejection/Recollection', {
-            'fields': ('rejection_reason', 'recollect_reason')
+        ('Validation and Release', {
+            'fields': ('validated_by', 'validated_at', 'rejection_reason', 'recollect_reason')
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),
