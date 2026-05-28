@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
   { name: 'Diagnostics', href: '/lab-dashboard', roles: ['admin', 'lab_technician'] },
   { name: 'Lab Dashboard', href: '/lab-dashboard', roles: ['admin', 'lab_technician'] },
   { name: 'Lab Reports', href: '/lab-reports', roles: ['admin', 'doctor', 'patient', 'receptionist', 'lab_technician'] },
-  { name: 'Fill Lab Results', href: '/lab-reports?tab=results', roles: ['admin', 'lab_technician'] },
+  { name: 'Fill Lab Results', href: '/lab/results-input', roles: ['admin', 'lab_technician'] },
   { name: 'Reviews', href: '/reviews', roles: ['admin', 'doctor', 'patient', 'receptionist'] },
   { name: 'My Ratings', href: '/my-ratings', roles: ['patient'] },
   { name: 'Manage Leaves', href: '/manage-leaves', roles: ['doctor'] },

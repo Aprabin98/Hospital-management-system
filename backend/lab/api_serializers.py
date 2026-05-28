@@ -118,11 +118,39 @@ class TestBookingSerializer(serializers.ModelSerializer):
 class TestResultItemSerializer(serializers.ModelSerializer):
     field_name = serializers.CharField(source='field.field_name', read_only=True)
     unit = serializers.CharField(source='field.unit', read_only=True)
+    normal_min = serializers.SerializerMethodField()
+    normal_max = serializers.SerializerMethodField()
+    normal_text = serializers.SerializerMethodField()
+    is_required = serializers.SerializerMethodField()
     
     class Meta:
         model = TestResultItem
-        fields = ['id', 'field', 'field_name', 'unit', 'value', 'status', 'is_critical']
+        fields = [
+            'id',
+            'field',
+            'field_name',
+            'unit',
+            'normal_min',
+            'normal_max',
+            'normal_text',
+            'is_required',
+            'value',
+            'status',
+            'is_critical',
+        ]
         read_only_fields = ['id']
+
+    def get_normal_min(self, obj):
+        return obj.field.normal_min
+
+    def get_normal_max(self, obj):
+        return obj.field.normal_max
+
+    def get_normal_text(self, obj):
+        return obj.field.normal_text
+
+    def get_is_required(self, obj):
+        return obj.field.is_required
 
 
 class TestResultSerializer(serializers.ModelSerializer):

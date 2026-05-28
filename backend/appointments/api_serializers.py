@@ -166,6 +166,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
+            'patient',
             'patient_name',
             'priority',
             'priority_score',

@@ -30,6 +30,7 @@ export const ROUTE_ACCESS: Record<string, readonly string[]> = {
   '/audit-logs': ACCESS_MATRIX.audit,
   '/admin/audit-logs': ACCESS_MATRIX.audit,
   '/lab-dashboard': ACCESS_MATRIX.labOperations,
+  '/lab/results-input': ACCESS_MATRIX.labOperations,
   '/lab-reports': ['ADMIN', 'DOCTOR', 'PATIENT', 'RECEPTIONIST', 'LAB_TECHNICIAN'],
   '/lab-reports/booking': ['ADMIN', 'DOCTOR', 'PATIENT', 'RECEPTIONIST', 'LAB_TECHNICIAN'],
   '/lab-reports/result': ['ADMIN', 'DOCTOR', 'PATIENT', 'RECEPTIONIST', 'LAB_TECHNICIAN'],

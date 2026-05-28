@@ -281,6 +281,10 @@ export default function LabDashboardPage() {
                 <AppIcon name="dashboard" className="h-4 w-4" />
                 {isRefreshing ? 'Refreshing...' : 'Refresh Lab Queue'}
               </button>
+              <Link href="/lab/results-input" className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-3 text-sm font-semibold text-cyan-700 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-100">
+                <AppIcon name="lab" className="h-4 w-4" />
+                Fill Lab Results
+              </Link>
               <Link href="/lab-reports?tab=results" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-cyan-200 hover:text-cyan-700">
                 <AppIcon name="reports" className="h-4 w-4" />
                 Open Lab Reports
