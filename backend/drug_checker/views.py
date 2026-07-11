@@ -142,3 +142,7 @@ def toggle_interaction_status(request, pk):
     state = 'activated' if interaction.is_active else 'deactivated'
     messages.success(request, f'Interaction {state}.')
     return redirect('drug_checker:manage_interactions')
+
+
+
+#this is just a check  
